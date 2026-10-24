@@ -103,7 +103,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   useEffect(() => {
     (async () => {
       try {
-        const bd = await fetch('geo/ne_districts.geojson');
+        const bd = await fetch('/geo/ne_districts.geojson');
         if (bd.ok) setBoundaryData(await bd.json());
       } catch { /* boundary failure -> districts unshaded, honest */ }
       try {
@@ -144,7 +144,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   // ---- map init ----
   useEffect(() => {
     if (!mapContainer.current || mlRef.current) return;
-    const initialStyle = buildBaseStyle({ base: defaultBaseProvider() });
+    const initialProvider = defaultBaseProvider();
+    const initialStyle = buildBaseStyle({ base: initialProvider });
     const map = new MLMap({
       container: mapContainer.current,
       style: initialStyle,
@@ -156,20 +157,40 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     map.addControl(new FullscreenControl(), 'top-right');
     map.addControl(new ScaleControl(), 'bottom-right');
 
+    const markReady = () => {
+      setReady(true);
+      try { map.resize(); } catch { /* ignore */ }
+    };
+
+    if (map.isStyleLoaded()) {
+      markReady();
+    } else {
+      map.once('load', markReady);
+    }
+    const safetyTimer = setTimeout(markReady, 1800);
+
     map.on('error', (e: any) => {
       const msg = String(e?.error?.message || e?.message || '');
-      if (msg.includes('401') || msg.includes('403') || msg.includes('maptiler')) {
+      if ((msg.includes('401') || msg.includes('403')) && baseProvider !== 'OSM') {
         console.warn('MapTiler error notice, falling back to OSM:', msg);
         setMapTilerNotice('MapTiler key validation notice: Displaying OpenStreetMap fallback.');
         setBaseProvider('OSM');
+        try { map.setStyle(buildBaseStyle({ base: 'OSM' })); } catch { /* ignore */ }
       }
     });
 
     mlRef.current = map;
-    map.on('load', () => { setReady(true); map.resize(); });
-    const ro = new ResizeObserver(() => map.resize());
+    const ro = new ResizeObserver(() => {
+      try { map.resize(); } catch { /* ignore */ }
+    });
     ro.observe(mapContainer.current);
-    return () => { ro.disconnect(); mlRef.current = null; map.remove(); };
+
+    return () => {
+      clearTimeout(safetyTimer);
+      ro.disconnect();
+      mlRef.current = null;
+      map.remove();
+    };
   }, []);
 
   const summaryByBoundary = useMemo(() => {
@@ -557,9 +578,15 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     try {
       const newStyle = buildBaseStyle({ base: baseProvider });
       map.setStyle(newStyle);
-      map.once('style.load', () => {
+      const onStyleLoaded = () => {
         setStyleVersion(v => v + 1);
-      });
+        try { map.resize(); } catch { /* ignore */ }
+      };
+      if (map.isStyleLoaded()) {
+        onStyleLoaded();
+      } else {
+        map.once('style.load', onStyleLoaded);
+      }
     } catch (err: any) {
       console.warn('Failed to switch base style:', err);
       setMapTilerNotice('Basemap style switch error. Reverting to OpenStreetMap.');

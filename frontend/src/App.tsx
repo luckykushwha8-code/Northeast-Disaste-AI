@@ -90,12 +90,18 @@ export const App: React.FC = () => {
 
         {/* Tab 0: Interactive Disaster Map Board (map-first interface) */}
         {currentTab === 'mapboard' && (
-          <MapBoard
-            locations={locations}
-            alerts={alerts}
-            shelters={shelters}
-            reports={reports}
-          />
+          <Suspense fallback={
+            <div className="bg-white rounded-xl p-8 border border-slate-200 text-center text-slate-500 font-medium shadow-sm">
+              Loading Northeast India Map Board…
+            </div>
+          }>
+            <MapBoard
+              locations={locations}
+              alerts={alerts}
+              shelters={shelters}
+              reports={reports}
+            />
+          </Suspense>
         )}
 
         {/* Tab 1: Situational Map & Dashboard */}

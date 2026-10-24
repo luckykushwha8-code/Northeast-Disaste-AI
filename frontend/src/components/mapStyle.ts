@@ -95,9 +95,8 @@ export const buildBaseStyle = ({ base }: BaseStyleOptions): any => {
   };
 };
 
-/** Returns the default base map: MapTiler Streets if key is available, else OSM. */
-export const defaultBaseProvider = (): BaseMapProvider =>
-  hasMapTilerKey() ? 'MAPTILER_STREETS' : 'OSM';
+/** Returns the default base map: MapTiler Streets when key is available, OSM as safe fallback. */
+export const defaultBaseProvider = (): BaseMapProvider => (hasMapTilerKey() ? 'MAPTILER_STREETS' : 'OSM');
 
 /** Human-friendly label for the basemap selector. */
 export const baseProviderLabel = (p: BaseMapProvider): string => ({

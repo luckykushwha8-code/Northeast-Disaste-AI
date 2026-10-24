@@ -63,7 +63,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const loadLiveLayers = async () => {
     try {
       // Static validated district boundaries (public India boundary data, NE subset)
-      const bd = await fetch('geo/ne_districts.geojson');
+      const bd = await fetch('/geo/ne_districts.geojson');
       if (bd.ok) setBoundaryData(await bd.json());
       const asi = await fetch(`${API_BASE}/risk/geo`);
       if (asi.ok) {
@@ -82,7 +82,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
   useEffect(() => {
     if (!mapRef.current || mlRef.current) return;
-    const initialStyle = buildBaseStyle({ base: defaultBaseProvider() });
+    const initialProvider = defaultBaseProvider();
+    const initialStyle = buildBaseStyle({ base: initialProvider });
     const map = new MLMap({
       container: mapRef.current,
       style: initialStyle,
@@ -94,18 +95,41 @@ export const MapView: React.FC<MapViewProps> = ({
     map.addControl(new FullscreenControl(), 'top-right');
     map.addControl(new ScaleControl(), 'bottom-right');
 
+    const markReady = () => {
+      setReady(true);
+      try { map.resize(); } catch { /* ignore */ }
+    };
+
+    if (map.isStyleLoaded()) {
+      markReady();
+    } else {
+      map.once('load', markReady);
+    }
+    const safetyTimer = setTimeout(markReady, 1800);
+
     map.on('error', (e: any) => {
       const msg = String(e?.error?.message || e?.message || '');
-      if (msg.includes('401') || msg.includes('403') || msg.includes('maptiler')) {
-        console.warn('MapTiler key validation warning on MapView, falling back to OSM:', msg);
+      if ((msg.includes('401') || msg.includes('403')) && baseMapProvider !== 'OSM') {
+        console.warn('MapTiler key notice on MapView, falling back to OSM:', msg);
         setBaseMapProvider('OSM');
+        try { map.setStyle(buildBaseStyle({ base: 'OSM' })); } catch { /* ignore */ }
       }
     });
 
     mlRef.current = map;
-    map.on('load', () => setReady(true));
     loadLiveLayers();
-    return () => { mlRef.current = null; map.remove(); };
+
+    const ro = new ResizeObserver(() => {
+      try { map.resize(); } catch { /* ignore */ }
+    });
+    ro.observe(mapRef.current);
+
+    return () => {
+      clearTimeout(safetyTimer);
+      ro.disconnect();
+      mlRef.current = null;
+      map.remove();
+    };
   }, []);
 
   const prevBaseRef = useRef<BaseMapProvider>(baseMapProvider);
@@ -118,9 +142,15 @@ export const MapView: React.FC<MapViewProps> = ({
     try {
       const newStyle = buildBaseStyle({ base: baseMapProvider });
       map.setStyle(newStyle);
-      map.once('style.load', () => {
+      const onStyleLoaded = () => {
         setStyleVersion(v => v + 1);
-      });
+        try { map.resize(); } catch { /* ignore */ }
+      };
+      if (map.isStyleLoaded()) {
+        onStyleLoaded();
+      } else {
+        map.once('style.load', onStyleLoaded);
+      }
     } catch (err: any) {
       console.warn('Failed to switch MapView base style:', err);
       setBaseMapProvider('OSM');
@@ -131,12 +161,19 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     const map = mlRef.current;
     if (!map || !ready) return;
-    [...map.getStyle().layers.map((l: any) => l.id)]
-      .filter(id => id.startsWith('risk') || id.startsWith('terrain') || id.startsWith('hist') || id.startsWith('shelter') || id.startsWith('incident') || id.startsWith('boundary'))
-      .forEach(id => map.removeLayer(id));
-    Object.keys(map.getStyle().sources)
-      .filter(s => s.startsWith('risk') || s.startsWith('terrain') || s.startsWith('hist') || s.startsWith('shelter') || s.startsWith('incident') || s.startsWith('boundary'))
-      .forEach(s => { try { map.removeSource(s); } catch { /* not yet added */ } });
+    try {
+      const style = map.getStyle();
+      if (style) {
+        (style.layers || [])
+          .filter((l: any) => l.id.startsWith('risk') || l.id.startsWith('terrain') || l.id.startsWith('hist') || l.id.startsWith('shelter') || l.id.startsWith('incident') || l.id.startsWith('boundary'))
+          .forEach((l: any) => { try { map.removeLayer(l.id); } catch { /* ignore */ } });
+        Object.keys(style.sources || {})
+          .filter(s => s.startsWith('risk') || s.startsWith('terrain') || s.startsWith('hist') || s.startsWith('shelter') || s.startsWith('incident') || s.startsWith('boundary'))
+          .forEach(s => { try { map.removeSource(s); } catch { /* not yet added */ } });
+      }
+    } catch (e) {
+      console.warn('MapView layer cleanup warning:', e);
+    }
 
     /* ---- Validated district boundaries (static public dataset, graceful no-op if unloaded) ---- */
     if (layers.districts && boundaryData && (boundaryData as any).features?.length) {
@@ -462,7 +499,12 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <div className="relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-[640px]">
-      <div ref={mapRef} className="h-full w-full" />
+      <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+      {!ready && (
+        <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-100/70 text-sm font-bold text-slate-500">
+          Rendering Northeast India map…
+        </div>
+      )}
 
       {/* State selector + layer switches */}
       <div className="absolute top-4 left-4 z-[400] flex flex-wrap items-center gap-2">
