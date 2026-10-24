@@ -1,0 +1,10 @@
+{
+  "status": "HEALTHY",
+  "timestamp": "2026-10-24T15:08:26.173542",
+  "app_name": "NE-SAFE AI",
+  "version": "1.0.0",
+  "monitored_district": "Kamrup Metropolitan",
+  "database_connected": true,
+  "locations_count": 19,
+  "simulation_mode_permitted": true
+}

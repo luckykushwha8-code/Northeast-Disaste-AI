@@ -1,0 +1,1187 @@
+{
+  "engine": "nesafe-map-districts-v1.0",
+  "generated_at": "2026-10-24T15:09:29.588983",
+  "freshness_policy": {
+    "weather_hours": 6.0,
+    "river_hours": 2.0
+  },
+  "geodata": {
+    "source": "geohacker/india district boundaries (public India mapping data), NE subset",
+    "feature_count": 78,
+    "crs": "EPSG:4326 (GeoJSON lon/lat as delivered)",
+    "license": "open India mapping datasets \u2014 attribution displayed on the map",
+    "coverage_note": "district snapshot dataset; does not guarantee post-reorganisation splits. Platform districts resolve to polygons via an explicit documented alias table (application services geographic_service.PLATFORM_DISTRICT_ALIAS); unmatched districts are shown UNKNOWN (gray), never silently shaded.",
+    "last_verified": "2026-10-23"
+  },
+  "terminology": {
+    "flood_risk": "prototype risk estimate (IntegratedRiskEngine) \u2014 never an official warning",
+    "landslide_risk": "prototype risk estimate (IntegratedRiskEngine) \u2014 never an official warning",
+    "official_warnings": "verbatim storage of IMD/agency warnings; platform never converts them into model estimates",
+    "UNKNOWN": "no fresh data, no warning, no monitored location, or unresolved boundary \u2014 never 'safe'"
+  },
+  "districts": [
+    {
+      "district": "Aizawl",
+      "state": "Mizoram",
+      "monitored_locations": [
+        {
+          "id": "loc_aizawl_slopes",
+          "name": "Aizawl Ridge & Ramhlun Slopes",
+          "type": "SLOPE_ZONE",
+          "latitude": 23.7271,
+          "longitude": 92.7176
+        }
+      ],
+      "observed_rainfall_24h": {
+        "value": 82.0,
+        "unit": "mm",
+        "observed_at": "2026-10-23T19:12:24.334906",
+        "age_hours": 19.95,
+        "quality_status": "VALID",
+        "provenance": "IMD Aizawl Met Station",
+        "source_id": "src_imd_api",
+        "location": "Aizawl Ridge & Ramhlun Slopes",
+        "location_id": "loc_aizawl_slopes"
+      },
+      "rainfall_24h_all_locations": [
+        {
+          "value": 82.0,
+          "unit": "mm",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "IMD Aizawl Met Station",
+          "source_id": "src_imd_api",
+          "location": "Aizawl Ridge & Ramhlun Slopes",
+          "location_id": "loc_aizawl_slopes"
+        }
+      ],
+      "rainfall_status": "STALE",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.04,
+        "confidence": 0.52,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 85.0,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation IMD AWS observation (stored) = 82.0mm (observed 20.0h ago, freshness VALID).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.2mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:31.",
+        "Terrain: slope 37.0 deg, drainage density 1.8, GSI susceptibility 0.91 at 1132m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.62,
+        "confidence": 0.83,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 85.0,
+        "slope_deg": 37.0,
+        "susceptibility_score": 0.91,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation IMD AWS observation (stored) = 82.0mm (observed 20.0h ago, freshness VALID).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.2mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:31.",
+        "Terrain: slope 37.0 deg, drainage density 1.8, GSI susceptibility 0.91 at 1132m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Aizawl",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "STALE",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "Cachar",
+      "state": "Assam",
+      "monitored_locations": [
+        {
+          "id": "loc_cachar_silchar",
+          "name": "Annapurna Ghat (Barak River)",
+          "type": "RIVER_STATION",
+          "latitude": 24.8333,
+          "longitude": 92.7789
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [
+        {
+          "value": 19.45,
+          "unit": "m",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "CWC Barak Basin Telemetry",
+          "source_id": "src_cwc_brahmaputra",
+          "location": "Annapurna Ghat (Barak River)",
+          "location_id": "loc_cachar_silchar"
+        }
+      ],
+      "flood_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.45,
+        "confidence": 0.67,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 3.7,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "CWC gauge 19.45m exceeds this station's official warning mark 18.87m (Barak at Silchar #014-BRSIL).",
+        "River stage observed 20.0h ago (freshness VALID).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL)."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.1,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 3.7,
+        "slope_deg": 3.5,
+        "susceptibility_score": 0.25,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "CWC gauge 19.45m exceeds this station's official warning mark 18.87m (Barak at Silchar #014-BRSIL).",
+        "River stage observed 20.0h ago (freshness VALID).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL)."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Cachar",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "STALE",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation"
+        ]
+      }
+    },
+    {
+      "district": "Dhemaji",
+      "state": "Assam",
+      "monitored_locations": [
+        {
+          "id": "loc_dhemaji_jiadhal",
+          "name": "Jiadhal Flash Flood Catchment",
+          "type": "RIVER_STATION",
+          "latitude": 27.4833,
+          "longitude": 94.5833
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNAVAILABLE",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:34."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.11,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "slope_deg": 5.0,
+        "susceptibility_score": 0.3,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:34."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 1,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Dhemaji",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "Dimapur",
+      "state": "Nagaland",
+      "monitored_locations": [
+        {
+          "id": "loc_dimapur_dhansiri",
+          "name": "Dhansiri River Floodplain (Dimapur)",
+          "type": "RIVER_STATION",
+          "latitude": 25.909,
+          "longitude": 93.7265
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNAVAILABLE",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 1.4,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.2mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 1.3mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:37."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.08,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 1.4,
+        "slope_deg": 3.0,
+        "susceptibility_score": 0.22,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.2mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 1.3mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:37."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 1,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Dimapur",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "East",
+      "state": null,
+      "monitored_locations": [],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNKNOWN",
+        "model": "none",
+        "reason": "no monitored location in this district"
+      },
+      "flood_explanations": [],
+      "landslide_risk": {
+        "risk_category": "UNKNOWN",
+        "model": "none",
+        "reason": "no monitored location in this district"
+      },
+      "landslide_explanations": [],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 0,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "East",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading",
+          "no monitored location"
+        ]
+      }
+    },
+    {
+      "district": "East Khasi Hills",
+      "state": "Meghalaya",
+      "monitored_locations": [
+        {
+          "id": "loc_cherrapunji_sohra",
+          "name": "Sohra / Cherrapunji Escarpment",
+          "type": "SLOPE_ZONE",
+          "latitude": 25.2702,
+          "longitude": 91.7323
+        },
+        {
+          "id": "loc_shillong_hills",
+          "name": "Shillong Urban Basin & Wahumkhrah",
+          "type": "URBAN_CATCHMENT",
+          "latitude": 25.5788,
+          "longitude": 91.8933
+        }
+      ],
+      "observed_rainfall_24h": {
+        "value": 142.0,
+        "unit": "mm",
+        "observed_at": "2026-10-23T19:12:24.334906",
+        "age_hours": 19.95,
+        "quality_status": "VALID",
+        "provenance": "IMD Sohra High-Altitude AWS",
+        "source_id": "src_imd_api",
+        "location": "Sohra / Cherrapunji Escarpment",
+        "location_id": "loc_cherrapunji_sohra"
+      },
+      "rainfall_24h_all_locations": [
+        {
+          "value": 142.0,
+          "unit": "mm",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "IMD Sohra High-Altitude AWS",
+          "source_id": "src_imd_api",
+          "location": "Sohra / Cherrapunji Escarpment",
+          "location_id": "loc_cherrapunji_sohra"
+        }
+      ],
+      "rainfall_status": "STALE",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.07,
+        "confidence": 0.52,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 144.8,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation IMD AWS observation (stored) = 142.0mm (observed 20.0h ago, freshness VALID).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:42.",
+        "Terrain: slope 42.0 deg, drainage density 2.5, GSI susceptibility 0.89 at 1430m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "HIGH",
+        "probability": 0.81,
+        "confidence": 0.83,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 144.8,
+        "slope_deg": 42.0,
+        "susceptibility_score": 0.89,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation IMD AWS observation (stored) = 142.0mm (observed 20.0h ago, freshness VALID).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:42.",
+        "Terrain: slope 42.0 deg, drainage density 2.5, GSI susceptibility 0.89 at 1430m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 3,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "East Khasi Hills",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "STALE",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "East Siang",
+      "state": "Arunachal Pradesh",
+      "monitored_locations": [
+        {
+          "id": "loc_pasighat_siang",
+          "name": "Pasighat Siang River Gorge",
+          "type": "RIVER_STATION",
+          "latitude": 28.0667,
+          "longitude": 95.3333
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNAVAILABLE",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:41."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.16,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "slope_deg": 12.0,
+        "susceptibility_score": 0.45,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:41."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 1,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "East Siang",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "East Sikkim",
+      "state": "Sikkim",
+      "monitored_locations": [
+        {
+          "id": "loc_gangtok_slopes",
+          "name": "Gangtok Deorali Valley Slopes",
+          "type": "SLOPE_ZONE",
+          "latitude": 27.3314,
+          "longitude": 88.6138
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:46.",
+        "Terrain: slope 38.0 deg, drainage density 2.1, GSI susceptibility 0.90 at 1650m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.32,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "slope_deg": 38.0,
+        "susceptibility_score": 0.9,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:46.",
+        "Terrain: slope 38.0 deg, drainage density 2.1, GSI susceptibility 0.90 at 1650m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "UNKNOWN",
+        "note": "no verified boundary polygon matched \u2014 left unshaded"
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "Imphal West",
+      "state": "Manipur",
+      "monitored_locations": [
+        {
+          "id": "loc_imphal_river",
+          "name": "Imphal River at Sanjenthong",
+          "type": "RIVER_STATION",
+          "latitude": 24.817,
+          "longitude": 93.9368
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNAVAILABLE",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 3.5,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.7mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:46."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.08,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 3.5,
+        "slope_deg": 2.5,
+        "susceptibility_score": 0.2,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 3.7mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:46."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 1,
+      "boundary": {
+        "status": "APPROXIMATED",
+        "boundary_name": "West Imphal",
+        "note": "platform district mapped via explicit alias to legacy boundary 'West Imphal'"
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "Kamrup Metropolitan",
+      "state": "Assam",
+      "monitored_locations": [
+        {
+          "id": "loc_pandu_ghat",
+          "name": "Pandu Ghat Riverfront (Brahmaputra)",
+          "type": "RIVER_STATION",
+          "latitude": 26.1772,
+          "longitude": 91.6883
+        },
+        {
+          "id": "loc_bharalu_basin",
+          "name": "Bharalu River Basin (Guwahati)",
+          "type": "URBAN_CATCHMENT",
+          "latitude": 26.162,
+          "longitude": 91.734
+        },
+        {
+          "id": "loc_kharghuli_hills",
+          "name": "Kharghuli Hill Slope",
+          "type": "SLOPE_ZONE",
+          "latitude": 26.2025,
+          "longitude": 91.776
+        },
+        {
+          "id": "loc_kamakhya_nilachal",
+          "name": "Nilachal / Kamakhya Temple Hill",
+          "type": "SLOPE_ZONE",
+          "latitude": 26.1664,
+          "longitude": 91.7052
+        },
+        {
+          "id": "loc_narakasur_hills",
+          "name": "Narakasur / Bhangagarh Slope (GMCH)",
+          "type": "SLOPE_ZONE",
+          "latitude": 26.1495,
+          "longitude": 91.761
+        }
+      ],
+      "observed_rainfall_24h": {
+        "value": 68.5,
+        "unit": "mm",
+        "observed_at": "2026-10-23T19:12:24.334906",
+        "age_hours": 19.95,
+        "quality_status": "VALID",
+        "provenance": "IMD AWS Borjhar Guwahati",
+        "source_id": "src_imd_api",
+        "location": "Kharghuli Hill Slope",
+        "location_id": "loc_kharghuli_hills"
+      },
+      "rainfall_24h_all_locations": [
+        {
+          "value": 68.5,
+          "unit": "mm",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "IMD AWS Borjhar Guwahati",
+          "source_id": "src_imd_api",
+          "location": "Kharghuli Hill Slope",
+          "location_id": "loc_kharghuli_hills"
+        },
+        {
+          "value": 74.2,
+          "unit": "mm",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "IMD AWS Borjhar Guwahati",
+          "source_id": "src_imd_api",
+          "location": "Narakasur / Bhangagarh Slope (GMCH)",
+          "location_id": "loc_narakasur_hills"
+        }
+      ],
+      "rainfall_status": "STALE",
+      "river_level_all_locations": [
+        {
+          "value": 49.1,
+          "unit": "m",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "CWC Telemetry Gauge #022-MBAPU",
+          "source_id": "src_cwc_brahmaputra",
+          "location": "Pandu Ghat Riverfront (Brahmaputra)",
+          "location_id": "loc_pandu_ghat"
+        }
+      ],
+      "flood_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.47,
+        "confidence": 0.67,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.4,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "CWC gauge 49.10m exceeds this station's official warning mark 48.68m (Brahmaputra at Pandu #022-MBAPU).",
+        "River stage observed 20.0h ago (freshness VALID).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.1mm (observed 0.1h ago, freshness OPEN_METEO_FILL)."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.58,
+        "confidence": 0.83,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 69.0,
+        "slope_deg": 36.0,
+        "susceptibility_score": 0.88,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation IMD AWS observation (stored) = 68.5mm (observed 20.0h ago, freshness VALID).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.5mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:30.",
+        "Terrain: slope 36.0 deg, drainage density 1.9, GSI susceptibility 0.88 at 110m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 2,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "APPROXIMATED",
+        "boundary_name": "Kamrup",
+        "note": "platform district mapped via explicit alias to legacy boundary 'Kamrup'"
+      },
+      "data_quality": {
+        "rainfall": "STALE",
+        "river": "STALE",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": []
+      }
+    },
+    {
+      "district": "Kohima",
+      "state": "Nagaland",
+      "monitored_locations": [
+        {
+          "id": "loc_kohima_slopes",
+          "name": "Kohima Phesama Creep Zone",
+          "type": "SLOPE_ZONE",
+          "latitude": 25.6751,
+          "longitude": 94.1086
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 8.4,
+        "forecast_trigger_index": 0.01,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 1.8mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 7.0mm, forecast-24h 1.5mm retrieved 2026-10-24T15:08:48.",
+        "Terrain: slope 33.0 deg, drainage density 2.3, GSI susceptibility 0.87 at 1444m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.34,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 8.4,
+        "slope_deg": 33.0,
+        "susceptibility_score": 0.87,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 1.8mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 7.0mm, forecast-24h 1.5mm retrieved 2026-10-24T15:08:48.",
+        "Terrain: slope 33.0 deg, drainage density 2.3, GSI susceptibility 0.87 at 1444m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Kohima",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "Noney",
+      "state": "Manipur",
+      "monitored_locations": [
+        {
+          "id": "loc_tupul_slope",
+          "name": "Tupul Railway Corridor Slopes",
+          "type": "SLOPE_ZONE",
+          "latitude": 24.789,
+          "longitude": 93.682
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 6.1,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.2mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 6.3mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:48.",
+        "Terrain: slope 39.0 deg, drainage density 2.0, GSI susceptibility 0.94 at 650m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.36,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 6.1,
+        "slope_deg": 39.0,
+        "susceptibility_score": 0.94,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.2mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 6.3mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:48.",
+        "Terrain: slope 39.0 deg, drainage density 2.0, GSI susceptibility 0.94 at 650m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "UNKNOWN",
+        "note": "no verified boundary polygon matched \u2014 left unshaded"
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "North Sikkim",
+      "state": "Sikkim",
+      "monitored_locations": [
+        {
+          "id": "loc_teesta_mangan",
+          "name": "Teesta River Basin (Mangan - Chungthang)",
+          "type": "RIVER_STATION",
+          "latitude": 27.5,
+          "longitude": 88.5333
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [
+        {
+          "value": 862.4,
+          "unit": "m",
+          "observed_at": "2026-10-23T19:12:24.334906",
+          "age_hours": 19.95,
+          "quality_status": "VALID",
+          "provenance": "CWC Teesta Basin Gauge",
+          "source_id": "src_cwc_brahmaputra",
+          "location": "Teesta River Basin (Mangan - Chungthang)",
+          "location_id": "loc_teesta_mangan"
+        }
+      ],
+      "flood_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.45,
+        "confidence": 0.67,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.8,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "CWC gauge 862.40m exceeds this station's official warning mark 860.00m (Teesta at Mangan #008-TSTMAN).",
+        "River stage observed 20.0h ago (freshness VALID).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.4mm (observed 0.1h ago, freshness OPEN_METEO_FILL)."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.33,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.8,
+        "slope_deg": 36.0,
+        "susceptibility_score": 0.93,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "CWC gauge 862.40m exceeds this station's official warning mark 860.00m (Teesta at Mangan #008-TSTMAN).",
+        "River stage observed 20.0h ago (freshness VALID).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.4mm (observed 0.1h ago, freshness OPEN_METEO_FILL)."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 0,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "North Sikkim",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "STALE",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation"
+        ]
+      }
+    },
+    {
+      "district": "Papum Pare",
+      "state": "Arunachal Pradesh",
+      "monitored_locations": [
+        {
+          "id": "loc_itanagar_hills",
+          "name": "Itanagar Capital Cut Slopes",
+          "type": "SLOPE_ZONE",
+          "latitude": 27.0844,
+          "longitude": 93.6053
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "LOW",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:37.",
+        "Terrain: slope 35.0 deg, drainage density 2.2, GSI susceptibility 0.86 at 320m elevation."
+      ],
+      "landslide_risk": {
+        "risk_category": "MODERATE",
+        "probability": 0.31,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.0,
+        "slope_deg": 35.0,
+        "susceptibility_score": 0.86,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.0mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.0mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:37.",
+        "Terrain: slope 35.0 deg, drainage density 2.2, GSI susceptibility 0.86 at 320m elevation."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 2,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "Papum Pare",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    },
+    {
+      "district": "West Tripura",
+      "state": "Tripura",
+      "monitored_locations": [
+        {
+          "id": "loc_agartala_howrah",
+          "name": "Howrah River Embankment (Agartala)",
+          "type": "RIVER_STATION",
+          "latitude": 23.8315,
+          "longitude": 91.2868
+        }
+      ],
+      "observed_rainfall_24h": null,
+      "rainfall_24h_all_locations": [],
+      "rainfall_status": "MISSING",
+      "river_level_all_locations": [],
+      "flood_risk": {
+        "risk_category": "UNAVAILABLE",
+        "probability": 0.0,
+        "confidence": 0.56,
+        "uncertainty": "HIGH_UNCERTAINTY",
+        "ari_mm": 0.3,
+        "forecast_trigger_index": 0.0,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "flood_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.1mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.2mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:51."
+      ],
+      "landslide_risk": {
+        "risk_category": "LOW",
+        "probability": 0.06,
+        "confidence": 0.96,
+        "uncertainty": "LOW_UNCERTAINTY",
+        "ari_mm": 0.3,
+        "slope_deg": 2.0,
+        "susceptibility_score": 0.18,
+        "model": "prototype",
+        "engine": "nesafe-geo-risk-v1.0"
+      },
+      "landslide_explanations": [
+        "No river gauge reading at this station (R-03 uncertainty, no invented fallback).",
+        "24h rainfall accumulation Open-Meteo observed precipitation (gap-fill) = 0.1mm (observed 0.1h ago, freshness OPEN_METEO_FILL).",
+        "Open-Meteo precipitation context (LIVE, cache hit): observed-72h 0.2mm, forecast-24h 0.0mm retrieved 2026-10-24T15:08:51."
+      ],
+      "official_warnings": [],
+      "official_warning_count": 0,
+      "incidents_total": 0,
+      "incidents_verified": 0,
+      "latest_incident": null,
+      "shelters_count": 1,
+      "district_risk_combined": 1,
+      "boundary": {
+        "status": "EXACT",
+        "boundary_name": "West Tripura",
+        "note": null
+      },
+      "data_quality": {
+        "rainfall": "MISSING",
+        "river": "MISSING",
+        "risk": "PROTOTYPE_MODEL",
+        "official_warnings": "NONE",
+        "missing_inputs": [
+          "no rainfall observation",
+          "no river gauge reading"
+        ]
+      }
+    }
+  ]
+}

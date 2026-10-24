@@ -1,0 +1,26 @@
+{
+  "name": "ne-safe-ai",
+  "version": "1.0.0",
+  "description": "AI-Powered Flood and Landslide Early-Warning System for Northeast India",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "preview": "npm --prefix frontend run preview",
+    "test:backend": "pytest backend/tests/ -v"
+  },
+  "keywords": [
+    "disaster-management",
+    "early-warning",
+    "northeast-india",
+    "flood-prediction",
+    "landslide-monitoring",
+    "fastapi",
+    "react",
+    "maplibre",
+    "maptiler"
+  ],
+  "author": "NE-SAFE AI Team",
+  "license": "MIT"
+}

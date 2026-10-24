@@ -1,0 +1,57 @@
+[
+  {
+    "id": "src_imd_api",
+    "name": "India Meteorological Department (IMD) - Official API Catalogue",
+    "source_type": "IMD",
+    "configuration_reference": "https://api.imd.gov.in/api/v1/districtwarning",
+    "expected_update_interval_hours": 3.0,
+    "enabled": true,
+    "last_success_at": "2026-10-23T19:12:24.334906",
+    "last_error_at": null,
+    "status": "FAILED"
+  },
+  {
+    "id": "src_cwc_brahmaputra",
+    "name": "Central Water Commission (CWC) - National Flood Forecasting System",
+    "source_type": "CWC",
+    "configuration_reference": "https://ffs.india-water.gov.in/station/022-MBAPU",
+    "expected_update_interval_hours": 2.0,
+    "enabled": true,
+    "last_success_at": "2026-10-24T14:54:49.972617",
+    "last_error_at": "2026-10-24T13:54:46.911753",
+    "status": "OPERATIONAL"
+  },
+  {
+    "id": "src_gsi_landslide",
+    "name": "Geological Survey of India (GSI) - Bhusanket & NLSM",
+    "source_type": "GSI",
+    "configuration_reference": "https://bhusanket.gsi.gov.in/landslide-hazard",
+    "expected_update_interval_hours": 720.0,
+    "enabled": true,
+    "last_success_at": "2026-10-23T19:12:24.334906",
+    "last_error_at": null,
+    "status": "OPERATIONAL"
+  },
+  {
+    "id": "src_isro_bhuvan",
+    "name": "ISRO / NRSC Bhuvan Disaster Services & WMS",
+    "source_type": "BHUVAN_WMS",
+    "configuration_reference": "https://bhuvan.nrsc.gov.in/thematic/wms",
+    "expected_update_interval_hours": 24.0,
+    "enabled": true,
+    "last_success_at": "2026-10-23T19:12:24.334906",
+    "last_error_at": null,
+    "status": "OPERATIONAL"
+  },
+  {
+    "id": "src_smart_city_iot",
+    "name": "Guwahati Smart City Urban Hydrology Sensors",
+    "source_type": "SYNTH_IOT",
+    "configuration_reference": "iot://smartcity.guwahati.gov.in/sensors",
+    "expected_update_interval_hours": 1.0,
+    "enabled": true,
+    "last_success_at": "2026-10-23T19:12:24.334906",
+    "last_error_at": null,
+    "status": "STALE"
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "configured": true,
+  "status": "READY",
+  "endpoint": "https://api.fetch.tinyfish.ai",
+  "key_present": true,
+  "key_preview": "sk-...EXQ",
+  "timeout_seconds": 15,
+  "rate_limit_per_minute": 30,
+  "rate_limit_remaining": 30,
+  "approved_domains": [
+    "imd.gov.in",
+    "mausam.imd.gov.in",
+    "api.imd.gov.in",
+    "rsmcnewdelhi.imd.gov.in",
+    "cwc.gov.in",
+    "ffs.india-water.gov.in",
+    "india-water.gov.in",
+    "gsi.gov.in",
+    "bhusanket.gsi.gov.in",
+    "bhuvan.nrsc.gov.in",
+    "nrsc.gov.in",
+    "ndma.gov.in",
+    "eastmojo.com",
+    "sentinelassam.com"
+  ],
+  "last_retrieval_at": "2026-10-24T14:54:54.310478",
+  "total_retrievals_count": 10,
+  "simulation_mode": false
+}

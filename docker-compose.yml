@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nesafe-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=NE-SAFE AI
+      - DATABASE_URL=sqlite:///./nesafe.db
+      - ALLOW_SIMULATION=true
+    volumes:
+      - nesafe-db:/app
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nesafe-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  nesafe-db:

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "f35c69ee-22e2-4bd6-a3f4-bb93a72c4acc",
+    "location_id": "loc_cherrapunji_sohra",
+    "location_name": "Sohra / Cherrapunji Escarpment",
+    "hazard_type": "LANDSLIDE",
+    "source_type": "AI_ASSESSMENT",
+    "severity": "HIGH",
+    "lifecycle_status": "PROPOSED",
+    "issued_at": null,
+    "expires_at": "2026-10-25T00:25:32.071833",
+    "official_source_reference": "India Meteorological Department (IMD) - Official API Catalogue (IMD) | obs 2026-10-23T19:12:24.334906 (rainfall_24h_mm=142.0, terrain slope 42deg)",
+    "created_by": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R4-landslide-ari)",
+    "title": "Landslide risk (HIGH) \u2014 Sohra / Cherrapunji Escarpment",
+    "description": "GSI antecedent-rainfall criterion met: ARI 142.0mm on a slope of 42 deg with GSI susceptibility 0.89 at Sohra / Cherrapunji Escarpment.",
+    "action_instructions": "Move livestock/valuables to safe ground, prepare GO-BAG and documents; follow only official ASDMA/DDMA instructions. Emergency number: 112.",
+    "simulation_flag": false,
+    "events": [
+      {
+        "id": "a911662c-6b5b-43ca-8e0d-c93f6e948c42",
+        "previous_status": null,
+        "new_status": "PROPOSED",
+        "actor_id": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R4-landslide-ari)",
+        "event_time": "2026-10-24T12:25:32.074302",
+        "reason": "Automated proposal generated based on elevated risk threshold crossing (Rule R-04)"
+      }
+    ],
+    "deliveries": []
+  },
+  {
+    "id": "d08dfabb-000a-4e1c-b33c-cbc0e493b40c",
+    "location_id": "loc_teesta_mangan",
+    "location_name": "Teesta River Basin (Mangan - Chungthang)",
+    "hazard_type": "FLOOD",
+    "source_type": "AI_ASSESSMENT",
+    "severity": "HIGH",
+    "lifecycle_status": "PROPOSED",
+    "issued_at": null,
+    "expires_at": "2026-10-25T00:25:32.111882",
+    "official_source_reference": "Central Water Commission (CWC) - National Flood Forecasting System (CWC) | obs 2026-10-23T19:12:24.334906 (river_level_m=862.4m)",
+    "created_by": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+    "title": "River at/above official warning level \u2014 Teesta at Mangan (#008-TSTMAN)",
+    "description": "CWC gauge 862.40m is above the official WARNING level 860.00m at Teesta at Mangan (#008-TSTMAN).",
+    "action_instructions": "Move livestock/valuables to safe ground, prepare GO-BAG and documents; follow only official ASDMA/DDMA instructions. Emergency number: 112.",
+    "simulation_flag": false,
+    "events": [
+      {
+        "id": "1b2fdd33-18a3-406a-b927-86e86028c8e5",
+        "previous_status": null,
+        "new_status": "PROPOSED",
+        "actor_id": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+        "event_time": "2026-10-24T12:25:32.114432",
+        "reason": "Automated proposal generated based on elevated risk threshold crossing (Rule R-04)"
+      }
+    ],
+    "deliveries": []
+  },
+  {
+    "id": "c3a16b69-d13a-4a01-8f57-9346587cf61b",
+    "location_id": "loc_cachar_silchar",
+    "location_name": "Annapurna Ghat (Barak River)",
+    "hazard_type": "FLOOD",
+    "source_type": "AI_ASSESSMENT",
+    "severity": "HIGH",
+    "lifecycle_status": "PROPOSED",
+    "issued_at": null,
+    "expires_at": "2026-10-25T00:25:31.995569",
+    "official_source_reference": "Central Water Commission (CWC) - National Flood Forecasting System (CWC) | obs 2026-10-23T19:12:24.334906 (river_level_m=19.45m)",
+    "created_by": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+    "title": "River at/above official warning level \u2014 Barak at Silchar (#014-BRSIL)",
+    "description": "CWC gauge 19.45m is above the official WARNING level 18.87m at Barak at Silchar (#014-BRSIL).",
+    "action_instructions": "Move livestock/valuables to safe ground, prepare GO-BAG and documents; follow only official ASDMA/DDMA instructions. Emergency number: 112.",
+    "simulation_flag": false,
+    "events": [
+      {
+        "id": "540bc55c-ff77-49bc-ad2d-2448bc472989",
+        "previous_status": null,
+        "new_status": "PROPOSED",
+        "actor_id": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+        "event_time": "2026-10-24T12:25:31.997729",
+        "reason": "Automated proposal generated based on elevated risk threshold crossing (Rule R-04)"
+      }
+    ],
+    "deliveries": []
+  },
+  {
+    "id": "c19dc1e9-24c5-4dd0-a99b-12009bd873a8",
+    "location_id": "loc_cherrapunji_sohra",
+    "location_name": "Sohra / Cherrapunji Escarpment",
+    "hazard_type": "LANDSLIDE",
+    "source_type": "AI_ASSESSMENT",
+    "severity": "MODERATE",
+    "lifecycle_status": "EXPIRED",
+    "issued_at": null,
+    "expires_at": "2026-10-25T00:25:32.057123",
+    "official_source_reference": "India Meteorological Department (IMD) - Official API Catalogue (IMD) | obs 2026-10-23T19:12:24.334906 (rainfall_24h_mm=142.0)",
+    "created_by": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R3-heavy-rain)",
+    "title": "Heavy rainfall (142mm/24h) \u2014 Sohra / Cherrapunji Escarpment",
+    "description": "Heavy rainfall recorded: 142.0 mm in the last 24h (IMD-stored observation 2026-10-23T19:12:24.334906). Slope zones in the district should brace for landslide triggers.",
+    "action_instructions": "Move livestock/valuables to safe ground, prepare GO-BAG and documents; follow only official ASDMA/DDMA instructions. Emergency number: 112.",
+    "simulation_flag": false,
+    "events": [
+      {
+        "id": "71838e41-0c52-4309-a469-5081c82c2508",
+        "previous_status": null,
+        "new_status": "PROPOSED",
+        "actor_id": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R3-heavy-rain)",
+        "event_time": "2026-10-24T12:25:32.059308",
+        "reason": "Automated proposal generated based on elevated risk threshold crossing (Rule R-04)"
+      }
+    ],
+    "deliveries": []
+  },
+  {
+    "id": "20c12f32-66a5-470f-81d4-13d40ce5445f",
+    "location_id": "loc_pandu_ghat",
+    "location_name": "Pandu Ghat Riverfront (Brahmaputra)",
+    "hazard_type": "FLOOD",
+    "source_type": "AI_ASSESSMENT",
+    "severity": "HIGH",
+    "lifecycle_status": "PROPOSED",
+    "issued_at": null,
+    "expires_at": "2026-10-25T00:25:31.961979",
+    "official_source_reference": "Central Water Commission (CWC) - National Flood Forecasting System (CWC) | obs 2026-10-23T19:12:24.334906 (river_level_m=49.1m)",
+    "created_by": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+    "title": "River at/above official warning level \u2014 Brahmaputra at Pandu (#022-MBAPU)",
+    "description": "CWC gauge 49.10m is above the official WARNING level 48.68m at Brahmaputra at Pandu (#022-MBAPU).",
+    "action_instructions": "Move livestock/valuables to safe ground, prepare GO-BAG and documents; follow only official ASDMA/DDMA instructions. Emergency number: 112.",
+    "simulation_flag": false,
+    "events": [
+      {
+        "id": "f5b85149-256d-4eb1-a47d-0c7f05d4a31c",
+        "previous_status": null,
+        "new_status": "PROPOSED",
+        "actor_id": "AUTO_RULES(auto-alert-rules-v1.0:AUTO-R1-cwc-marks)",
+        "event_time": "2026-10-24T12:25:31.967188",
+        "reason": "Automated proposal generated based on elevated risk threshold crossing (Rule R-04)"
+      }
+    ],
+    "deliveries": []
+  }
+]

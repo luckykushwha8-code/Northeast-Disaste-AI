@@ -1,0 +1,382 @@
+[
+  {
+    "id": "loc_pandu_ghat",
+    "name": "Pandu Ghat Riverfront (Brahmaputra)",
+    "state": "Assam",
+    "district": "Kamrup Metropolitan",
+    "location_type": "RIVER_STATION",
+    "latitude": 26.1772,
+    "longitude": 91.6883,
+    "elevation_m": 52.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 4.5,
+      "elevation_m": 52.0,
+      "geology": "Alluvial Sand & Silt",
+      "land_cover": "Riverbank Wharf",
+      "drainage_density": 2.8,
+      "susceptibility_score": 0.2
+    }
+  },
+  {
+    "id": "loc_bharalu_basin",
+    "name": "Bharalu River Basin (Guwahati)",
+    "state": "Assam",
+    "district": "Kamrup Metropolitan",
+    "location_type": "URBAN_CATCHMENT",
+    "latitude": 26.162,
+    "longitude": 91.734,
+    "elevation_m": 54.5,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 6.0,
+      "elevation_m": 54.5,
+      "geology": "Recent Alluvium",
+      "land_cover": "Built-up Urban",
+      "drainage_density": 3.4,
+      "susceptibility_score": 0.35
+    }
+  },
+  {
+    "id": "loc_kharghuli_hills",
+    "name": "Kharghuli Hill Slope",
+    "state": "Assam",
+    "district": "Kamrup Metropolitan",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 26.2025,
+    "longitude": 91.776,
+    "elevation_m": 110.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 36.0,
+      "elevation_m": 110.0,
+      "geology": "Precambrian Biotite Gneiss",
+      "land_cover": "Steep Slope Settlements",
+      "drainage_density": 1.9,
+      "susceptibility_score": 0.88
+    }
+  },
+  {
+    "id": "loc_kamakhya_nilachal",
+    "name": "Nilachal / Kamakhya Temple Hill",
+    "state": "Assam",
+    "district": "Kamrup Metropolitan",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 26.1664,
+    "longitude": 91.7052,
+    "elevation_m": 175.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 34.0,
+      "elevation_m": 175.0,
+      "geology": "Weathered Granite Gneiss",
+      "land_cover": "Temple Hill Settlements",
+      "drainage_density": 2.1,
+      "susceptibility_score": 0.82
+    }
+  },
+  {
+    "id": "loc_narakasur_hills",
+    "name": "Narakasur / Bhangagarh Slope (GMCH)",
+    "state": "Assam",
+    "district": "Kamrup Metropolitan",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 26.1495,
+    "longitude": 91.761,
+    "elevation_m": 140.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 38.0,
+      "elevation_m": 140.0,
+      "geology": "Weathered Gneissic Complex",
+      "land_cover": "Hill Slum Habitations",
+      "drainage_density": 2.4,
+      "susceptibility_score": 0.92
+    }
+  },
+  {
+    "id": "loc_cachar_silchar",
+    "name": "Annapurna Ghat (Barak River)",
+    "state": "Assam",
+    "district": "Cachar",
+    "location_type": "RIVER_STATION",
+    "latitude": 24.8333,
+    "longitude": 92.7789,
+    "elevation_m": 28.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 3.5,
+      "elevation_m": 28.0,
+      "geology": "Floodplain Silt",
+      "land_cover": "Riverbank Settlement",
+      "drainage_density": 3.1,
+      "susceptibility_score": 0.25
+    }
+  },
+  {
+    "id": "loc_dhemaji_jiadhal",
+    "name": "Jiadhal Flash Flood Catchment",
+    "state": "Assam",
+    "district": "Dhemaji",
+    "location_type": "RIVER_STATION",
+    "latitude": 27.4833,
+    "longitude": 94.5833,
+    "elevation_m": 104.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 5.0,
+      "elevation_m": 104.0,
+      "geology": "Coarse Alluvium / Sand",
+      "land_cover": "Braided Flash Flood Plain",
+      "drainage_density": 3.8,
+      "susceptibility_score": 0.3
+    }
+  },
+  {
+    "id": "loc_itanagar_hills",
+    "name": "Itanagar Capital Cut Slopes",
+    "state": "Arunachal Pradesh",
+    "district": "Papum Pare",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 27.0844,
+    "longitude": 93.6053,
+    "elevation_m": 320.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 35.0,
+      "elevation_m": 320.0,
+      "geology": "Siwalik Sandstone & Shale",
+      "land_cover": "Urban Road Cuts",
+      "drainage_density": 2.2,
+      "susceptibility_score": 0.86
+    }
+  },
+  {
+    "id": "loc_pasighat_siang",
+    "name": "Pasighat Siang River Gorge",
+    "state": "Arunachal Pradesh",
+    "district": "East Siang",
+    "location_type": "RIVER_STATION",
+    "latitude": 28.0667,
+    "longitude": 95.3333,
+    "elevation_m": 155.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 12.0,
+      "elevation_m": 155.0,
+      "geology": "Gravel & Boulders",
+      "land_cover": "Gorge Entry Riverbank",
+      "drainage_density": 3.2,
+      "susceptibility_score": 0.45
+    }
+  },
+  {
+    "id": "loc_cherrapunji_sohra",
+    "name": "Sohra / Cherrapunji Escarpment",
+    "state": "Meghalaya",
+    "district": "East Khasi Hills",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 25.2702,
+    "longitude": 91.7323,
+    "elevation_m": 1430.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 42.0,
+      "elevation_m": 1430.0,
+      "geology": "Cretaceous Sandstone Cliffs",
+      "land_cover": "Highland Plateau Rim",
+      "drainage_density": 2.5,
+      "susceptibility_score": 0.89
+    }
+  },
+  {
+    "id": "loc_shillong_hills",
+    "name": "Shillong Urban Basin & Wahumkhrah",
+    "state": "Meghalaya",
+    "district": "East Khasi Hills",
+    "location_type": "URBAN_CATCHMENT",
+    "latitude": 25.5788,
+    "longitude": 91.8933,
+    "elevation_m": 1520.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 22.0,
+      "elevation_m": 1520.0,
+      "geology": "Shillong Group Quartzite",
+      "land_cover": "Pine Forest & Urban",
+      "drainage_density": 2.7,
+      "susceptibility_score": 0.62
+    }
+  },
+  {
+    "id": "loc_imphal_river",
+    "name": "Imphal River at Sanjenthong",
+    "state": "Manipur",
+    "district": "Imphal West",
+    "location_type": "RIVER_STATION",
+    "latitude": 24.817,
+    "longitude": 93.9368,
+    "elevation_m": 786.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 2.5,
+      "elevation_m": 786.0,
+      "geology": "Lacustrine Clay & Silt",
+      "land_cover": "Dense Valley City",
+      "drainage_density": 2.9,
+      "susceptibility_score": 0.2
+    }
+  },
+  {
+    "id": "loc_tupul_slope",
+    "name": "Tupul Railway Corridor Slopes",
+    "state": "Manipur",
+    "district": "Noney",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 24.789,
+    "longitude": 93.682,
+    "elevation_m": 650.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 39.0,
+      "elevation_m": 650.0,
+      "geology": "Disang Shale & Siltstone",
+      "land_cover": "Excavated Slopes & Debris",
+      "drainage_density": 2.0,
+      "susceptibility_score": 0.94
+    }
+  },
+  {
+    "id": "loc_aizawl_slopes",
+    "name": "Aizawl Ridge & Ramhlun Slopes",
+    "state": "Mizoram",
+    "district": "Aizawl",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 23.7271,
+    "longitude": 92.7176,
+    "elevation_m": 1132.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 37.0,
+      "elevation_m": 1132.0,
+      "geology": "Surma Group Siltstone",
+      "land_cover": "High-Density Hilltop",
+      "drainage_density": 1.8,
+      "susceptibility_score": 0.91
+    }
+  },
+  {
+    "id": "loc_kohima_slopes",
+    "name": "Kohima Phesama Creep Zone",
+    "state": "Nagaland",
+    "district": "Kohima",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 25.6751,
+    "longitude": 94.1086,
+    "elevation_m": 1444.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 33.0,
+      "elevation_m": 1444.0,
+      "geology": "Disang Group Flysch",
+      "land_cover": "Creeping Valley Slopes",
+      "drainage_density": 2.3,
+      "susceptibility_score": 0.87
+    }
+  },
+  {
+    "id": "loc_dimapur_dhansiri",
+    "name": "Dhansiri River Floodplain (Dimapur)",
+    "state": "Nagaland",
+    "district": "Dimapur",
+    "location_type": "RIVER_STATION",
+    "latitude": 25.909,
+    "longitude": 93.7265,
+    "elevation_m": 145.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 3.0,
+      "elevation_m": 145.0,
+      "geology": "Alluvium",
+      "land_cover": "Commercial Plain",
+      "drainage_density": 3.0,
+      "susceptibility_score": 0.22
+    }
+  },
+  {
+    "id": "loc_agartala_howrah",
+    "name": "Howrah River Embankment (Agartala)",
+    "state": "Tripura",
+    "district": "West Tripura",
+    "location_type": "RIVER_STATION",
+    "latitude": 23.8315,
+    "longitude": 91.2868,
+    "elevation_m": 15.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 2.0,
+      "elevation_m": 15.0,
+      "geology": "Recent Floodplain Silt",
+      "land_cover": "Border Riverfront Urban",
+      "drainage_density": 3.3,
+      "susceptibility_score": 0.18
+    }
+  },
+  {
+    "id": "loc_gangtok_slopes",
+    "name": "Gangtok Deorali Valley Slopes",
+    "state": "Sikkim",
+    "district": "East Sikkim",
+    "location_type": "SLOPE_ZONE",
+    "latitude": 27.3314,
+    "longitude": 88.6138,
+    "elevation_m": 1650.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 38.0,
+      "elevation_m": 1650.0,
+      "geology": "Daling Series Phyllites & Schist",
+      "land_cover": "Tiered Hill City",
+      "drainage_density": 2.1,
+      "susceptibility_score": 0.9
+    }
+  },
+  {
+    "id": "loc_teesta_mangan",
+    "name": "Teesta River Basin (Mangan - Chungthang)",
+    "state": "Sikkim",
+    "district": "North Sikkim",
+    "location_type": "RIVER_STATION",
+    "latitude": 27.5,
+    "longitude": 88.5333,
+    "elevation_m": 860.0,
+    "geometry_geojson": null,
+    "active": true,
+    "terrain": {
+      "slope_deg": 36.0,
+      "elevation_m": 860.0,
+      "geology": "High Himalayan Gneiss",
+      "land_cover": "River Gorge & Landslide Scars",
+      "drainage_density": 3.5,
+      "susceptibility_score": 0.93
+    }
+  }
+]
