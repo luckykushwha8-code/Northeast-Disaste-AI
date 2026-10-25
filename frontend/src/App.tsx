@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 're
 import {
   LayoutDashboard, Map, Bell, LifeBuoy, BarChart2, FlaskConical,
   FileText, Mail, Activity, ChevronLeft, ChevronRight, Moon, Sun,
-  Globe, AlignJustify, Lock
+  Globe, AlignJustify, Lock, Layers
 } from 'lucide-react';
 
 import { RoleBadge } from './components/ui/RoleBadge';
@@ -25,6 +25,7 @@ const SubscriptionsPage = lazy(() => import('./features/subscriptions/Subscripti
 const SystemHealthPage = lazy(() => import('./components/SystemHealth').then(m => ({ default: m.SystemHealth })));
 const ComponentShowcase = lazy(() => import('./features/showcase/ComponentShowcase'));
 const MapBoardPage = lazy(() => import('./components/MapBoard').then(m => ({ default: m.MapBoard })));
+const LayersGuidePage = lazy(() => import('./features/map/LayersGuidePage'));
 
 type NavItem = {
   path: string;
@@ -36,6 +37,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/map', label: 'District Map', icon: Map },
+  { path: '/layers', label: 'Layers & legend', icon: Layers },
   { path: '/alerts', label: 'Alert Queue', icon: Bell, roles: ['OPERATOR', 'ANALYST', 'ADMIN', 'RESPONDER'] },
   { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
   { path: '/analytics', label: 'Analytics', icon: BarChart2, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
@@ -48,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
 const MOBILE_NAV: NavItem[] = [
   { path: '/', label: 'Map', icon: LayoutDashboard },
   { path: '/map', label: 'Map', icon: Map },
+  { path: '/layers', label: 'Layers', icon: Layers },
   { path: '/alerts', label: 'Alerts', icon: Bell },
   { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
   { path: '/subscriptions', label: 'Subscribe', icon: Mail },
@@ -65,6 +68,10 @@ const ROLES: UserRole[] = ['RESIDENT', 'RESPONDER', 'OPERATOR', 'ANALYST', 'ADMI
 function canAccess(role: UserRole, item: NavItem): boolean {
   if (!item.roles) return true;
   return item.roles.includes(role);
+}
+
+function navItemFor(path: string): NavItem {
+  return NAV_ITEMS.find(item => item.path === path)!;
 }
 
 function LoadingFallback() {
@@ -250,10 +257,11 @@ function AppShell() {
             <Routes>
               <Route path="/" element={<Dashboard userRole={userRole} lang={lang} />} />
               <Route path="/map" element={<MapBoardPage locations={locations} alerts={alerts} shelters={shelters} reports={reports} />} />
+              <Route path="/layers" element={<LayersGuidePage />} />
               <Route
                 path="/alerts"
                 element={
-                  canAccess(userRole, NAV_ITEMS[2])
+                  canAccess(userRole, navItemFor('/alerts'))
                     ? <AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRefresh={() => api.getAlerts().then(setAlerts)} />
                     : <LockedPage label="Alert Queue" />
                 }
@@ -262,7 +270,7 @@ function AppShell() {
               <Route
                 path="/analytics"
                 element={
-                  canAccess(userRole, NAV_ITEMS[4])
+                  canAccess(userRole, navItemFor('/analytics'))
                     ? <AnalyticsPage />
                     : <LockedPage label="Analytics" />
                 }
@@ -270,7 +278,7 @@ function AppShell() {
               <Route
                 path="/models"
                 element={
-                  canAccess(userRole, NAV_ITEMS[5])
+                  canAccess(userRole, navItemFor('/models'))
                     ? <ModelsPage />
                     : <LockedPage label="Models & Validation" />
                 }
@@ -278,7 +286,7 @@ function AppShell() {
               <Route
                 path="/reports"
                 element={
-                  canAccess(userRole, NAV_ITEMS[6])
+                  canAccess(userRole, navItemFor('/reports'))
                     ? <ReportsPage />
                     : <LockedPage label="Reports" />
                 }
@@ -287,7 +295,7 @@ function AppShell() {
               <Route
                 path="/system"
                 element={
-                  canAccess(userRole, NAV_ITEMS[8])
+                  canAccess(userRole, navItemFor('/system'))
                     ? <SystemHealthPage dataSources={[]} onRefresh={() => {}} />
                     : <LockedPage label="System Health" />
                 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Map as MLMap, Popup, Marker, NavigationControl, ScaleControl, FullscreenControl
 } from 'maplibre-gl';
@@ -9,7 +10,7 @@ import {
   ChevronRight, ShieldAlert, AlertTriangle, Compass, CheckCircle2, Play, Pause
 } from 'lucide-react';
 import {
-  buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, severityRank,
+  buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, RISK_PALETTES, severityRank,
   MapDistrictsResponse, DistrictSummary, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
 import {
@@ -39,13 +40,6 @@ const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   shelters: false,
   incidents: true,
   history: false
-};
-
-const FLOOD_COLORS: Record<string, string> = {
-  LOW: '#c6e2e7', MODERATE: '#83bdc7', HIGH: '#438f9f', CRITICAL: '#245c73'
-};
-const LANDSLIDE_COLORS: Record<string, string> = {
-  LOW: '#efe2c3', MODERATE: '#e6bb72', HIGH: '#cf8049', CRITICAL: '#a94f49'
 };
 
 const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -90,6 +84,7 @@ const GROUPS: { group: string; items: { key: OverlayKeys; label: string; icon: a
 ];
 
 export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters, reports }) => {
+  const navigate = useNavigate();
   const mapContainer = useRef<HTMLDivElement>(null);
   const mlRef = useRef<MLMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -365,10 +360,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'flood'],
-            'CRITICAL', FLOOD_COLORS.CRITICAL,
-            'HIGH', FLOOD_COLORS.HIGH,
-            'MODERATE', FLOOD_COLORS.MODERATE,
-            'LOW', FLOOD_COLORS.LOW,
+            'CRITICAL', RISK_PALETTES.flood.CRITICAL,
+            'HIGH', RISK_PALETTES.flood.HIGH,
+            'MODERATE', RISK_PALETTES.flood.MODERATE,
+            'LOW', RISK_PALETTES.flood.LOW,
             '#94a3b8'
           ],
           'fill-opacity': ['match', ['get', 'flood'], 'UNKNOWN', 0.0, opacity.risk]
@@ -390,10 +385,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'landslide'],
-            'CRITICAL', LANDSLIDE_COLORS.CRITICAL,
-            'HIGH', LANDSLIDE_COLORS.HIGH,
-            'MODERATE', LANDSLIDE_COLORS.MODERATE,
-            'LOW', LANDSLIDE_COLORS.LOW,
+            'CRITICAL', RISK_PALETTES.landslide.CRITICAL,
+            'HIGH', RISK_PALETTES.landslide.HIGH,
+            'MODERATE', RISK_PALETTES.landslide.MODERATE,
+            'LOW', RISK_PALETTES.landslide.LOW,
             '#94a3b8'
           ],
           'fill-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0.0, opacity.risk]
@@ -728,7 +723,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     }
   };
 
-  const displayedRiskPalette = layers.landslideRisk ? LANDSLIDE_COLORS : FLOOD_COLORS;
+  const displayedRiskPalette = layers.landslideRisk ? RISK_PALETTES.landslide : RISK_PALETTES.flood;
 
   const goFullscreen = () => {
     if (!document.fullscreenElement) mapContainer.current?.closest('.mapboard-shell')?.requestFullscreen?.();
@@ -865,8 +860,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </div>
           )}
 
-          {compactMap && (
-            <div className="absolute top-3 left-3 z-[450] flex gap-1.5 rounded-lg bg-white/95 p-1 shadow-md border border-slate-200 sm:hidden">
+          <div className="absolute top-3 left-3 z-[450] flex flex-wrap gap-1.5 rounded-lg bg-white/95 p-1 shadow-md border border-slate-200">
               {([
                 ['layers', 'Layers', Layers],
                 ['district', 'District', Info],
@@ -874,15 +868,17 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               ] as const).map(([panel, label, Icon]) => (
                 <button key={panel} onClick={() => setMobileMapPanel(current => current === panel ? null : panel)}
                   aria-pressed={mobileMapPanel === panel}
-                  className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold ${mobileMapPanel === panel ? 'bg-teal-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
+                  className={`flex min-h-9 items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-bold ${mobileMapPanel === panel ? 'bg-teal-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
                   <Icon className="h-3.5 w-3.5" />{label}
                 </button>
               ))}
-            </div>
-          )}
+              <button onClick={() => navigate('/layers')} className="min-h-9 rounded-md px-2.5 py-1.5 text-[11px] font-bold text-teal-800 hover:bg-teal-50">
+                Guide
+              </button>
+          </div>
 
           {/* B. Left layer panel */}
-          {(!compactMap || mobileMapPanel === 'layers') && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 overflow-auto ${compactMap ? 'top-12 left-3 right-3 max-h-[72%]' : 'top-3 left-3 w-72 max-h-[85%]'}`}>
+          {mobileMapPanel === 'layers' && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 overflow-auto ${compactMap ? 'top-14 left-3 right-3 max-h-[72%]' : 'top-14 left-3 w-72 max-h-[82%]'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900"><Layers className="w-4 h-4" /> Layers</span>
               <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-blue-600 hover:underline">Reset</button>
@@ -946,12 +942,12 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               </label>
             </div>
             <div className="px-3 py-2 border-t border-slate-100 text-[10px] text-slate-500">
-              Boundaries: geohacker/india (public) · EPSG:4326 · 78 NE districts. Aliases (documented): Kamrupa Metropolitan→'Kamrup', Imphal East→'East Imphal', Imphal West→'West Imphal'. Unmatched districts are UNKNOWN, never shaded.
+              Boundaries: geohacker/india (public) · EPSG:4326 · 78 NE districts. Aliases: Kamrup Metropolitan→'Kamrup', Imphal East→'East Imphal', Imphal West→'West Imphal'. Unmatched districts stay UNKNOWN and unshaded.
             </div>
           </div>}
 
           {/* D. Right district panel */}
-          {(!compactMap || mobileMapPanel === 'district') && <div className={`absolute z-[400] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 ${compactMap ? 'top-12 left-3 right-3 max-h-[72%]' : 'top-3 right-3 w-80 max-h-[88%]'}`}>
+          {mobileMapPanel === 'district' && <div className={`absolute z-[400] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 ${compactMap ? 'top-14 left-3 right-3 max-h-[72%]' : 'top-14 right-3 w-80 max-h-[82%]'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="text-xs font-bold text-slate-900">District inspector</span>
               <button onClick={() => setPanelOpen(p => !p)} className="text-[10px] font-bold text-blue-600">{panelOpen ? 'Hide list' : 'Show list'}</button>
@@ -1101,7 +1097,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           </div>}
 
           {/* B/E. Bottom legend */}
-          {(!compactMap || mobileMapPanel === 'legend') && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700 ${compactMap ? 'bottom-3 left-3 right-3 max-h-[48%] overflow-auto' : 'bottom-3 left-3'}`}>
+          {mobileMapPanel === 'legend' && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700 ${compactMap ? 'bottom-3 left-3 right-3 max-h-[48%] overflow-auto' : 'bottom-3 left-3 max-w-sm'}`}>
             <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Legend</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.CRITICAL }} /> Critical</div>
