@@ -22,7 +22,9 @@ ACTIVE_STATES = ["PROPOSED", "REVIEWED", "APPROVED", "ISSUED", "ACKNOWLEDGED"]
 
 def _latest_obs_map(db: Session, location_id: str) -> Dict[str, Observation]:
     recs = db.query(Observation).filter(
-        Observation.location_id == location_id
+        Observation.location_id == location_id,
+        Observation.simulation_flag.is_(False),
+        Observation.quality_status == "VALID",
     ).order_by(Observation.observed_at.desc()).limit(20).all()
     out: Dict[str, Observation] = {}
     for o in recs:
@@ -38,7 +40,10 @@ def build_report_data(db: Session) -> Dict[str, Any]:
 
     # ---- Weather summary + affected locations ----
     weather = []
-    active_alerts = db.query(Alert).filter(Alert.lifecycle_status.in_(ACTIVE_STATES)).all()
+    active_alerts = db.query(Alert).filter(
+        Alert.lifecycle_status.in_(ACTIVE_STATES),
+        Alert.simulation_flag.is_(False),
+    ).all()
     alerted_loc_ids = {a.location_id for a in active_alerts}
     for loc in locs.values():
         obs = _latest_obs_map(db, loc.id)

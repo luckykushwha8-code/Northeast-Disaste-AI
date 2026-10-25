@@ -3,6 +3,11 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+ARG VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+ARG VITE_MAPTILER_API_KEY=
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_MAPTILER_API_KEY=${VITE_MAPTILER_API_KEY}
+
 # Install npm dependencies
 COPY package*.json ./
 RUN npm ci

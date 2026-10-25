@@ -5,7 +5,6 @@ import {
 } from 'recharts';
 import { api } from '../../api/client';
 import type { AnalyticsOverview } from '../../types';
-import { DataModeBadge } from '../../components/ui/DataModeBadge';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity } from 'lucide-react';
@@ -22,10 +21,10 @@ const CARD_ICONS: Record<string, React.ElementType> = {
 };
 
 function AnalyticsCard({
-  title, subtitle, icon: Icon, children, onCSV, onPNG,
+  title, subtitle, icon: Icon, children, onCSV,
 }: {
   title: string; subtitle: string; icon?: React.ElementType;
-  children: React.ReactNode; onCSV?: () => void; onPNG?: () => void;
+  children: React.ReactNode; onCSV?: () => void;
 }) {
   const Ico = Icon ?? BarChart2;
   return (
@@ -39,7 +38,7 @@ function AnalyticsCard({
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <DataModeBadge mode="LIVE" size="xs" />
+          <span className="text-[10px] text-slate-500">Stored records · freshness varies</span>
           {onCSV && (
             <button onClick={onCSV} className="text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition">CSV</button>
           )}
@@ -105,8 +104,8 @@ export default function Analytics() {
         <div className="flex items-center gap-2">
           <BarChart2 className="w-4 h-4 text-teal-700" />
           <span className="text-sm font-bold text-slate-900">Analytics Dashboard</span>
-          <DataModeBadge mode="LIVE" size="xs" />
         </div>
+        <p className="mt-1 text-[11px] text-slate-500">Aggregates saved by the backend; see System Health for current feed status.</p>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-500 font-medium">Window:</label>
           <select

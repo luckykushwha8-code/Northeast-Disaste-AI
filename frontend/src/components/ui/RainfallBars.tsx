@@ -19,9 +19,10 @@ interface RainfallBarsProps {
 function HatchedBar(props: {
   x?: number; y?: number; width?: number; height?: number; value?: number
 }) {
+  const patternId = useId().replace(/:/g, '');
   const { x = 0, y = 0, width = 0, height = 0, value } = props;
   if (!value || value <= 0) return null;
-  const id = `hatch-${useId().replace(/:/g, '')}`;
+  const id = `hatch-${patternId}`;
   return (
     <g>
       <defs>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { FileText, Download, CheckCircle2, Loader2 } from 'lucide-react';
-import { DataModeBadge } from '../../components/ui/DataModeBadge';
 import { api } from '../../api/client';
 
 export default function ReportsPage() {
@@ -39,9 +38,6 @@ export default function ReportsPage() {
     }
   };
 
-  const now = new Date();
-  const istTime = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
-
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
@@ -54,7 +50,6 @@ export default function ReportsPage() {
               <p className="text-xs text-slate-500 mt-0.5">Export the latest information currently available to the service.</p>
             </div>
           </div>
-          <DataModeBadge mode="BASELINE" size="sm" />
         </div>
       </div>
 
@@ -94,84 +89,9 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Live Report Preview */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-slate-900">Live Situation Report Preview</h3>
-          <span className="text-[11px] text-slate-400 font-mono">{istTime} IST</span>
-        </div>
-
-        {/* Report Header */}
-        <div className="border border-slate-300 rounded-lg p-4 bg-slate-50 space-y-4">
-          <div className="border-b border-slate-200 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-black text-slate-900 uppercase tracking-wide">NE-SAFE AI — Situation Report</div>
-                <div className="text-xs text-slate-500 mt-0.5">Northeast India Flood & Landslide Early Warning Platform</div>
-              </div>
-              <div className="text-right text-[11px] text-slate-500">
-                <div>Report Date: {now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
-                <div>Time: {istTime} IST</div>
-                <div>Coverage: 8 NE States · 19 Monitored Locations</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-3 bg-white rounded-lg border border-amber-200">
-              <div className="text-xs font-bold text-amber-800 mb-1">⚠ IMPORTANT — Data Provenance & Limitations</div>
-              <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
-                <li>AI risk assessments in this report are PROPOSED and require operator review</li>
-                <li>River threshold data sourced from CWC (ffs.india-water.gov.in) — official thresholds</li>
-                <li>Rainfall data: IMD AWS telemetry with Open-Meteo gap-fill (clearly labeled)</li>
-                <li>Landslide susceptibility: GSI NLSM 2022 (static geological baseline)</li>
-                <li>This report does NOT constitute an official government warning</li>
-              </ul>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <div className="text-xs font-bold text-slate-700 mb-2">Data Source Status</div>
-                <div className="space-y-1">
-                  {[
-                    { source: 'CWC River Stations', mode: 'LIVE' as const },
-                    { source: 'IMD Rainfall (AWS)', mode: 'LIVE' as const },
-                    { source: 'Open-Meteo Forecast', mode: 'LIVE' as const },
-                    { source: 'GSI Terrain Baseline', mode: 'BASELINE' as const },
-                    { source: 'IMD REST API', mode: 'UNAVAILABLE' as const },
-                  ].map(s => (
-                    <div key={s.source} className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-600">{s.source}</span>
-                      <DataModeBadge mode={s.mode} size="xs" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <div className="text-xs font-bold text-slate-700 mb-2">Coverage Summary</div>
-                <div className="space-y-1 text-[11px] text-slate-600">
-                  <div className="flex justify-between"><span>States monitored:</span><span className="font-bold text-slate-800">8</span></div>
-                  <div className="flex justify-between"><span>Districts covered:</span><span className="font-bold text-slate-800">78</span></div>
-                  <div className="flex justify-between"><span>River stations (CWC):</span><span className="font-bold text-slate-800">7</span></div>
-                  <div className="flex justify-between"><span>Slope zones (GSI):</span><span className="font-bold text-slate-800">12</span></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-white rounded-lg border border-slate-200">
-              <div className="text-xs font-bold text-slate-700 mb-2">Full Report Contents</div>
-              <div className="text-[11px] text-slate-500 space-y-0.5">
-                <div>• Section 1: Executive Summary — Active alerts, critical locations, freshness status</div>
-                <div>• Section 2: River Hydrology — CWC station readings vs Warning/Danger marks (metres, IST)</div>
-                <div>• Section 3: Rainfall Analysis — 24h observed + 72h forecast (mm, accumulation window noted)</div>
-                <div>• Section 4: Landslide Risk — GSI susceptibility zones with ARI trigger assessment</div>
-                <div>• Section 5: Alert Audit Trail — All PROPOSED/APPROVED alerts with rule IDs and confidence</div>
-                <div>• Section 6: Rescue Operations — Open rescue requests and responder assignments</div>
-                <div>• Appendix: Data provenance, model version, threshold sources, known limitations</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        Reports are generated from records currently stored by the backend. Source freshness and coverage can vary;
+        check System Health and record provenance before relying on exported values. These reports are not official warnings.
       </div>
     </div>
   );

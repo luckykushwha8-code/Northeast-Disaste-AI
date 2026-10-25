@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
-from app.models.entities import RescueRequest
+from app.models.entities import DataSource, Location, Observation, RescueRequest
+from app.services.report_service import build_report_data
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -133,6 +134,44 @@ def test_analytics_overview_dataset_shapes(monkeypatch):
     if d["river_trend"]:
         row = d["river_trend"][0]
         assert row["unit"] == "m" and row.get("danger_level_m")
+
+
+def test_simulated_and_stale_observations_are_excluded_from_reports_and_analytics():
+    db = SessionLocal()
+    try:
+        location = db.query(Location).first()
+        source = db.query(DataSource).first()
+        now = datetime.datetime.utcnow()
+        db.add_all([
+            Observation(
+                source_id=source.id, location_id=location.id, observed_at=now,
+                variable="rainfall_24h_mm", value=9999, unit="mm",
+                quality_status="SIMULATED", simulation_flag=True,
+                provenance="test_simulated_observation_filter",
+            ),
+            Observation(
+                source_id=source.id, location_id=location.id, observed_at=now,
+                variable="rainfall_24h_mm", value=8888, unit="mm",
+                quality_status="STALE", simulation_flag=False,
+                provenance="test_simulated_observation_filter",
+            ),
+        ])
+        db.commit()
+
+        report = build_report_data(db)
+        weather = next(row for row in report["weather_summary"] if row["location"] == location.name)
+        assert weather["rainfall_24h_mm"] not in (9999, 8888)
+
+        response = client.get("/api/v1/analytics/overview", params={"hours_window": 1})
+        assert response.status_code == 200
+        hourly = response.json()["rainfall_trend_hourly"]
+        assert all(row["max_mm"] not in (9999, 8888) for row in hourly)
+    finally:
+        db.query(Observation).filter(
+            Observation.provenance == "test_simulated_observation_filter"
+        ).delete(synchronize_session=False)
+        db.commit()
+        db.close()
 
 
 def test_situation_report_endpoints():

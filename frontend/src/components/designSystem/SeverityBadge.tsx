@@ -17,7 +17,7 @@ export const SeverityBadge: React.FC<SeverityBadgeProps> = ({
   showLabel = true,
   className = ''
 }) => {
-  const norm = (level || 'LOW').toUpperCase();
+  const norm = (level || 'UNAVAILABLE').toUpperCase();
 
   const getShape = () => {
     switch (norm) {
@@ -89,7 +89,7 @@ export const DataModeBadge: React.FC<{ mode: DataMode; timestamp?: string | null
   timestamp,
   className = ''
 }) => {
-  const norm = (mode || 'LIVE').toUpperCase();
+  const norm = (mode || 'UNAVAILABLE').toUpperCase();
 
   const getStyle = () => {
     switch (norm) {

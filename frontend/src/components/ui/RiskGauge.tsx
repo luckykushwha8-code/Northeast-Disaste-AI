@@ -40,7 +40,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
   factors = [],
   className = '',
 }) => {
-  const effectiveLevel = riskLevel || category || 'LOW';
+  const effectiveLevel = riskLevel ?? category ?? 'UNAVAILABLE';
   const score = SEVERITY_ORDER[effectiveLevel] ?? 0;
   const maxScore = 4;
   const pct = score / maxScore;
@@ -71,9 +71,11 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 1 ${e.x} ${e.y}`;
   }
 
-  const displayPct = probability != null
-    ? Math.round(probability * 100)
-    : score > 0 ? Math.round((score / maxScore) * 100) : null;
+  const validProbability = typeof probability === 'number' && Number.isFinite(probability)
+    && probability >= 0 && probability <= 1
+    ? probability
+    : null;
+  const displayPct = validProbability != null ? Math.round(validProbability * 100) : null;
 
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
@@ -103,7 +105,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
           </text>
           {displayPct != null && (
             <text x={cx} y={cy + 24} textAnchor="middle" fontSize="9" fill="#64748B">
-              {displayPct}% confidence
+              {displayPct}% estimated probability
             </text>
           )}
         </svg>

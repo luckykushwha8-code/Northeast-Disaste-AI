@@ -30,4 +30,8 @@ Do not delete the current database to address stale synthetic records. First tak
 
 ## Compose
 
-`docker-compose.yml` now sets `ALLOW_SIMULATION=false`. For a deployed environment, also provide secrets through a secret manager, disable debug/reload, configure a persistent database and backups, restrict network access, add real authentication/authorization, and validate all feeds. Do not enable public alert delivery until the email provider and verified authority contacts are configured and controlled receipt testing is complete.
+`docker-compose.yml` sets `ALLOW_SIMULATION=false` and mounts the named SQLite volume at `/data`, separate from the application code. This keeps persisted database files without allowing a volume to mask a rebuilt backend. The current Compose database path preserves the existing `nesafe.db` filename.
+
+The frontend API URL and optional MapTiler key are build arguments. Set `VITE_API_BASE_URL` and `VITE_MAPTILER_API_KEY` in the shell or root Compose `.env` file before building for a non-local deployment; Vite embeds these values into the static client bundle.
+
+For a deployed environment, provide secrets through a secret manager, disable debug/reload, back up the database, restrict network access, add real authentication/authorization, and validate all feeds. Do not enable public alert delivery until the email provider and verified authority contacts are configured and controlled receipt testing is complete.

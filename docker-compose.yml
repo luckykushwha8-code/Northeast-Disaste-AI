@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -10,17 +8,20 @@ services:
       - "8000:8000"
     environment:
       - APP_NAME=NE-SAFE AI
-      - DATABASE_URL=sqlite:///./nesafe.db
+      - DATABASE_URL=sqlite:////data/nesafe.db
       # Synthetic replay data must never be enabled in a deployed stack by default.
       - ALLOW_SIMULATION=false
     volumes:
-      - nesafe-db:/app
+      - nesafe-db:/data
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8000/api/v1}
+        VITE_MAPTILER_API_KEY: ${VITE_MAPTILER_API_KEY:-}
     container_name: nesafe-frontend
     ports:
       - "5173:5173"

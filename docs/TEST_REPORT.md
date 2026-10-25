@@ -1,18 +1,16 @@
 # Test and verification report
 
-Run date: 2026-10-25. Results below describe commands and checks executed in the current workspace; previous test counts in older project documents are not treated as current evidence.
+Run date: 2026-10-26
 
 | Check | Result | Notes |
 |---|---|---|
-| Frontend production build | PASS | `npm run build` completed successfully. Vite reports a large map-related chunk (~1.08 MB); this is a performance warning, not a build failure. |
-| Frontend lint | PASS WITH WARNINGS | `npm run lint` exited 0. It reports warnings including render-time `Date.now`, `Math.random`, unused values and effect dependency concerns. |
-| Backend syntax | PASS | `py_compile` succeeded for the modified backend modules. This does not execute application behavior or tests. |
-| Backend unit/integration suite | NOT RUN | `npm run test:backend` failed because `pytest` was not found. The bundled Python lacks pytest; the existing workspace Python executable was denied by the environment. |
-| API process health | PASS, STALE PROCESS | `GET /api/v1/health` returned HTTP 200, HEALTHY, database connected, 19 locations. The process predates current backend source changes. |
-| API source status | MIXED | Last check: IMD FAILED, CWC OPERATIONAL, GSI OPERATIONAL, Bhuvan DELAYED, synthetic IoT STALE. |
-| Map API provenance | FAIL ON RUNNING PROCESS | `/api/v1/map/districts` returned 15 districts but did not expose `simulation_flag`. Current checked-out code includes provenance changes; restart required to verify them. |
-| Browser route smoke | PASS | Map, rescue, reports and subscriptions rendered; map scene controls and GPS button rendered; the removed advisory notice is absent; no console errors after clean reload. |
-| Viewport checks | PASS FOR SAMPLED SIZES | 1440×900, 1366×585 and 390×844 checked. Does not replace full device/browser/accessibility coverage. |
+| Frontend production build | PASS | `npm run build` completed. Vite still reports a ~1.08 MB minified map-related chunk. |
+| Frontend lint | PASS WITH WARNINGS | `npm run lint` exits 0 after fixing the conditional `useId` hook. Existing hook/effect and unused-code warnings remain. |
+| Backend source syntax | PASS | Python 3.12 compiled all 32 backend application modules. |
+| Backend unit/integration suite | NOT RUN | `pytest`, FastAPI, SQLAlchemy, APScheduler, and Pydantic Settings are absent from the available Python environment. |
+| Local API health and provenance | NOT AVAILABLE | `127.0.0.1:8000` refused the connection; there is no running API process to verify. |
+| Docker Compose config | NOT RUN | Docker is not installed in this environment. |
+| Browser and external feeds | NOT RUN | No live server or external-feed verification was performed in this pass. |
 
 ## Reproduction
 
@@ -21,7 +19,9 @@ From the repository root:
 ```powershell
 npm run build
 npm run lint
-npm run test:backend
+python -m pip install -r backend/requirements.txt
+python -m pytest backend/tests/ -v
+docker compose config --quiet
 ```
 
-For backend tests, first activate an environment with `backend/requirements.txt` installed. The current environment did not support that test run, so do not treat this report as a green backend suite.
+Run the backend tests and Compose check in an environment with the listed dependencies installed. Do not treat syntax checks or an HTTP health response alone as proof that measurements are fresh or emergency-ready.

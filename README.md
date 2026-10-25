@@ -88,8 +88,8 @@ flowchart TD
 
 ### A. Clone and Setup
 ```bash
-git clone https://github.com/YOUR_USERNAME/ne-safe-ai.git
-cd ne-safe-ai
+git clone https://github.com/luckykushwha8-code/Northeast-Disaste-AI.git
+cd Northeast-Disaste-AI
 ```
 
 ### B. Backend Setup
@@ -159,6 +159,8 @@ docker-compose up --build
 | `VITE_API_BASE_URL` | `http://127.0.0.1:8000/api/v1` | Backend API URL |
 | `VITE_MAPTILER_API_KEY` | *(optional)* | MapTiler key for high-resolution vector basemaps |
 
+For `npm run dev`, set frontend values in `frontend/.env`. Docker Compose reads `VITE_API_BASE_URL` and `VITE_MAPTILER_API_KEY` from the shell or root `.env` at image-build time. Vite embeds them in the browser bundle, so only use frontend-safe values there; keep server credentials in the backend environment.
+
 ---
 
 ## 7. Testing & Quality Verification
@@ -197,17 +199,9 @@ npm run lint                           # Oxlint scan (review warnings as well as
 
 ---
 
-## 9. GitHub Repository Upload Instructions
+## 9. Repository
 
-```bash
-git init
-git add .
-git status                   # Confirm .env, *.db, and credentials are NOT staged
-git commit -m "Complete NE-SAFE AI early warning system with MapTiler and TinyFish integrations"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ne-safe-ai.git
-git push -u origin main
-```
+Source code and project history are maintained in the [NE-SAFE AI GitHub repository](https://github.com/luckykushwha8-code/Northeast-Disaste-AI). Keep local `.env` files, credentials, databases, and generated reports out of commits.
 
 ---
 

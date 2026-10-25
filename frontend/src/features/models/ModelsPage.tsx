@@ -4,7 +4,6 @@ import type { ModelVersionItem, ModelValidationReport } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { SimulationRibbon } from '../../components/ui/SimulationRibbon';
-import { DataModeBadge } from '../../components/ui/DataModeBadge';
 import { FlaskConical, Activity, AlertCircle, Award, Play, CheckCircle2, XCircle, Shield } from 'lucide-react';
 
 type DemoCase = {
@@ -104,11 +103,9 @@ export default function ModelsPage() {
         <div className="flex items-center gap-2 mb-1">
           <FlaskConical className="w-5 h-5 text-indigo-600" />
           <h2 className="text-base font-bold text-slate-900">AI Models & Validation</h2>
-          <DataModeBadge mode="LIVE" size="xs" />
         </div>
         <p className="text-xs text-slate-500">
-          Every model is validated on chronological holdout datasets with documented historical events.
-          Hit rates, false-alarm rates, and safety-rule pass rates are reported honestly.
+          Prototype rules and retrospective cases only. Any displayed metrics describe the bundled cases and are not independent operational validation.
           <strong className="text-amber-700 ml-1">AI cannot override CWC/IMD official thresholds.</strong>
         </p>
       </div>

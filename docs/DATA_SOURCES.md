@@ -2,9 +2,9 @@
 
 NE-SAFE must label source, observation/retrieval time, location, units and quality whenever supplied by the source. Never infer that a whole map is live from one source's health status. Missing, stale, simulated, forecast, reference and observed records are different data states.
 
-## Last observed local status
+## Historical local status (2026-10-25)
 
-The running API reported the statuses below during this audit. They can change and describe that process only, not a permanent provider guarantee.
+The API process reported the statuses below during the 2026-10-25 audit. They describe that process at that time, not current provider availability. On 2026-10-26, no local API process was listening, so these statuses could not be refreshed.
 
 | Feed | Last status | Interpretation |
 |---|---|---|

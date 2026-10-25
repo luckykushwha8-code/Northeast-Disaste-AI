@@ -1675,7 +1675,9 @@ def get_analytics_overview(
     # 1-2. Rainfall trend (hourly buckets from all IMD/OpenMeteo rainfall obs)
     obs = db.query(Observation).filter(
         Observation.observed_at >= window_cutoff,
-        Observation.variable == "rainfall_24h_mm"
+        Observation.variable == "rainfall_24h_mm",
+        Observation.quality_status == "VALID",
+        Observation.simulation_flag.is_(False),
     ).order_by(Observation.observed_at.asc()).all()
     hourly: Dict[str, Dict[str, Any]] = {}
     daily: Dict[str, Dict[str, Any]] = {}
@@ -1699,7 +1701,10 @@ def get_analytics_overview(
     for loc_id, river in [("loc_pandu_ghat", "Brahmaputra"), ("loc_cachar_silchar", "Barak"), ("loc_teesta_mangan", "Teesta")]:
         recs = db.query(Observation).filter(
             Observation.location_id == loc_id,
-            Observation.variable == "river_level_m"
+            Observation.variable == "river_level_m",
+            Observation.observed_at >= window_cutoff,
+            Observation.quality_status == "VALID",
+            Observation.simulation_flag.is_(False),
         ).order_by(Observation.observed_at.asc()).all()
         marks = {
             "Brahmaputra": (48.68, 49.68), "Barak": (18.87, 19.83), "Teesta": (860.0, 865.0)
@@ -1735,7 +1740,10 @@ def get_analytics_overview(
 
     # 5. Alerts by severity, official vs AI counts
     alerts_by_severity = []
-    alerts = db.query(Alert).filter(Alert.lifecycle_status.in_(["PROPOSED", "REVIEWED", "APPROVED", "ISSUED", "ACKNOWLEDGED"])).all()
+    alerts = db.query(Alert).filter(
+        Alert.lifecycle_status.in_(["PROPOSED", "REVIEWED", "APPROVED", "ISSUED", "ACKNOWLEDGED"]),
+        Alert.simulation_flag.is_(False),
+    ).all()
     for sev in ["CRITICAL", "HIGH", "MODERATE", "LOW"]:
         official_n = sum(1 for a in alerts if a.severity == sev and a.source_type != "AI_ASSESSMENT")
         ai_n = sum(1 for a in alerts if a.severity == sev and a.source_type == "AI_ASSESSMENT")
