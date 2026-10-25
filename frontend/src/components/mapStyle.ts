@@ -95,10 +95,9 @@ export const buildBaseStyle = ({ base }: BaseStyleOptions): any => {
   };
 };
 
-// Terrain-first styling makes the region's river corridors and steep relief
-// legible at the overview scale used by this hazard map.
-/** Returns the terrain-focused MapTiler base when configured, otherwise OSM. */
-export const defaultBaseProvider = (): BaseMapProvider => (hasMapTilerKey() ? 'MAPTILER_TOPO' : 'OSM');
+// Satellite imagery keeps the district coloring prominent like the overview map.
+// MapTiler is used when configured, with Esri imagery as the existing fallback.
+export const defaultBaseProvider = (): BaseMapProvider => 'SATELLITE';
 
 /** Human-friendly label for the basemap selector. */
 export const baseProviderLabel = (p: BaseMapProvider): string => ({

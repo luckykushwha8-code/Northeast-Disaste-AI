@@ -42,6 +42,10 @@ const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   history: false
 };
 
+const mapViewportPadding = (extra = 0) => window.innerWidth >= 1280
+  ? { top: 32 + extra, right: 300 + extra, bottom: 32 + extra, left: 280 + extra }
+  : extra || 24;
+
 const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]!));
@@ -97,7 +101,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [scenePlaying, setScenePlaying] = useState(false);
   const [compactMap, setCompactMap] = useState(() => window.innerWidth < 640);
   const [mobileMapPanel, setMobileMapPanel] = useState<'layers' | 'district' | 'legend' | null>(null);
-  const [opacity, setOpacity] = useState({ risk: 0.55, warnings: 0.6 });
+  const [opacity, setOpacity] = useState({ risk: 0.72, warnings: 0.6 });
   const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   const [summaries, setSummaries] = useState<MapDistrictsResponse | null>(null);
   const [boundaryData, setBoundaryData] = useState<GeoJSONFeatureCollection | null>(null);
@@ -171,7 +175,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       center: NE_CENTER,
       zoom: NE_ZOOM
     });
-    map.fitBounds(NE_BOUNDS, { padding: 24, maxZoom: 7, duration: 600 });
+    map.fitBounds(NE_BOUNDS, { padding: mapViewportPadding(), maxZoom: 7, duration: 600 });
     map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl(new FullscreenControl(), 'top-right');
     map.addControl(new ScaleControl(), 'bottom-right');
@@ -366,7 +370,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             'LOW', RISK_PALETTES.flood.LOW,
             '#94a3b8'
           ],
-          'fill-opacity': ['match', ['get', 'flood'], 'UNKNOWN', 0.0, opacity.risk]
+          'fill-opacity': ['match', ['get', 'flood'], 'UNKNOWN', 0.46, 'UNAVAILABLE', 0.46, opacity.risk]
         }
       });
       map.addLayer({
@@ -391,7 +395,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             'LOW', RISK_PALETTES.landslide.LOW,
             '#94a3b8'
           ],
-          'fill-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0.0, opacity.risk]
+          'fill-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0.46, 'UNAVAILABLE', 0.46, opacity.risk]
         }
       });
       map.addLayer({
@@ -683,18 +687,18 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       const lats = d.monitored_locations.map(l => l.latitude);
       map.fitBounds(
         [[Math.min(...lngs) - 0.25, Math.min(...lats) - 0.25], [Math.max(...lngs) + 0.25, Math.max(...lats) + 0.25]],
-        { padding: 80, maxZoom: 9.5, duration: 800 }
+        { padding: mapViewportPadding(48), maxZoom: 9.5, duration: 800 }
       );
     } else if (d.monitored_locations.length === 1) {
       const l = d.monitored_locations[0];
-      map.flyTo({ center: [l.longitude, l.latitude], zoom: 8.4, duration: 800 });
+      map.flyTo({ center: [l.longitude, l.latitude], zoom: 8.4, padding: mapViewportPadding(), duration: 800 });
     }
   };
 
   const resetView = () => {
     setSelectedDistrict(null);
     setSelectedState('ALL');
-    mlRef.current?.fitBounds(NE_BOUNDS, { padding: 24, maxZoom: 7, duration: 700 });
+    mlRef.current?.fitBounds(NE_BOUNDS, { padding: mapViewportPadding(), maxZoom: 7, duration: 700 });
   };
 
   const flyToState = (state: string) => {
@@ -719,7 +723,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     if ([minLng, minLat, maxLng, maxLat].every(Number.isFinite)) {
       setSelectedDistrict(null);
       setSelectedState(state);
-      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 72, maxZoom: 8, duration: 700 });
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: mapViewportPadding(40), maxZoom: 8, duration: 700 });
     }
   };
 
@@ -743,6 +747,35 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       (Math.max(severityRank(b.flood_risk.risk_category), severityRank(b.landslide_risk.risk_category)) -
         Math.max(severityRank(a.flood_risk.risk_category), severityRank(a.landslide_risk.risk_category))));
   }, [summaries]);
+
+  const officialWarningRows = useMemo(() => (summaries?.districts ?? []).flatMap(d =>
+    d.official_warnings.map(warning => ({ district: d.district, state: d.state, warning }))
+  ), [summaries]);
+
+  const stateRiskRows = useMemo(() => stateNames.map(state => {
+    const rows = (summaries?.districts ?? []).filter(d => d.state === state);
+    const categories = rows.map(d => layers.floodRisk ? d.flood_risk.risk_category : d.landslide_risk.risk_category);
+    const category = categories
+      .filter(value => severityRank(value) > 0)
+      .sort((a, b) => severityRank(b) - severityRank(a))[0]
+      ?? (rows.length ? 'UNAVAILABLE' : 'UNKNOWN');
+    return {
+      state,
+      districts: rows.length,
+      category,
+      warnings: rows.reduce((count, d) => count + d.official_warning_count, 0)
+    };
+  }), [stateNames, summaries, layers.floodRisk]);
+
+  const matchedDistrictCount = useMemo(
+    () => (summaries?.districts ?? []).filter(d => d.boundary.status !== 'UNKNOWN').length,
+    [summaries]
+  );
+
+  const freshRainfallDistrictCount = useMemo(
+    () => (summaries?.districts ?? []).filter(d => d.data_quality.rainfall === 'FRESH').length,
+    [summaries]
+  );
 
   /* ------------------ table filters ------------------ */
   const [stateFilter, setStateFilter] = useState('ALL');
@@ -843,6 +876,141 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         {/* Main area: left layer panel / map / right district panel */}
         <div className="relative flex-1 min-h-0">
           <div ref={mapContainer} className="absolute inset-0" />
+
+          {/* Desktop layer dock: district controls and legend stay alongside the map. */}
+          <aside className="hidden xl:flex absolute inset-y-0 left-0 z-[410] w-[16.5rem] flex-col overflow-y-auto border-r border-slate-700 bg-slate-950/95 text-slate-100 shadow-xl backdrop-blur-sm">
+            <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700">
+              <span className="flex items-center gap-2 text-sm font-bold"><Layers className="w-4 h-4 text-sky-400" /> Layers</span>
+              <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-sky-300 hover:text-white">Reset</button>
+            </div>
+            <div className="px-3 py-3 border-b border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">Basemap</span>
+                <span className="text-[9px] font-semibold text-slate-500">{hasMapTilerKey() ? 'MapTiler' : 'OSM fallback'}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {(['MAPTILER_STREETS', 'MAPTILER_OUTDOOR', 'MAPTILER_TOPO', 'SATELLITE', 'OSM'] as BaseMapProvider[]).map(provider => (
+                  <button key={provider}
+                    onClick={() => { setMapTilerNotice(null); setBaseProvider(provider); }}
+                    className={`rounded-md px-2 py-1 text-[9px] font-bold ${baseProvider === provider ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                    {baseProviderLabel(provider).replace('MapTiler ', '')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {GROUPS.map(group => (
+              <section key={group.group} className="px-3 py-2 border-b border-slate-800">
+                <h3 className="mb-1 text-[9px] font-black uppercase tracking-wider text-slate-500">{group.group}</h3>
+                {group.items.map(item => (
+                  <label key={item.key} className="flex cursor-pointer items-center gap-2 py-1.5 text-[11px] font-medium text-slate-200">
+                    <input type="checkbox" checked={layers[item.key]} aria-label={item.label}
+                      onChange={() => setLayers(current => {
+                        const enabled = !current[item.key];
+                        if (item.key === 'floodRisk') return { ...current, floodRisk: enabled, landslideRisk: enabled ? false : current.landslideRisk };
+                        if (item.key === 'landslideRisk') return { ...current, landslideRisk: enabled, floodRisk: enabled ? false : current.floodRisk };
+                        return { ...current, [item.key]: enabled };
+                      })} />
+                    <item.icon className={`h-3.5 w-3.5 ${layers[item.key] ? 'text-sky-300' : 'text-slate-600'}`} />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </section>
+            ))}
+            <div className="px-3 py-2 border-b border-slate-800 text-[10px]">
+              <div className="mb-1 font-bold text-slate-300">Overlay opacity</div>
+              <label className="flex items-center gap-2 py-1"><span className="w-20 text-slate-400">Risk fill</span>
+                <input aria-label="Risk fill opacity" type="range" min={0.15} max={0.85} step={0.05} value={opacity.risk}
+                  onChange={e => setOpacity(current => ({ ...current, risk: Number(e.target.value) }))} className="flex-1" />
+              </label>
+              <label className="flex items-center gap-2 py-1"><span className="w-20 text-slate-400">Official warn.</span>
+                <input aria-label="Official warning opacity" type="range" min={0.15} max={0.85} step={0.05} value={opacity.warnings}
+                  onChange={e => setOpacity(current => ({ ...current, warnings: Number(e.target.value) }))} className="flex-1" />
+              </label>
+            </div>
+            <div className="px-3 py-3 text-[10px] text-slate-400">
+              <div className="mb-2 flex items-center gap-1.5 font-bold text-slate-200"><Info className="h-3.5 w-3.5" /> Legend · {layers.floodRisk ? 'Flood' : 'Landslide'}</div>
+              {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNKNOWN'] as const).map(level => (
+                <div key={level} className="flex items-center gap-2 py-0.5">
+                  <span className="h-3 w-3 rounded-sm border border-white/10" style={{ background: level === 'UNKNOWN' ? '#94a3b8' : displayedRiskPalette[level] }} />
+                  <span>{level === 'UNKNOWN' ? 'Unknown / no data' : level[0] + level.slice(1).toLowerCase()}</span>
+                </div>
+              ))}
+              <p className="mt-2 border-t border-slate-800 pt-2 leading-relaxed">
+                District polygons: geohacker/india · EPSG:4326 · 78 districts. Unmatched districts stay UNKNOWN. Risk fill is a prototype estimate; official warnings are separate.
+              </p>
+            </div>
+          </aside>
+
+          {/* Desktop live-data rail uses only backend district summaries and official warning records. */}
+          <aside className="hidden xl:flex absolute inset-y-0 right-0 z-[410] w-[18rem] flex-col overflow-y-auto border-l border-slate-700 bg-slate-950/95 text-slate-100 shadow-xl backdrop-blur-sm">
+            <div className="border-b border-slate-700 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold">District data</h2>
+                <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${summaries ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                  {summaries ? 'API CONNECTED' : 'UNAVAILABLE'}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400">Backend snapshot {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : 'not loaded'}</p>
+            </div>
+
+            <section className="border-b border-slate-700 p-3">
+              <h3 className="mb-2 text-[11px] font-bold">Observed and official data</h3>
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
+                  <div className="text-lg font-bold text-sky-300">{summaries ? `${matchedDistrictCount}/78` : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-400">districts matched</div>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
+                  <div className="text-lg font-bold text-cyan-300">{summaries ? freshRainfallDistrictCount : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-400">fresh rain obs.</div>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
+                  <div className="text-lg font-bold text-rose-300">{summaries ? officialWarningRows.length : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-400">official warnings</div>
+                </div>
+              </div>
+              <p className="mt-2 text-[9px] leading-relaxed text-slate-500">Synthetic demo observations are excluded from the fresh-observation count. Prototype risk is not an official warning.</p>
+            </section>
+
+            <section className="border-b border-slate-700 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-[11px] font-bold">Official warnings</h3>
+                <span className="text-[9px] text-slate-500">agency records</span>
+              </div>
+              {officialWarningRows.length ? officialWarningRows.slice(0, 4).map(({ district, state, warning }) => {
+                const districtSummary = summaries?.districts.find(d => d.district === district);
+                return <button key={warning.alert_id} onClick={() => districtSummary && flyToDistrict(districtSummary)}
+                  className="mb-1.5 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-left hover:border-slate-500">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] font-semibold leading-snug">{district} · {state}</span>
+                    <span className="rounded px-1.5 py-0.5 text-[8px] font-bold" style={{ background: `${SEVERITY_COLORS[warning.severity] ?? '#64748b'}33`, color: SEVERITY_COLORS[warning.severity] ?? '#cbd5e1' }}>{warning.severity}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-slate-400">{warning.title}</p>
+                  <p className="mt-1 text-[8px] text-slate-500">{warning.source} · {warning.issued_at ? new Date(warning.issued_at).toLocaleString() : 'issue time unavailable'}</p>
+                </button>;
+              }) : <p className="rounded-lg border border-slate-700 bg-slate-900 p-2 text-[10px] leading-relaxed text-slate-400">{summaries ? 'No official warning records were returned. No warning data does not mean there is no hazard.' : 'Waiting for district data from the local API.'}</p>}
+            </section>
+
+            <section className="p-3">
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-[11px] font-bold">Prototype risk by state</h3>
+                  <p className="text-[9px] text-slate-500">Highest monitored-district {layers.floodRisk ? 'flood' : 'landslide'} estimate</p>
+                </div>
+                <span className="text-[8px] uppercase tracking-wide text-amber-300">Not official</span>
+              </div>
+              {stateRiskRows.map(row => (
+                <button key={row.state} onClick={() => flyToState(row.state)}
+                  className="flex w-full items-center gap-2 border-b border-slate-800 py-1.5 text-left last:border-0 hover:bg-slate-900">
+                  <span className="h-2 w-2 rounded-full" style={{ background: SEVERITY_COLORS[row.category] ?? SEVERITY_COLORS.UNKNOWN }} />
+                  <span className="flex-1 truncate text-[10px]">{row.state}</span>
+                  <span className="text-[9px] text-slate-500">{row.districts} monitored</span>
+                  <span className="w-16 text-right text-[9px] font-semibold" style={{ color: SEVERITY_COLORS[row.category] ?? SEVERITY_COLORS.UNKNOWN }}>{row.category}</span>
+                </button>
+              ))}
+            </section>
+          </aside>
+
           {!ready && (
             <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-100/70 text-sm font-bold text-slate-500">
               Rendering Northeast India map…
@@ -860,7 +1028,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </div>
           )}
 
-          <div className="absolute top-3 left-3 z-[450] flex flex-wrap gap-1.5 rounded-lg bg-white/95 p-1 shadow-md border border-slate-200">
+          <div className="absolute top-3 left-3 xl:left-[17rem] right-3 xl:right-[18.5rem] z-[450] flex flex-wrap gap-1.5 rounded-lg bg-white/95 p-1 shadow-md border border-slate-200 w-fit">
               {([
                 ['layers', 'Layers', Layers],
                 ['district', 'District', Info],
@@ -868,17 +1036,17 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               ] as const).map(([panel, label, Icon]) => (
                 <button key={panel} onClick={() => setMobileMapPanel(current => current === panel ? null : panel)}
                   aria-pressed={mobileMapPanel === panel}
-                  className={`flex min-h-9 items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-bold ${mobileMapPanel === panel ? 'bg-teal-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
+                  className={`flex min-h-9 items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-bold ${panel !== 'district' ? 'xl:hidden' : ''} ${mobileMapPanel === panel ? 'bg-teal-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
                   <Icon className="h-3.5 w-3.5" />{label}
                 </button>
               ))}
-              <button onClick={() => navigate('/layers')} className="min-h-9 rounded-md px-2.5 py-1.5 text-[11px] font-bold text-teal-800 hover:bg-teal-50">
+              <button onClick={() => navigate('/layers')} className="min-h-9 rounded-md px-2.5 py-1.5 text-[11px] font-bold text-teal-800 hover:bg-teal-50 xl:hidden">
                 Guide
               </button>
           </div>
 
           {/* B. Left layer panel */}
-          {mobileMapPanel === 'layers' && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 overflow-auto ${compactMap ? 'top-14 left-3 right-3 max-h-[72%]' : 'top-14 left-3 w-72 max-h-[82%]'}`}>
+          {compactMap && mobileMapPanel === 'layers' && <div className="absolute z-[400] top-14 left-3 right-3 max-h-[72%] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 overflow-auto">
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900"><Layers className="w-4 h-4" /> Layers</span>
               <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-blue-600 hover:underline">Reset</button>
@@ -947,7 +1115,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           </div>}
 
           {/* D. Right district panel */}
-          {mobileMapPanel === 'district' && <div className={`absolute z-[400] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 ${compactMap ? 'top-14 left-3 right-3 max-h-[72%]' : 'top-14 right-3 w-80 max-h-[82%]'}`}>
+          {mobileMapPanel === 'district' && <div className={`absolute z-[400] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 ${compactMap ? 'top-14 left-3 right-3 max-h-[72%]' : 'top-14 right-3 w-80 max-h-[82%] xl:right-[18.5rem]'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="text-xs font-bold text-slate-900">District inspector</span>
               <button onClick={() => setPanelOpen(p => !p)} className="text-[10px] font-bold text-blue-600">{panelOpen ? 'Hide list' : 'Show list'}</button>
@@ -1097,7 +1265,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           </div>}
 
           {/* B/E. Bottom legend */}
-          {mobileMapPanel === 'legend' && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700 ${compactMap ? 'bottom-3 left-3 right-3 max-h-[48%] overflow-auto' : 'bottom-3 left-3 max-w-sm'}`}>
+          {compactMap && mobileMapPanel === 'legend' && <div className="absolute z-[400] bottom-3 left-3 right-3 max-h-[48%] overflow-auto bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700">
             <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Legend</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.CRITICAL }} /> Critical</div>
@@ -1118,7 +1286,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
 
           {/* F. honest current-conditions strip */}
           {summaries && (
-            <div className="absolute bottom-3 right-16 z-[400] hidden sm:block bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-slate-200 px-3 py-1.5 text-[10px] text-slate-600">
+            <div className="absolute bottom-3 right-16 z-[400] hidden sm:block xl:hidden bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-slate-200 px-3 py-1.5 text-[10px] text-slate-600">
               <b>Current conditions</b> · latest stored observations, shown in browser local time
             </div>
           )}
