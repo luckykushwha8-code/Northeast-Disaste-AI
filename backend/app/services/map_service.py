@@ -60,18 +60,24 @@ class MapService:
         ).order_by(Observation.observed_at.desc()).all()
         for o in obs:
             slot = out.setdefault(o.location_id, {})
-            if o.variable in slot:
-                continue
             age = (now - o.observed_at).total_seconds() / 3600.0
-            slot[o.variable] = {
+            entry = {
                 "value": o.value,
                 "unit": o.unit,
                 "observed_at": o.observed_at.isoformat(),
                 "age_hours": round(age, 2),
                 "quality_status": o.quality_status,
                 "provenance": o.provenance,
-                "source_id": o.source_id
+                "source_id": o.source_id,
+                "simulation_flag": bool(o.simulation_flag)
             }
+            if o.variable not in slot:
+                slot[o.variable] = entry
+            # Keep the newest verified real record independently when a newer
+            # demo or invalid record is also retained for the display layer.
+            verified_key = f"{o.variable}_verified"
+            if not o.simulation_flag and o.quality_status == "VALID" and verified_key not in slot:
+                slot[verified_key] = entry
         return out
 
     @classmethod
@@ -148,14 +154,17 @@ class MapService:
 
             obs_map = cls._latest_obs_by_var(db, loc_ids) if loc_ids else {}
             rain_entries = []
+            real_rain_entries = []
             level_entries = []
             for l in dlocs:
                 o = obs_map.get(l.id, {})
                 if o.get("rainfall_24h_mm"):
                     rain_entries.append({**o["rainfall_24h_mm"], "location": l.name, "location_id": l.id})
-                if o.get("river_level_m"):
-                    level_entries.append({**o["river_level_m"], "location": l.name, "location_id": l.id})
-            newest_rain = min(rain_entries, key=lambda x: x["age_hours"]) if rain_entries else None
+                if o.get("rainfall_24h_mm_verified"):
+                    real_rain_entries.append({**o["rainfall_24h_mm_verified"], "location": l.name, "location_id": l.id})
+                if o.get("river_level_m_verified"):
+                    level_entries.append({**o["river_level_m_verified"], "location": l.name, "location_id": l.id})
+            newest_rain = min(real_rain_entries, key=lambda x: x["age_hours"]) if real_rain_entries else None
             rainfall_status = _freshness(newest_rain["age_hours"] if newest_rain else None, settings.FRESHNESS_WEATHER_HOURS)
 
             # ---- prototype risk aggregation across the district's locations ----
@@ -249,7 +258,7 @@ class MapService:
                     "risk": "PROTOTYPE_MODEL",
                     "official_warnings": "OFFICIAL" if warnings else "NONE",
                     "missing_inputs": [
-                        *([] if rain_entries else ["no rainfall observation"]),
+                        *([] if real_rain_entries else ["no verified rainfall observation"]),
                         *([] if level_entries else ["no river gauge reading"]),
                         *(["no monitored location"] if not dlocs else []),
                     ]

@@ -55,3 +55,129 @@ body {
 .rescue-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 0.6rem; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.55rem; }
 .rescue-track-result { font-size: 0.8rem; color: #334155; }
 .legend-attribution { font-size: 9px; color: #94a3b8; margin-top: 4px; }
+
+/* ---- NE-SAFE AI Design System Tokens ---- */
+.font-reading {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@keyframes slow-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0 rgba(220, 38, 38, 0)); }
+  50% { transform: scale(1.08); opacity: 0.9; filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.45)); }
+}
+
+.pulse-critical {
+  animation: slow-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.badge-simulated {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(147, 51, 234, 0.12),
+    rgba(147, 51, 234, 0.12) 6px,
+    rgba(168, 85, 247, 0.22) 6px,
+    rgba(168, 85, 247, 0.22) 12px
+  );
+  border: 1px solid #c084fc;
+  color: #6b21a8;
+}
+
+.rainfall-hatched {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(56, 189, 248, 0.15),
+    rgba(56, 189, 248, 0.15) 4px,
+    rgba(56, 189, 248, 0.35) 4px,
+    rgba(56, 189, 248, 0.35) 8px
+  );
+  border: 1px dashed #38bdf8;
+}
+
+/* Compact, readable rainfall gauge markers: point + measured value, never a data bubble. */
+.rain-gauge-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(-2px);
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.28));
+}
+.rain-gauge-pin { display: flex; width: 19px; height: 24px; flex: 0 0 auto; }
+.rain-gauge-pin { position: relative; }
+.rain-gauge-pin svg { width: 100%; height: 100%; overflow: visible; }
+.rain-gauge-pin path { fill: #087e9b; stroke: #fff; stroke-width: 1.5; }
+.rain-gauge-pin circle { fill: #fff; }
+.rain-gauge-label {
+  padding: 2px 5px;
+  border: 1px solid #8acbd7;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #164e63;
+  font: 700 10px/1.2 ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+}
+.rain-gauge-marker.is-stale .rain-gauge-pin path { fill: #64748b; }
+.rain-gauge-marker.is-stale .rain-gauge-label { border-color: #cbd5e1; color: #475569; }
+.rain-gauge-marker.is-simulated .rain-gauge-label { border-style: dashed; border-color: #d97706; color: #92400e; }
+.rain-gauge-marker.is-unverified .rain-gauge-label { border-style: dotted; border-color: #d97706; color: #92400e; }
+.rain-gauge-marker:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; border-radius: 5px; }
+
+/* Map scene: animate only the station symbols and mapped landslide boundaries. */
+.rain-gauge-marker.is-animated .rain-gauge-pin { animation: gauge-drift 1.8s ease-in-out infinite; }
+.rain-gauge-marker.is-animated .rain-gauge-pin::before,
+.rain-gauge-marker.is-animated .rain-gauge-pin::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 1.5px;
+  height: 7px;
+  border-radius: 2px;
+  background: #21a7c2;
+  opacity: 0;
+  transform: skew(-18deg);
+  animation: gauge-rain 1s linear infinite;
+}
+.rain-gauge-marker.is-animated .rain-gauge-pin::before { right: 0; animation-delay: 0.28s; }
+.rain-gauge-marker.is-animated .rain-gauge-pin::after { right: -5px; }
+@keyframes gauge-drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes gauge-rain { 0% { opacity: 0; transform: translateY(-3px) skew(-18deg); } 25% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(7px) skew(-18deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .rain-gauge-marker.is-animated .rain-gauge-pin,
+  .rain-gauge-marker.is-animated .rain-gauge-pin::before,
+  .rain-gauge-marker.is-animated .rain-gauge-pin::after { animation: none; }
+}
+
+/* Night Ops dark theme */
+.night-ops {
+  background-color: #0B1220 !important;
+  color: #F1F5F9 !important;
+}
+.night-ops .bg-white {
+  background-color: #111C2E !important;
+  border-color: #1E293B !important;
+  color: #F1F5F9 !important;
+}
+.night-ops .text-slate-900 {
+  color: #F8FAFC !important;
+}
+.night-ops .text-slate-800 {
+  color: #E2E8F0 !important;
+}
+.night-ops .text-slate-700 {
+  color: #CBD5E1 !important;
+}
+.night-ops .text-slate-600 {
+  color: #94A3B8 !important;
+}
+.night-ops .bg-slate-50 {
+  background-color: #0B1220 !important;
+}
+.night-ops .border-slate-200 {
+  border-color: #1E293B !important;
+}
+.night-ops .border-slate-100 {
+  border-color: #1E293B !important;
+}

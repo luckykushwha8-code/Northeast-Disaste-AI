@@ -3,6 +3,7 @@ import { X, Waves, Mountain, Info, ArrowUpRight, Database } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid, Legend } from 'recharts';
 import { LocationItem, PredictionItem, ObservationItem, Language } from '../types';
 import { api } from '../api/client';
+import { RiverStaffGauge } from './ui/RiverStaffGauge';
 
 interface IntegratedRiskFeature {
   properties: {
@@ -119,7 +120,7 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-300">
-              {location.district}, {location.state} • Elev: {location.elevation_m || 50}m • ({location.latitude.toFixed(4)}°N, {location.longitude.toFixed(4)}°E)
+              {location.district}, {location.state} • Elev: {location.elevation_m != null ? `${location.elevation_m}m` : 'unavailable'} • ({location.latitude.toFixed(4)}°N, {location.longitude.toFixed(4)}°E)
             </p>
           </div>
           <button
@@ -315,32 +316,44 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
             </div>
 
             {hasTelemetry ? (
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[yMin, yMax]} tick={{ fontSize: 11 }} unit="m" />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {dangerMark != null && (
-                      <ReferenceLine y={dangerMark} stroke="#ef4444" strokeDasharray="4 4"
-                        label={{ value: `Official Danger Level: ${dangerMark}m`, fill: '#ef4444', fontSize: 10, position: 'top' }} />
-                    )}
-                    {warningMark != null && (
-                      <ReferenceLine y={warningMark} stroke="#f59e0b" strokeDasharray="4 4"
-                        label={{ value: `Official Warning Level: ${warningMark}m`, fill: '#f59e0b', fontSize: 10, position: 'bottom' }} />
-                    )}
-                    <Line type="monotone" dataKey="level" stroke="#2563eb" dot={{ r: 3 }} name="River Level (m)" />
-                  </LineChart>
-                </ResponsiveContainer>
-                {rainObs.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
-                    <span className="font-bold">Latest rainfall (24h): {rainObs[rainObs.length - 1].value} mm</span>
-                    <span>• {rainObs[rainObs.length - 1].provenance || rainObs[rainObs.length - 1].source_id}</span>
-                    <span>• observed {new Date(rainObs[rainObs.length - 1].observed_at).toLocaleTimeString()}</span>
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                {warningMark != null && dangerMark != null && values.length > 0 && (
+                  <div className="flex-shrink-0">
+                    <RiverStaffGauge
+                      currentLevel={values[values.length - 1]}
+                      warningLevel={warningMark}
+                      dangerLevel={dangerMark}
+                      stationName={location.name}
+                    />
                   </div>
                 )}
+                <div className="h-56 w-full flex-1 min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[yMin, yMax]} tick={{ fontSize: 11 }} unit="m" />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      {dangerMark != null && (
+                        <ReferenceLine y={dangerMark} stroke="#ef4444" strokeDasharray="4 4"
+                          label={{ value: `Danger: ${dangerMark}m`, fill: '#ef4444', fontSize: 10, position: 'top' }} />
+                      )}
+                      {warningMark != null && (
+                        <ReferenceLine y={warningMark} stroke="#f59e0b" strokeDasharray="4 4"
+                          label={{ value: `Warning: ${warningMark}m`, fill: '#f59e0b', fontSize: 10, position: 'bottom' }} />
+                      )}
+                      <Line type="monotone" dataKey="level" stroke="#2563eb" dot={{ r: 3 }} name="River Level (m)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  {rainObs.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                      <span className="font-bold">Latest rainfall (24h): {rainObs[rainObs.length - 1].value} mm</span>
+                      <span>• {rainObs[rainObs.length - 1].provenance || rainObs[rainObs.length - 1].source_id}</span>
+                      <span>• observed {new Date(rainObs[rainObs.length - 1].observed_at).toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="h-24 flex items-center justify-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-lg">

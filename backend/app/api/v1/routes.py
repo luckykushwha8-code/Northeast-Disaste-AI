@@ -231,11 +231,13 @@ def generate_assessments(
     for loc in locations:
         # Gather latest observations for this location
         latest_obs = {}
+        is_simulation = False
         obs_records = db.query(Observation).filter(Observation.location_id == loc.id).order_by(Observation.observed_at.desc()).limit(20).all()
         for o in obs_records:
             if o.variable not in latest_obs:
                 latest_obs[o.variable] = o.value
                 latest_obs[f"{o.variable}_age_hours"] = (utcnow() - o.observed_at).total_seconds() / 3600.0
+                is_simulation = is_simulation or bool(o.simulation_flag)
 
         if force_stale:
             latest_obs["river_level_age_hours"] = 12.0
@@ -248,18 +250,11 @@ def generate_assessments(
         # 1. Flood Assessment
         # Relevant for River stations and urban basins
         if loc.location_type in ["RIVER_STATION", "URBAN_CATCHMENT"]:
-            # If river_level_m isn't at this specific gauge, use nearest CWC Pandu reading as regional baseline
-            if "river_level_m" not in latest_obs and not force_missing:
-                cwc_obs = db.query(Observation).filter(Observation.variable == "river_level_m").order_by(Observation.observed_at.desc()).first()
-                if cwc_obs:
-                    latest_obs["river_level_m"] = cwc_obs.value
-                    latest_obs["river_rate_m_hr"] = 0.06
-
             flood_res = FloodPredictionEngine.evaluate(
                 location_id=loc.id,
                 observations=latest_obs,
                 forecast_horizon_hours=6,
-                is_simulation=False,
+                is_simulation=is_simulation,
                 station_warning_level_m=STATION_OFFICIAL_MARKS.get(loc.id, (None, None))[0],
                 station_danger_level_m=STATION_OFFICIAL_MARKS.get(loc.id, (None, None))[1]
             )
@@ -289,17 +284,12 @@ def generate_assessments(
                 "susceptibility_score": loc.terrain.susceptibility_score if loc.terrain else 0.65,
                 "geology": loc.terrain.geology if loc.terrain else "Gneissic Metamorphic"
             }
-            # Fallback rainfall if missing
-            if "rainfall_24h_mm" not in latest_obs and not force_missing:
-                rf_obs = db.query(Observation).filter(Observation.variable == "rainfall_24h_mm").order_by(Observation.observed_at.desc()).first()
-                latest_obs["rainfall_24h_mm"] = rf_obs.value if rf_obs else 65.0
-
             landslide_res = LandslidePredictionEngine.evaluate(
                 location_id=loc.id,
                 terrain=terrain_data,
                 observations=latest_obs,
                 forecast_horizon_hours=24,
-                is_simulation=False
+                is_simulation=is_simulation
             )
 
             p_land = Prediction(
@@ -429,9 +419,9 @@ def subscribe_to_alerts(payload: AlertSubscribeRequest, db: Session = Depends(ge
         "district": district,
         "updated": updated,
         "note": (
-            "Saved. You will receive HIGH/CRITICAL flood and landslide reports for this district "
-            "by email. Each report is marked 'not a government-issued warning'. "
-            "Re-subscribing toggles consent; email verification lands before live sends."
+            "Consent saved for this district. Saving a subscription does not send email. "
+            "Automatic email delivery requires administrator enablement and configured SMTP; "
+            "provider acceptance does not guarantee inbox delivery."
         )
     }
 

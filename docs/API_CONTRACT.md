@@ -1,6 +1,6 @@
 # NE-SAFE AI — Source-of-Truth API Contract
 
-> Generated from live backend runtime and snapshot (`openapi.snapshot.json`) on 2026-10-24.
+> Contract reference based on the checked-in API schema and snapshot. The currently running local backend was observed to be older than this checkout during the 2026-10-25 audit; restart and re-verify before relying on runtime responses.
 
 ---
 

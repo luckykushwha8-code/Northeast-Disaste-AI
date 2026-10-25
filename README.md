@@ -1,6 +1,5 @@
 # NE-SAFE AI — Northeast India Disaster Risk Monitoring & Early-Warning Platform
 
-[![Tests](https://img.shields.io/badge/pytest-85%20passed-brightgreen.svg)](https://pytest.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg)](https://react.dev)
@@ -8,7 +7,7 @@
 [![TinyFish](https://img.shields.io/badge/TinyFish-Web%20Extraction-teal.svg)](https://tinyfish.ai)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-An explainable, human-in-the-loop early-warning platform monitoring developing **flood and rainfall-triggered landslide risks** across the 8 states of Northeast India: **Assam, Meghalaya, Arunachal Pradesh, Sikkim, Nagaland, Manipur, Mizoram, and Tripura** (19 monitored locations, 7 CWC river telemetry stations, 78 districts).
+An explainable prototype for exploring **flood and rainfall-triggered landslide information** across the 8 states of Northeast India: **Assam, Meghalaya, Arunachal Pradesh, Sikkim, Nagaland, Manipur, Mizoram, and Tripura**. Feed coverage and freshness vary; see [the audit](docs/AUDIT.md) and [data-source policy](docs/DATA_SOURCES.md). This project is not validated for emergency operations.
 
 ---
 
@@ -16,7 +15,7 @@ An explainable, human-in-the-loop early-warning platform monitoring developing *
 
 ```mermaid
 flowchart TD
-    subgraph Sources["Verified Environmental Sources"]
+    subgraph Sources["Configured Data Sources · status varies"]
         CWC["CWC Telemetry (ffs.india-water.gov.in)"]
         IMD["IMD Warnings & Rainfall (api.imd.gov.in)"]
         GSI["GSI Bhusanket Landslide Baseline"]
@@ -61,7 +60,7 @@ flowchart TD
 1. **Safety before automation**: AI-generated alerts are created in `PROPOSED` status and require human operator review before approval and dissemination.
 2. **Evidence before prediction**: Every score cites telemetry readings, official CWC danger/warning marks, or documented GSI baseline susceptibility. AI never overrides official government thresholds.
 3. **No fabricated data**: Missing, delayed, or unconfigured feeds are displayed honestly as `UNAVAILABLE`, `STALE`, or `MISSING`.
-4. **Official warnings remain authoritative**: Official IMD and CWC bulletins are passed through verbatim with distinct `OFFICIAL_AGENCY` badges.
+4. **Official warnings remain authoritative**: When retrieved and validated, official IMD and CWC bulletins retain source attribution and distinct `OFFICIAL_AGENCY` status.
 5. **Rescue honesty**: Citizen rescue forms explicitly display: *"This form does not dispatch help automatically. In an emergency call 112."*
 6. **Public notification guardrail**: `PUBLIC_ALERTS_ENABLED=false` by default until models and telemetry are officially validated by local disaster authorities.
 
@@ -71,12 +70,12 @@ flowchart TD
 
 | Data Source | Status | Protocol | Provenance & Policy |
 |---|---|---|---|
-| **CWC Brahmaputra & Barak Basins** | **LIVE** | REST / HTML Telemetry | Real river water levels from 7 gauge stations (Pandu, Dibrugarh, Silchar, etc.) |
-| **Open-Meteo Precipitation** | **LIVE** | Key-free REST API | 24h observed rainfall and forecast precipitation with caching |
-| **MapTiler Vector Basemap** | **LIVE** | Vector Tiles (`VITE_MAPTILER_API_KEY`) | Streets, Outdoor, Topographic, and Satellite styles covering Northeast India |
-| **TinyFish Web Extraction** | **LIVE** | Agentic API (`TINYFISH_API_KEY`) | Extracts official government disaster bulletins from IMD, CWC, and GSI allowlisted domains |
-| **IMD District Warnings** | **KEY-GATED** | REST (`IMD_API_KEY`) | Official warnings ingested verbatim; falls back to baseline when key is unconfigured |
-| **GSI Bhusanket Landslide Susceptibility** | **BASELINE** | Reference Constants | GSI portal lacks a public REST API; uses documented susceptibility constants with provenance |
+| **CWC station data** | **Variable; verify record status** | Configured feed adapters | Do not treat source health as proof that each measurement is fresh |
+| **Open-Meteo weather** | **Variable; verify record status** | Key-free REST API | Keep observation, forecast and gap-filled values distinct |
+| **Map basemap** | **External dependency** | Configured tiles / fallback | Visual context only; not hazard evidence |
+| **TinyFish extraction** | **Credential and provider dependent** | Agent API (`TINYFISH_API_KEY`) | Retrieved content requires source and timestamp review |
+| **IMD district warnings** | **Key-gated** | REST (`IMD_API_KEY`) | No verified feed is guaranteed without authorized credentials and current status |
+| **GSI susceptibility** | **Reference / integration dependent** | Source adapter and baseline | Identify the precise data layer and its provenance before calling it live |
 
 ---
 
@@ -164,18 +163,18 @@ docker-compose up --build
 
 ## 7. Testing & Quality Verification
 
-### Run Backend Test Suite (85 Tests)
+### Run Backend Test Suite
 ```bash
 pytest backend/tests/ -v
 ```
-Verifies acceptance criteria, email safety guard chains, auto-alert escalation rules, historical case validation (12 disaster events), IMD REST adapters, Open-Meteo service, TinyFish web extraction, and security/rate-limiting.
+Run only in an environment with `backend/requirements.txt` installed. Current verification status is recorded in [docs/TEST_REPORT.md](docs/TEST_REPORT.md).
 
 ### Run Frontend Typecheck & Build
 ```bash
 cd frontend
 npx tsc -p tsconfig.app.json --noEmit   # Strict TypeScript check (0 errors)
 npm run build                          # Production Vite bundle (0 errors)
-npm run lint                           # Oxlint code quality scan (0 errors)
+npm run lint                           # Oxlint scan (review warnings as well as exit code)
 ```
 
 ---

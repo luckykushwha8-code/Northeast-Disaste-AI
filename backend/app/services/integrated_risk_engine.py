@@ -31,6 +31,10 @@ def _latest_obs_map(db, location_id: str, max_records: int = 30) -> Dict[str, An
     ).order_by(Observation.observed_at.desc()).limit(max_records).all()
     latest: Dict[str, Any] = {}
     for o in records:
+        # Synthetic seed/demo readings may be shown as tagged map markers, but
+        # they must never enter an assessment or be represented as live input.
+        if o.simulation_flag or o.quality_status != "VALID":
+            continue
         if o.variable not in latest:
             latest[o.variable] = o.value
             latest[f"{o.variable}_observed_at"] = o.observed_at
@@ -126,6 +130,14 @@ class IntegratedRiskEngine:
         river_rate = obs.get("river_rate_m_hr", 0.0)
         soil = obs.get("soil_moisture_pct")
 
+        if river_level is not None and (river_age is None or river_age > settings.FRESHNESS_RIVER_HOURS):
+            river_level = None
+            river_rate = None
+        if rain24 is not None and (rain24_age is None or rain24_age > settings.FRESHNESS_WEATHER_HOURS):
+            rain24 = None
+        if rain3d is not None and obs.get("rainfall_3d_mm_age_hours", 0) > 72:
+            rain3d = None
+
         # Open-Meteo observed / forecast fills ONLY genuine gaps — stored official
         # observations always take precedence (IMD/CWC data stays authoritative).
         weather_mode = (weather_ctx or {}).get("data_mode", "UNAVAILABLE")
@@ -207,6 +219,14 @@ class IntegratedRiskEngine:
         if slope < 12.0 and landslide_category not in ("LOW",):
             landslide_category = "MODERATE" if landslide_category == "HIGH" else landslide_category
 
+        # A low model score from absent/stale inputs is not evidence of safety.
+        river_current = river_level is not None and river_age is not None and river_age <= settings.FRESHNESS_RIVER_HOURS
+        rain_current = rain24 is not None and rain24_age is not None and rain24_age <= settings.FRESHNESS_WEATHER_HOURS
+        any_current_hazard_input = river_current or rain_current
+        if not any_current_hazard_input:
+            flood_category = "UNKNOWN"
+            landslide_category = "UNKNOWN"
+
         conf_rain = _rainfall_confidence(rain24, rain24_age)
         conf_level = _level_confidence(river_level, river_age)
         flood_confidence = round(conf_level * 0.7 + conf_rain * 0.3, 2)
@@ -243,7 +263,7 @@ class IntegratedRiskEngine:
             "generated_at": utcnow().isoformat(),
             "flood": {
                 "risk_category": flood_category,
-                "probability": round(flood_raw, 2),
+                "probability": round(flood_raw, 2) if any_current_hazard_input else None,
                 "confidence": flood_confidence,
                 "uncertainty": "HIGH_UNCERTAINTY" if flood_confidence < 0.70 else "LOW_UNCERTAINTY",
                 "ari_mm": round(ari, 1),
@@ -251,7 +271,7 @@ class IntegratedRiskEngine:
             },
             "landslide": {
                 "risk_category": landslide_category,
-                "probability": round(landslide_raw, 2),
+                "probability": round(landslide_raw, 2) if rain_current else None,
                 "confidence": landslide_confidence,
                 "uncertainty": "HIGH_UNCERTAINTY" if landslide_confidence < 0.70 else "LOW_UNCERTAINTY",
                 "ari_mm": round(ari, 1),

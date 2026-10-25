@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Map as MLMap, Popup, NavigationControl, ScaleControl, FullscreenControl
+  Map as MLMap, Popup, Marker, NavigationControl, ScaleControl, FullscreenControl
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   MapPin, Search, Maximize2, Layers, Info, Clock, Database,
   Mountain, CloudRain, Tent, Megaphone, History,
-  ChevronRight, ShieldAlert, AlertTriangle, Compass, CheckCircle2
+  ChevronRight, ShieldAlert, AlertTriangle, Compass, CheckCircle2, Play, Pause
 } from 'lucide-react';
 import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, severityRank,
@@ -30,7 +30,8 @@ type OverlayKeys =
 
 const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   boundaries: true,
-  floodRisk: true,
+  floodRisk: false,
+  // Show one risk surface at a time so overlapping fills never hide each other.
   landslideRisk: true,
   officialWarnings: true,
   rainfall: true,
@@ -39,6 +40,17 @@ const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   incidents: true,
   history: false
 };
+
+const FLOOD_COLORS: Record<string, string> = {
+  LOW: '#c6e2e7', MODERATE: '#83bdc7', HIGH: '#438f9f', CRITICAL: '#245c73'
+};
+const LANDSLIDE_COLORS: Record<string, string> = {
+  LOW: '#efe2c3', MODERATE: '#e6bb72', HIGH: '#cf8049', CRITICAL: '#a94f49'
+};
+
+const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[char]!));
 
 const GROUPS: { group: string; items: { key: OverlayKeys; label: string; icon: any; color: string }[] }[] = [
   {
@@ -86,7 +98,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [styleVersion, setStyleVersion] = useState<number>(0);
   const [mapTilerNotice, setMapTilerNotice] = useState<string | null>(null);
   const [layers, setLayers] = useState<Record<OverlayKeys, boolean>>({ ...DEFAULT_LAYERS });
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [scenePlaying, setScenePlaying] = useState(false);
+  const [compactMap, setCompactMap] = useState(() => window.innerWidth < 640);
+  const [mobileMapPanel, setMobileMapPanel] = useState<'layers' | 'district' | 'legend' | null>(null);
   const [opacity, setOpacity] = useState({ risk: 0.55, warnings: 0.6 });
   const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   const [summaries, setSummaries] = useState<MapDistrictsResponse | null>(null);
@@ -94,10 +109,19 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [riskGeo, setRiskGeo] = useState<GeoJSONFeatureCollection | null>(null);
   const [history, setHistory] = useState<HistoricalEventItem[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedState, setSelectedState] = useState('ALL');
   const [search, setSearch] = useState('');
   const [clock, setClock] = useState<string>(() => new Date().toLocaleTimeString());
   const [statusPill, setStatusPill] = useState<{ label: string; tone: 'ok' | 'warn' | 'down' }>({ label: 'LOADING', tone: 'warn' });
   const [dataMode, setDataMode] = useState<string>('PROTOTYPE');
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)');
+    const update = () => setCompactMap(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   // ---- data loading ----
   useEffect(() => {
@@ -208,6 +232,15 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     return boundaryData.features as any[];
   }, [boundaryData]);
 
+  const stateNames = useMemo(() => {
+    const names = new Set<string>();
+    boundaryFeatures.forEach((feature: any) => {
+      const state = feature.properties?.state;
+      if (typeof state === 'string' && state.trim()) names.add(state.trim());
+    });
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [boundaryFeatures]);
+
   const selected = useMemo(
     () => summaries?.districts.find(d => d.district === selectedDistrict) ?? null,
     [summaries, selectedDistrict]
@@ -231,6 +264,9 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   useEffect(() => {
     const map = mlRef.current;
     if (!map || !ready) return;
+    const listeners: { event: string; layer: string; handler: (event: any) => void }[] = [];
+    const rainfallMarkers: Marker[] = [];
+    const popup = new Popup({ maxWidth: '280px' });
     try {
     const prefixIds = ['ov-'];
     [...map.getStyle().layers.map((l: any) => l.id)]
@@ -240,9 +276,12 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       .filter(s => prefixIds.some(p => s.startsWith(p)))
       .forEach(s => { try { map.removeSource(s); } catch { /* not added */ } });
 
-    const popup = new Popup({ maxWidth: '280px' });
     const onEnter = () => { map.getCanvas().style.cursor = 'pointer'; };
     const onLeave = () => { map.getCanvas().style.cursor = ''; popup.remove(); };
+    const bindLayerEvent = (event: string, layer: string, handler: (event: any) => void) => {
+      map.on(event as any, layer, handler as any);
+      listeners.push({ event, layer, handler });
+    };
 
     /* -- boundaries: fill clickable + line;UNKNOWN shading stays neutral gray -- */
     const propsOf = (f: any) => {
@@ -275,15 +314,15 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           'line-opacity': 0.85
         }
       });
-      map.on('click', 'ov-boundary-fill', (e: any) => {
+      bindLayerEvent('click', 'ov-boundary-fill', (e: any) => {
         const p = e.features?.[0]?.properties as any;
         if (!p?.district) return;
         const s = summaryByBoundary.get(p.district);
         if (!s) {
           popup.setLngLat(e.lngLat).setHTML(`
             <div style="font-family:system-ui;min-width:200px">
-              <div style="font-weight:800">${p.district}</div>
-              <div style="font-size:11px;color:#64748b">${p.state}</div>
+              <div style="font-weight:800">${escapeHtml(p.district)}</div>
+              <div style="font-size:11px;color:#64748b">${escapeHtml(p.state)}</div>
               <div style="font-size:11px;margin-top:4px;color:#b91c1c">
                 No platform data for this district — shown as UNKNOWN (never assumed safe).
               </div>
@@ -293,11 +332,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         setSelectedDistrict(s.district);
         popup.setLngLat(e.lngLat).setHTML(`
           <div style="font-family:system-ui;min-width:230px">
-            <div style="font-weight:800;font-size:13px">${s.district}</div>
-            <div style="font-size:11px;color:#64748b">${s.state} · boundary: ${s.boundary.status}</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(s.district)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(s.state)} · boundary: ${escapeHtml(s.boundary.status)}</div>
             <div style="font-size:11px;margin-top:5px">
-              <b>Flood (prototype):</b> ${s.flood_risk.risk_category}<br/>
-              <b>Landslide (prototype):</b> ${s.landslide_risk.risk_category}<br/>
+              <b>Flood (prototype):</b> ${escapeHtml(s.flood_risk.risk_category)}<br/>
+              <b>Landslide (prototype):</b> ${escapeHtml(s.landslide_risk.risk_category)}<br/>
               <b>Official warnings:</b> ${s.official_warning_count ? `${s.official_warning_count} (verbatim IMD)` : 'none received'}
             </div>
             <div style="font-size:10px;color:#64748b;margin-top:4px">
@@ -306,8 +345,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </div>
           </div>`).addTo(map);
       });
-      map.on('mouseenter', 'ov-boundary-fill', onEnter);
-      map.on('mouseleave', 'ov-boundary-fill', onLeave);
+      bindLayerEvent('mouseenter', 'ov-boundary-fill', onEnter);
+      bindLayerEvent('mouseleave', 'ov-boundary-fill', onLeave);
     }
 
     const boundarySelectedProps = boundaryFeatures.map(f => ({
@@ -326,10 +365,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'flood'],
-            'CRITICAL', SEVERITY_COLORS.CRITICAL,
-            'HIGH', SEVERITY_COLORS.HIGH,
-            'MODERATE', SEVERITY_COLORS.MODERATE,
-            'LOW', SEVERITY_COLORS.LOW,
+            'CRITICAL', FLOOD_COLORS.CRITICAL,
+            'HIGH', FLOOD_COLORS.HIGH,
+            'MODERATE', FLOOD_COLORS.MODERATE,
+            'LOW', FLOOD_COLORS.LOW,
             '#94a3b8'
           ],
           'fill-opacity': ['match', ['get', 'flood'], 'UNKNOWN', 0.0, opacity.risk]
@@ -351,13 +390,29 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'landslide'],
-            'CRITICAL', SEVERITY_COLORS.CRITICAL,
-            'HIGH', SEVERITY_COLORS.HIGH,
-            'MODERATE', SEVERITY_COLORS.MODERATE,
-            'LOW', SEVERITY_COLORS.LOW,
+            'CRITICAL', LANDSLIDE_COLORS.CRITICAL,
+            'HIGH', LANDSLIDE_COLORS.HIGH,
+            'MODERATE', LANDSLIDE_COLORS.MODERATE,
+            'LOW', LANDSLIDE_COLORS.LOW,
             '#94a3b8'
           ],
           'fill-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0.0, opacity.risk]
+        }
+      });
+      map.addLayer({
+        id: 'ov-landslide-outline', type: 'line', source: 'ov-props',
+        paint: {
+          'line-color': [
+            'match', ['get', 'landslide'],
+            'CRITICAL', '#9f3f38',
+            'HIGH', '#b75b35',
+            'MODERATE', '#a87525',
+            'LOW', '#64836b',
+            'rgba(0,0,0,0)'
+          ],
+          'line-width': ['match', ['get', 'landslide'], 'CRITICAL', 2.8, 'HIGH', 2.2, 'MODERATE', 1.7, 'LOW', 1.1, 0],
+          'line-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0, 0.9],
+          'line-dasharray': [2.4, 1.4]
         }
       });
     }
@@ -387,7 +442,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       });
     }
 
-    /* -- 24h rainfall station circles (only monitored stations with an obs) -- */
+    /* -- 24h rainfall station labels (only monitored stations with an observation) -- */
     const rainStations = summaries?.districts.flatMap(d =>
       (d.rainfall_24h_all_locations ?? []).map(r => ({
         id: r.location_id,
@@ -395,48 +450,55 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         name: r.location,
         mm: r.value?.valueOf?.() ?? r.value,
         age: r.age_hours,
-        status: d.data_quality.rainfall,
-        observed_at: r.observed_at
+        status: r.simulation_flag === true ? 'SIMULATED' : typeof r.simulation_flag !== 'boolean' || r.quality_status !== 'VALID' ? 'UNVERIFIED' : d.data_quality.rainfall,
+        observed_at: r.observed_at,
+        provenance: r.provenance,
+        simulation_flag: Boolean(r.simulation_flag),
+        provenance_unknown: typeof r.simulation_flag !== 'boolean' || r.quality_status !== 'VALID',
+        location: locations.find(l => l.id === r.location_id)
       }))
-    ).filter(s => s.mm != null) ?? [];
+    ).filter(s => s.mm != null && Number.isFinite(s.location?.longitude) && Number.isFinite(s.location?.latitude)) ?? [];
     if (layers.rainfall && rainStations.length) {
-      map.addSource('ov-rain', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: rainStations.map(s => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [s.id && (locations.find(l => l.id === s.id)?.longitude ?? 0), locations.find(l => l.id === s.id)?.latitude ?? 0] } as any,
-            properties: { ...s, mm: Number(s.mm) }
-          })) as any
+      rainStations.forEach((s, stationIndex) => {
+        const markerButton = document.createElement('button');
+        markerButton.type = 'button';
+        markerButton.className = `rain-gauge-marker${s.status === 'STALE' ? ' is-stale' : ''}${s.simulation_flag ? ' is-simulated' : ''}${s.provenance_unknown ? ' is-unverified' : ''}`;
+        markerButton.setAttribute('aria-label', `${s.name}, ${Number(s.mm).toFixed(1)} millimetres rainfall in 24 hours${s.simulation_flag ? ', simulated record' : s.provenance_unknown ? ', provenance unverified' : ''}`);
+        markerButton.classList.toggle('is-animated', scenePlaying);
+        markerButton.innerHTML = '<span class="rain-gauge-pin" aria-hidden="true"><svg viewBox="0 0 24 30" focusable="false"><path d="M12 1C5.9 1 1 5.9 1 12c0 7.8 11 17 11 17s11-9.2 11-17C23 5.9 18.1 1 12 1Z"/><circle cx="12" cy="12" r="3.2"/></svg></span>';
+        const amount = document.createElement('span');
+        amount.className = 'rain-gauge-label';
+        amount.textContent = `${Number(s.mm).toFixed(0)} mm`;
+        const colocated = rainStations
+          .map((other, index) => ({ other, index }))
+          .filter(({ other, index }) => index !== stationIndex &&
+            Math.abs(other.location!.latitude - s.location!.latitude) < 0.12 &&
+            Math.abs(other.location!.longitude - s.location!.longitude) < 0.12);
+        if (colocated.length) {
+          const slot = colocated.filter(({ index }) => index < stationIndex).length;
+          const x = slot % 2 === 0 ? -7 : 13;
+          const y = (slot % 2 === 0 ? -1 : 1) * (10 + Math.floor(slot / 2) * 16);
+          amount.style.transform = `translate(${x}px, ${y}px)`;
         }
-      });
-      map.addLayer({
-        id: 'ov-rain-circles', type: 'circle', source: 'ov-rain',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'],
-            5, ['*', ['coalesce', ['get', 'mm'], 0], 0.30], 9, ['*', ['coalesce', ['get', 'mm'], 0], 0.65]],
-          'circle-color': ['match', ['get', 'status'], 'STALE', '#94a3b8', '#0284c7'],
-          'circle-opacity': 0.35,
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#0369a1'
-        }
-      });
-      map.on('click', 'ov-rain-circles', (e: any) => {
-        const p = e.features?.[0]?.properties as any;
-        if (!p) return;
-        popup.setLngLat(e.lngLat).setHTML(`
+        markerButton.append(amount);
+        markerButton.addEventListener('click', event => {
+          event.stopPropagation();
+          popup.setLngLat([s.location!.longitude, s.location!.latitude]).setHTML(`
           <div style="font-family:system-ui;min-width:200px">
             <div style="font-size:10px;font-weight:800;letter-spacing:.05em;color:#0369a1">RAINFALL 24H OBSERVATION</div>
-            <div style="font-weight:800;font-size:13px">${p.name}</div>
-            <div style="font-size:11px;color:#64748b">${p.dist}</div>
-            <div style="font-size:12px;margin-top:4px"><b>${Number(p.mm).toFixed(1)} mm</b>
-              (${p.status}${p.status === 'STALE' ? ` — ${Number(p.age).toFixed(0)}h old, shown gray` : ''})</div>
-            <div style="font-size:10px;color:#64748b;margin-top:3px">observed ${p.observed_at ? new Date(p.observed_at).toLocaleString() : '—'} · source: stored IMD station obs</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(s.name)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(s.dist)}</div>
+            <div style="font-size:12px;margin-top:4px"><b>${Number(s.mm).toFixed(1)} mm</b>
+              (${escapeHtml(s.status)}${s.status === 'STALE' ? ` — ${Number(s.age).toFixed(0)}h old` : ''})</div>
+            <div style="font-size:10px;color:#64748b;margin-top:3px">observed ${s.observed_at ? new Date(s.observed_at).toLocaleString() : '—'} · recorded source: ${escapeHtml(s.provenance || 'unspecified')}</div>
+            ${s.simulation_flag ? '<div style="font-size:10px;color:#92400e;font-weight:700;margin-top:4px">SIMULATED RECORD</div>' : ''}
+            ${s.provenance_unknown ? '<div style="font-size:10px;color:#92400e;font-weight:700;margin-top:4px">PROVENANCE OR QUALITY NOT VERIFIED</div>' : ''}
           </div>`).addTo(map);
+        });
+        rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
+          .setLngLat([s.location!.longitude, s.location!.latitude])
+          .addTo(map));
       });
-      map.on('mouseenter', 'ov-rain-circles', onEnter);
-      map.on('mouseleave', 'ov-rain-circles', onLeave);
     }
 
     /* -- terrain susceptibility (score circles from /risk/geo) -- */
@@ -480,19 +542,19 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         id: 'ov-shelters-core', type: 'circle', source: 'ov-shelters',
         paint: { 'circle-radius': 8, 'circle-color': '#16a34a', 'circle-opacity': .9, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
       });
-      map.on('click', 'ov-shelters-core', (e: any) => {
+      bindLayerEvent('click', 'ov-shelters-core', (e: any) => {
         const p = e.features?.[0]?.properties;
         if (!p) return;
         popup.setLngLat(e.lngLat).setHTML(`
           <div style="font-family:system-ui;min-width:200px">
             <div style="font-size:10px;font-weight:800;color:#16a34a">VERIFIED SHELTER</div>
-            <div style="font-weight:800">${p.name}</div>
-            <div style="font-size:11px;color:#64748b">${p.location_name}</div>
-            <div style="font-size:11px">Capacity ${p.capacity ?? '—'} (occ ${p.occupancy ?? '—'}) · ${p.status}</div>
+            <div style="font-weight:800">${escapeHtml(p.name)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(p.location_name)}</div>
+            <div style="font-size:11px">Capacity ${escapeHtml(p.capacity ?? '—')} (occ ${escapeHtml(p.occupancy ?? '—')}) · ${escapeHtml(p.status)}</div>
           </div>`).addTo(map);
       });
-      map.on('mouseenter', 'ov-shelters-core', onEnter);
-      map.on('mouseleave', 'ov-shelters-core', onLeave);
+      bindLayerEvent('mouseenter', 'ov-shelters-core', onEnter);
+      bindLayerEvent('mouseleave', 'ov-shelters-core', onLeave);
     }
     if (layers.incidents && reports.length) {
       map.addSource('ov-incidents', {
@@ -513,20 +575,20 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           'circle-opacity': .85, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff'
         }
       });
-      map.on('click', 'ov-incidents-core', (e: any) => {
+      bindLayerEvent('click', 'ov-incidents-core', (e: any) => {
         const p = e.features?.[0]?.properties;
         if (!p) return;
         popup.setLngLat(e.lngLat).setHTML(`
           <div style="font-family:system-ui;min-width:210px">
-            <div style="font-size:10px;font-weight:800;color:${p.status === 'VERIFIED' ? '#0f766e' : '#b45309'}">CITIZEN REPORT · ${p.status}</div>
-            <div style="font-weight:800;font-size:13px">${p.category}</div>
-            <div style="font-size:11px;color:#64748b">${p.location_name}</div>
-            <div style="font-size:11px;margin-top:3px">${p.description}</div>
+            <div style="font-size:10px;font-weight:800;color:${p.status === 'VERIFIED' ? '#0f766e' : '#b45309'}">CITIZEN REPORT · ${escapeHtml(p.status)}</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(p.category)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(p.location_name)}</div>
+            <div style="font-size:11px;margin-top:3px">${escapeHtml(p.description)}</div>
             ${p.status !== 'VERIFIED' ? '<div style="font-size:10px;color:#b45309;margin-top:3px">UNVERIFIED — displayed as a report, never as a confirmed hazard</div>' : ''}
           </div>`).addTo(map);
       });
-      map.on('mouseenter', 'ov-incidents-core', onEnter);
-      map.on('mouseleave', 'ov-incidents-core', onLeave);
+      bindLayerEvent('mouseenter', 'ov-incidents-core', onEnter);
+      bindLayerEvent('mouseleave', 'ov-incidents-core', onLeave);
     }
     if (layers.history && history.length) {
       map.addSource('ov-history', {
@@ -547,26 +609,48 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           'circle-stroke-color': ['match', ['get', 'hazard_type'], 'FLOOD', '#1d4ed8', '#5b21b6']
         }
       });
-      map.on('click', 'ov-history-ring', (e: any) => {
+      bindLayerEvent('click', 'ov-history-ring', (e: any) => {
         const p = e.features?.[0]?.properties;
         if (!p) return;
         popup.setLngLat(e.lngLat).setHTML(`
           <div style="font-family:system-ui;min-width:220px">
-            <div style="font-size:10px;font-weight:800;color:${p.hazard_type === 'FLOOD' ? '#1d4ed8' : '#7c3aed'}">VALIDATED ${p.hazard_type} EVENT (HISTORICAL)</div>
-            <div style="font-weight:800">${p.location_name}</div>
-            <div style="font-size:11px">${new Date(p.event_start).toLocaleDateString()} · severity ${p.severity}</div>
-            <div style="font-size:11px;margin-top:3px">${p.description}</div>
+            <div style="font-size:10px;font-weight:800;color:${p.hazard_type === 'FLOOD' ? '#1d4ed8' : '#7c3aed'}">VALIDATED ${escapeHtml(p.hazard_type)} EVENT (HISTORICAL)</div>
+            <div style="font-weight:800">${escapeHtml(p.location_name)}</div>
+            <div style="font-size:11px">${escapeHtml(new Date(p.event_start).toLocaleDateString())} · severity ${escapeHtml(p.severity)}</div>
+            <div style="font-size:11px;margin-top:3px">${escapeHtml(p.description)}</div>
           </div>`).addTo(map);
       });
-      map.on('mouseenter', 'ov-history-ring', onEnter);
-      map.on('mouseleave', 'ov-history-ring', onLeave);
+      bindLayerEvent('mouseenter', 'ov-history-ring', onEnter);
+      bindLayerEvent('mouseleave', 'ov-history-ring', onLeave);
     }
     setOverlayError(null);
     } catch (err: any) {
       console.error('MapBoard overlay error:', err);
       setOverlayError(String(err?.message ?? err));
     }
-  }, [ready, styleVersion, summaries, boundaryData, riskGeo, history, layers, locations, alerts, shelters, reports, opacity, selectedDistrict, baseProvider, summaryByBoundary, boundaryFeatures]);
+    return () => {
+      listeners.forEach(({ event, layer, handler }) => map.off(event as any, layer, handler as any));
+      rainfallMarkers.forEach(marker => marker.remove());
+      popup.remove();
+    };
+  }, [ready, styleVersion, summaries, boundaryData, riskGeo, history, layers, locations, alerts, shelters, reports, opacity, selectedDistrict, baseProvider, summaryByBoundary, boundaryFeatures, scenePlaying]);
+
+  useEffect(() => {
+    const map = mlRef.current;
+    if (!scenePlaying || !ready || !layers.landslideRisk || !map || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    let lastUpdate = 0;
+    const animateOutline = (time: number) => {
+      if (time - lastUpdate >= 90 && map.getLayer('ov-landslide-outline')) {
+        const pulse = (Math.sin(time / 580) + 1) / 2;
+        map.setPaintProperty('ov-landslide-outline', 'line-opacity', 0.52 + pulse * 0.44);
+        lastUpdate = time;
+      }
+      frame = requestAnimationFrame(animateOutline);
+    };
+    frame = requestAnimationFrame(animateOutline);
+    return () => cancelAnimationFrame(frame);
+  }, [scenePlaying, ready, layers.landslideRisk, styleVersion]);
 
   const prevBaseRef = useRef<BaseMapProvider>(baseProvider);
   useEffect(() => {
@@ -598,6 +682,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     const map = mlRef.current;
     if (!map || !d) return;
     setSelectedDistrict(d.district);
+    setSelectedState(d.state ?? 'ALL');
     if (d.monitored_locations.length >= 2) {
       const lngs = d.monitored_locations.map(l => l.longitude);
       const lats = d.monitored_locations.map(l => l.latitude);
@@ -613,12 +698,48 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
 
   const resetView = () => {
     setSelectedDistrict(null);
+    setSelectedState('ALL');
     mlRef.current?.fitBounds(NE_BOUNDS, { padding: 24, maxZoom: 7, duration: 700 });
   };
+
+  const flyToState = (state: string) => {
+    if (state === 'ALL') {
+      resetView();
+      return;
+    }
+    const map = mlRef.current;
+    const features = boundaryFeatures.filter((feature: any) => feature.properties?.state === state);
+    if (!map || features.length === 0) return;
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    const visit = (coordinates: any): void => {
+      if (!Array.isArray(coordinates)) return;
+      if (typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+        minLng = Math.min(minLng, coordinates[0]); maxLng = Math.max(maxLng, coordinates[0]);
+        minLat = Math.min(minLat, coordinates[1]); maxLat = Math.max(maxLat, coordinates[1]);
+        return;
+      }
+      coordinates.forEach(visit);
+    };
+    features.forEach((feature: any) => visit(feature.geometry?.coordinates));
+    if ([minLng, minLat, maxLng, maxLat].every(Number.isFinite)) {
+      setSelectedDistrict(null);
+      setSelectedState(state);
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 72, maxZoom: 8, duration: 700 });
+    }
+  };
+
+  const displayedRiskPalette = layers.landslideRisk ? LANDSLIDE_COLORS : FLOOD_COLORS;
 
   const goFullscreen = () => {
     if (!document.fullscreenElement) mapContainer.current?.closest('.mapboard-shell')?.requestFullscreen?.();
     else document.exitFullscreen?.();
+  };
+
+  const toggleScene = () => {
+    if (!scenePlaying) {
+      setLayers(current => ({ ...current, rainfall: true, landslideRisk: true, floodRisk: false, boundaries: true }));
+    }
+    setScenePlaying(current => !current);
   };
 
   const sortedForPanel = useMemo(() => {
@@ -633,6 +754,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [hazardFilter, setHazardFilter] = useState<'ALL' | 'FLOOD' | 'LANDSLIDE'>('ALL');
   const [severityMin, setSeverityMin] = useState(0);
   const [freshFilter, setFreshFilter] = useState('ALL');
+  const [districtTableOpen, setDistrictTableOpen] = useState(false);
 
   const tableRows = useMemo(() => {
     if (!summaries) return [];
@@ -656,20 +778,20 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   }, [summaries, stateFilter, hazardFilter, severityMin, freshFilter]);
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-2">
       {/* ---- MapBoard shell (fullscreen target) ---- */}
-      <div className="mapboard-shell bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+      <div className="mapboard-shell flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         {/* A. Top header */}
-        <div className="flex flex-col md:flex-row md:items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-900 text-white">
+        <div className="mapboard-header flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-900 text-white">
           <div className="flex items-center gap-2">
             <Compass className="w-5 h-5 text-sky-400" />
-            <span className="font-black tracking-wide text-sm">NE-SAFE · Disaster Map Board</span>
+            <span className="font-black tracking-wide text-sm whitespace-nowrap">NE-SAFE · Disaster Map Board</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-300">
             <Clock className="w-3.5 h-3.5" />
             <span className="tabular-nums">{clock}</span>
           </div>
-          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusPill.tone === 'ok' ? 'bg-emerald-500/20 text-emerald-300' : statusPill.tone === 'warn' ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/30 text-red-200'}`}>
+          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${statusPill.tone === 'ok' ? 'bg-emerald-500/20 text-emerald-300' : statusPill.tone === 'warn' ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/30 text-red-200'}`}>
             <Database className="w-3 h-3 inline mr-1" />{statusPill.label}
           </div>
           {summaries && (
@@ -677,7 +799,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               generated {new Date(summaries.generated_at).toLocaleTimeString()} · {dataMode}
             </div>
           )}
-          <div className="md:ml-auto flex items-center gap-2">
+          <div className="md:ml-auto flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
               <input
@@ -698,17 +820,33 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                 </div>
               )}
             </div>
-            <button onClick={resetView} className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-bold rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700">
+            <label className="sr-only" htmlFor="map-state-select">Focus map on a state</label>
+            <select id="map-state-select" value={selectedState} onChange={e => flyToState(e.target.value)}
+              className="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500">
+              <option value="ALL">All 8 states</option>
+              {stateNames.map(state => <option key={state} value={state}>{state}</option>)}
+            </select>
+            <button onClick={resetView} className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700">
               <MapPin className="w-3.5 h-3.5" /> View all NE India
             </button>
             <button onClick={goFullscreen} className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700" title="Fullscreen">
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
+            <button onClick={toggleScene} aria-pressed={scenePlaying}
+              className={`flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg border transition ${scenePlaying ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+              title="Animate rainfall stations and landslide district outlines">
+              {scenePlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{scenePlaying ? 'Pause scene' : 'Play scene'}</span>
+              <span className="sm:hidden">{scenePlaying ? 'Pause' : 'Play'}</span>
+            </button>
+            <button onClick={() => setDistrictTableOpen(open => !open)} className="px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700" aria-expanded={districtTableOpen}>
+              {districtTableOpen ? 'Hide table' : 'District table'}
+            </button>
           </div>
         </div>
 
         {/* Main area: left layer panel / map / right district panel */}
-        <div className="relative" style={{ height: '72vh', minHeight: 560 }}>
+        <div className="relative flex-1 min-h-0">
           <div ref={mapContainer} className="absolute inset-0" />
           {!ready && (
             <div className="absolute inset-0 z-[350] flex items-center justify-center bg-slate-100/70 text-sm font-bold text-slate-500">
@@ -727,8 +865,24 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </div>
           )}
 
+          {compactMap && (
+            <div className="absolute top-3 left-3 z-[450] flex gap-1.5 rounded-lg bg-white/95 p-1 shadow-md border border-slate-200 sm:hidden">
+              {([
+                ['layers', 'Layers', Layers],
+                ['district', 'District', Info],
+                ['legend', 'Legend', Compass]
+              ] as const).map(([panel, label, Icon]) => (
+                <button key={panel} onClick={() => setMobileMapPanel(current => current === panel ? null : panel)}
+                  aria-pressed={mobileMapPanel === panel}
+                  className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold ${mobileMapPanel === panel ? 'bg-teal-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
+                  <Icon className="h-3.5 w-3.5" />{label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* B. Left layer panel */}
-          <div className="absolute top-3 left-3 z-[400] w-72 max-h-[85%] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200">
+          {(!compactMap || mobileMapPanel === 'layers') && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 overflow-auto ${compactMap ? 'top-12 left-3 right-3 max-h-[72%]' : 'top-3 left-3 w-72 max-h-[85%]'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900"><Layers className="w-4 h-4" /> Layers</span>
               <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-blue-600 hover:underline">Reset</button>
@@ -765,8 +919,13 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                 <div className="text-[10px] font-black uppercase tracking-wide text-slate-400 mb-1">{g.group}</div>
                 {g.items.map(item => (
                   <label key={item.key} className="flex items-center gap-2 py-1 text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                    <input type="checkbox" checked={layers[item.key]}
-                      onChange={() => setLayers(prev => ({ ...prev, [item.key]: !prev[item.key] }))} />
+                    <input type="checkbox" checked={layers[item.key]} aria-label={item.label}
+                      onChange={() => setLayers(prev => {
+                        const enabled = !prev[item.key];
+                        if (item.key === 'floodRisk') return { ...prev, floodRisk: enabled, landslideRisk: enabled ? false : prev.landslideRisk };
+                        if (item.key === 'landslideRisk') return { ...prev, landslideRisk: enabled, floodRisk: enabled ? false : prev.floodRisk };
+                        return { ...prev, [item.key]: enabled };
+                      })} />
                     <item.icon className={`w-3.5 h-3.5 ${layers[item.key] ? 'text-' + item.color.slice(3) : 'text-slate-300'}`} />
                     {item.label}
                   </label>
@@ -789,10 +948,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             <div className="px-3 py-2 border-t border-slate-100 text-[10px] text-slate-500">
               Boundaries: geohacker/india (public) · EPSG:4326 · 78 NE districts. Aliases (documented): Kamrupa Metropolitan→'Kamrup', Imphal East→'East Imphal', Imphal West→'West Imphal'. Unmatched districts are UNKNOWN, never shaded.
             </div>
-          </div>
+          </div>}
 
           {/* D. Right district panel */}
-          <div className="absolute top-3 right-3 z-[400] w-80 max-h-[88%] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200">
+          {(!compactMap || mobileMapPanel === 'district') && <div className={`absolute z-[400] overflow-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 ${compactMap ? 'top-12 left-3 right-3 max-h-[72%]' : 'top-3 right-3 w-80 max-h-[88%]'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
               <span className="text-xs font-bold text-slate-900">District inspector</span>
               <button onClick={() => setPanelOpen(p => !p)} className="text-[10px] font-bold text-blue-600">{panelOpen ? 'Hide list' : 'Show list'}</button>
@@ -939,18 +1098,18 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                 </div>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* B/E. Bottom legend */}
-          <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700">
+          {(!compactMap || mobileMapPanel === 'legend') && <div className={`absolute z-[400] bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700 ${compactMap ? 'bottom-3 left-3 right-3 max-h-[48%] overflow-auto' : 'bottom-3 left-3'}`}>
             <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Legend</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.CRITICAL }} /> Critical (red)</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.HIGH }} /> High (orange)</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.MODERATE }} /> Moderate (yellow)</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.LOW }} /> Low (green)</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.CRITICAL }} /> Critical</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.HIGH }} /> High</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.MODERATE }} /> Moderate</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.LOW }} /> Low</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.UNKNOWN }} /> Unknown / no data (gray)</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#0284c7', opacity: .6 }} /> Rainfall circle (size ∝ mm) {layers.rainfall ? '' : '(off)'}</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#087e9b' }} /> Rain gauge label · amber = demo/unverified {layers.rainfall ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#16a34a' }} /> Verified shelter {layers.shelters ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#0d9488' }} /> Verified incident · amber = unverified</div>
               <div><span className="inline-block w-3 h-3 my-0.5 align-middle" style={{ height: 3, width: 14, background: '#111827' }} /> Official IMD warning outline</div>
@@ -959,19 +1118,19 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             <div className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1">
               Risk polygons = PROTOTYPE model {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : ''} · official layers = verbatim IMD station data · NOT certified warnings.
             </div>
-          </div>
+          </div>}
 
           {/* F. honest current-conditions strip */}
           {summaries && (
-            <div className="absolute bottom-3 right-16 z-[400] bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-slate-200 px-3 py-1.5 text-[10px] text-slate-600">
-              <b>Current conditions view</b> · latest stored observations (no artificial history/if timeline: single snapshot) · timezone: IST display via browser locale
+            <div className="absolute bottom-3 right-16 z-[400] hidden sm:block bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-slate-200 px-3 py-1.5 text-[10px] text-slate-600">
+              <b>Current conditions</b> · latest stored observations, shown in browser local time
             </div>
           )}
         </div>
       </div>
 
-      {/* ---- District summary table ---- */}
-      <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+      {/* ---- Optional district summary table; closed initially to keep the map in one screen ---- */}
+      {districtTableOpen && <div className="max-h-[34vh] flex-shrink-0 overflow-auto bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <h3 className="text-sm font-bold text-slate-900 mr-2">District summary — affected-area analysis</h3>
           <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}
@@ -1044,7 +1203,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
     </div>
   );
 };

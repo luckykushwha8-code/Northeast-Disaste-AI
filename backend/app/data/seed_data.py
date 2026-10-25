@@ -461,22 +461,22 @@ def seed_database(db: Session):
     # 8B. Historical validation cases for the engine validation harness
     seed_historical_validation_cases(db)
 
-    # 7. Initial Observations across the region (idempotent: skip if a fresh reading exists)
+    # 7. Synthetic demo observations. These must never be presented as agency telemetry.
     initial_observations = [
         # Brahmaputra at Pandu
-        Observation(source_id="src_cwc_brahmaputra", location_id="loc_pandu_ghat", observed_at=now, variable="river_level_m", value=49.10, unit="m", quality_status="VALID", provenance="CWC Telemetry Gauge #022-MBAPU", simulation_flag=False),
-        Observation(source_id="src_cwc_brahmaputra", location_id="loc_pandu_ghat", observed_at=now, variable="river_rate_m_hr", value=0.08, unit="m/hr", quality_status="VALID", provenance="CWC Telemetry rate-of-rise compute", simulation_flag=False),
+        Observation(source_id="src_cwc_brahmaputra", location_id="loc_pandu_ghat", observed_at=now, variable="river_level_m", value=49.10, unit="m", quality_status="VALID", provenance="SYNTHETIC DEMO — not a CWC gauge reading", simulation_flag=True),
+        Observation(source_id="src_cwc_brahmaputra", location_id="loc_pandu_ghat", observed_at=now, variable="river_rate_m_hr", value=0.08, unit="m/hr", quality_status="VALID", provenance="SYNTHETIC DEMO — not a CWC rate-of-rise reading", simulation_flag=True),
         # IMD Borjhar Met / Guwahati Slopes
-        Observation(source_id="src_imd_api", location_id="loc_kharghuli_hills", observed_at=now, variable="rainfall_24h_mm", value=68.5, unit="mm", quality_status="VALID", provenance="IMD AWS Borjhar Guwahati", simulation_flag=False),
-        Observation(source_id="src_imd_api", location_id="loc_narakasur_hills", observed_at=now, variable="rainfall_24h_mm", value=74.2, unit="mm", quality_status="VALID", provenance="IMD AWS Borjhar Guwahati", simulation_flag=False),
+        Observation(source_id="src_imd_api", location_id="loc_kharghuli_hills", observed_at=now, variable="rainfall_24h_mm", value=68.5, unit="mm", quality_status="VALID", provenance="SYNTHETIC DEMO — not an IMD rainfall observation", simulation_flag=True),
+        Observation(source_id="src_imd_api", location_id="loc_narakasur_hills", observed_at=now, variable="rainfall_24h_mm", value=74.2, unit="mm", quality_status="VALID", provenance="SYNTHETIC DEMO — not an IMD rainfall observation", simulation_flag=True),
         # Cachar / Barak
-        Observation(source_id="src_cwc_brahmaputra", location_id="loc_cachar_silchar", observed_at=now, variable="river_level_m", value=19.45, unit="m", quality_status="VALID", provenance="CWC Barak Basin Telemetry", simulation_flag=False),
+        Observation(source_id="src_cwc_brahmaputra", location_id="loc_cachar_silchar", observed_at=now, variable="river_level_m", value=19.45, unit="m", quality_status="VALID", provenance="SYNTHETIC DEMO — not a CWC gauge reading", simulation_flag=True),
         # Sohra / Cherrapunji extreme rain
-        Observation(source_id="src_imd_api", location_id="loc_cherrapunji_sohra", observed_at=now, variable="rainfall_24h_mm", value=142.0, unit="mm", quality_status="VALID", provenance="IMD Sohra High-Altitude AWS", simulation_flag=False),
+        Observation(source_id="src_imd_api", location_id="loc_cherrapunji_sohra", observed_at=now, variable="rainfall_24h_mm", value=142.0, unit="mm", quality_status="VALID", provenance="SYNTHETIC DEMO — not an IMD rainfall observation", simulation_flag=True),
         # Teesta / Mangan
-        Observation(source_id="src_cwc_brahmaputra", location_id="loc_teesta_mangan", observed_at=now, variable="river_level_m", value=862.4, unit="m", quality_status="VALID", provenance="CWC Teesta Basin Gauge", simulation_flag=False),
+        Observation(source_id="src_cwc_brahmaputra", location_id="loc_teesta_mangan", observed_at=now, variable="river_level_m", value=862.4, unit="m", quality_status="VALID", provenance="SYNTHETIC DEMO — not a CWC gauge reading", simulation_flag=True),
         # Aizawl Slopes
-        Observation(source_id="src_imd_api", location_id="loc_aizawl_slopes", observed_at=now, variable="rainfall_24h_mm", value=82.0, unit="mm", quality_status="VALID", provenance="IMD Aizawl Met Station", simulation_flag=False)
+        Observation(source_id="src_imd_api", location_id="loc_aizawl_slopes", observed_at=now, variable="rainfall_24h_mm", value=82.0, unit="mm", quality_status="VALID", provenance="SYNTHETIC DEMO — not an IMD rainfall observation", simulation_flag=True)
     ]
     pairs = {(o.location_id, o.variable) for o in db.query(Observation).filter(
         Observation.observed_at >= now - datetime.timedelta(hours=6)
@@ -484,5 +484,17 @@ def seed_database(db: Session):
     for o in initial_observations:
         if (o.location_id, o.variable) not in pairs:
             db.add(o)
+        else:
+            # Correct legacy copies of these hardcoded demo readings that older
+            # versions incorrectly stored as live. Do not touch other readings.
+            existing = db.query(Observation).filter(
+                Observation.location_id == o.location_id,
+                Observation.variable == o.variable,
+                Observation.value == o.value,
+                Observation.simulation_flag == False,
+            ).all()
+            for record in existing:
+                record.simulation_flag = True
+                record.provenance = o.provenance
 
     db.commit()

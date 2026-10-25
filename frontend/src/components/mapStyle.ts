@@ -95,8 +95,10 @@ export const buildBaseStyle = ({ base }: BaseStyleOptions): any => {
   };
 };
 
-/** Returns the default base map: MapTiler Streets when key is available, OSM as safe fallback. */
-export const defaultBaseProvider = (): BaseMapProvider => (hasMapTilerKey() ? 'MAPTILER_STREETS' : 'OSM');
+// Terrain-first styling makes the region's river corridors and steep relief
+// legible at the overview scale used by this hazard map.
+/** Returns the terrain-focused MapTiler base when configured, otherwise OSM. */
+export const defaultBaseProvider = (): BaseMapProvider => (hasMapTilerKey() ? 'MAPTILER_TOPO' : 'OSM');
 
 /** Human-friendly label for the basemap selector. */
 export const baseProviderLabel = (p: BaseMapProvider): string => ({
@@ -129,7 +131,7 @@ export interface DistrictSummary {
   river_level_all_locations: { value: number; unit: string; observed_at: string; age_hours: number; location: string }[];
   flood_risk: { risk_category: string; probability: number | null; confidence: number | null; uncertainty: string; model: string; engine?: string; reason?: string };
   flood_explanations: string[];
-  rainfall_24h_all_locations?: { value: number | null; unit: string; observed_at: string; age_hours: number; location: string; location_id: string }[];
+  rainfall_24h_all_locations?: { value: number | null; unit: string; observed_at: string; age_hours: number; location: string; location_id: string; provenance?: string | null; source_id?: string | null; simulation_flag?: boolean; quality_status?: string }[];
   landslide_risk: { risk_category: string; probability: number | null; confidence: number | null; uncertainty: string; model: string; engine?: string; reason?: string };
   landslide_explanations: string[];
   official_warnings: {

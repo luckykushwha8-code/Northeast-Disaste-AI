@@ -1,10 +1,16 @@
-# NE-SAFE AI — Open Questions & Fallback Registrations
+# Remaining questions and integration blockers
 
-This document tracks unresolved upstream dependencies, external credentials, or domain limitations, paired with their explicit, honest UI fallbacks.
+These are verified project limitations, not product promises. Recheck provider and configuration status whenever deploying.
 
-| # | Topic / Service | Upstream Status | Documented Fallback in UI |
-|---|---|---|---|
-| 1 | **Official IMD REST API Key (`IMD_API_KEY`)** | Requires formal institutional authorization from IMD/MoES. When key is empty, endpoints return HTTP 401/403. | Card shows `"Key not configured, using baseline fallback"` for operators with configuration instructions; citizen views display `"Official IMD district data unavailable"` without inventing rainfall. |
-| 2 | **GSI Bhusanket Landslide Susceptibility API** | Portal is JavaScript client-rendered without a public REST data API. | Reference susceptibility values from published Geological Survey of India reports with explicit provenance metadata (`BASELINE_REFERENCE`). |
-| 3 | **Automatic Public Alert Emails (`PUBLIC_ALERTS_ENABLED`)** | Kept disabled (`false`) during prototyping and evaluation to avoid accidental dispatches. | UI displays persistent banner: `"Public alert emails are OFF while data and model are being validated."` Deliveries logged honestly as `BLOCKED_DISABLED`. |
-| 4 | **Offline Connectivity in Remote Flood Zones** | Remote areas frequently lose cellular network connectivity during monsoons. | PWA Service Worker caching app shell, last-good telemetry (badged `CACHED`), emergency numbers, and queueing offline rescue requests in IndexedDB/localStorage with `"Not sent yet, will retry"` status. |
+| Topic | Current evidence | Required to complete |
+|---|---|---|
+| IMD observations and official warnings | Local IMD API key is absent; running source status reported IMD failed | Authorized credentials, documented request/auth verification, and successful source-level validation |
+| CWC station telemetry | Source reported operational, but the running API process served older records without the current provenance contract | Restart from current code; verify station identity, timestamp, units, quality, freshness and source references per record |
+| GSI susceptibility | GSI source status was operational, but a live status does not prove the map's susceptibility layer is official live data | Establish the precise dataset, license, spatial resolution, retrieval date, and attribution; keep reference baseline visibly distinct |
+| Rainfall and forecasts | App supports external weather services; no claim of verified coverage for every district is made | Validate observation vs forecast, location matching, update cadence and source attribution; show unknown where coverage is absent |
+| Email notifications | SMTP settings are blank and `PUBLIC_ALERTS_ENABLED` defaults false | Configure a provider, verify sender/domain and official recipient list, then conduct an authorized end-to-end receipt test |
+| Authority contacts | No verified district contacts configured | Obtain and periodically verify official contact details through the responsible authority |
+| Emergency dispatch | Rescue request tracking does not connect to a government dispatch system | Formal integration and service agreement; until then display call links and accurately state that requests are not dispatched automatically |
+| Authentication | Role headers/UI role selection are not identity verification | Add production authentication, server-side permissions, session protection, and operator provisioning |
+| Backend tests | `pytest` unavailable in the current runtimes | Install `backend/requirements.txt` in a supported Python environment, then run the documented suite |
+| Offline support | An offline banner exists; no verified service-worker cache or durable offline request queue was found in this audit | Implement and test only if offline submission is required; clearly mark queued items as unsent |

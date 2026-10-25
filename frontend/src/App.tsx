@@ -1,286 +1,333 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { Navbar } from './components/Navbar';
-import { KPISummary } from './components/KPISummary';
-import { DemoController } from './components/DemoController';
-import { AlertQueue } from './components/AlertQueue';
-import { ResidentPortal } from './components/ResidentPortal';
-import { IncidentReporting } from './components/IncidentReporting';
-import { SystemHealth } from './components/SystemHealth';
-import { ModelEvaluation } from './components/ModelEvaluation';
-import { LiveNewsFeed } from './components/LiveNewsFeed';
-
-// Heavy components (MapLibre GL + Recharts) are code-split out of the main bundle
-const MapView = lazy(() => import('./components/MapView').then(m => ({ default: m.MapView })));
-const MapBoard = lazy(() => import('./components/MapBoard').then(m => ({ default: m.MapBoard })));
-const LocationDetailModal = lazy(() => import('./components/LocationDetailModal').then(m => ({ default: m.LocationDetailModal })));
-const AnalyticsCharts = lazy(() => import('./components/AnalyticsCharts'));
-
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import {
-  LocationItem, PredictionItem, AlertItem, ShelterItem,
-  IncidentReportItem, DataSourceItem, UserRole, Language
-} from './types';
+  LayoutDashboard, Map, Bell, LifeBuoy, BarChart2, FlaskConical,
+  FileText, Mail, Activity, ChevronLeft, ChevronRight, Moon, Sun,
+  Globe, AlignJustify, Lock
+} from 'lucide-react';
+
+import { RoleBadge } from './components/ui/RoleBadge';
+import { OfflineBanner } from './components/ui/OfflineBanner';
+import { ToastProvider } from './components/ui/Toast';
 import { api } from './api/client';
+import type { UserRole, Language, AlertItem, PredictionItem } from './types';
 import { translations } from './locales/translations';
 
-export const App: React.FC = () => {
-  const initialTab = new URLSearchParams(window.location.search).get('tab') || 'dashboard';
-  const [currentTab, setCurrentTab] = useState<string>(initialTab);
+// Lazy-load pages
+import { lazy, Suspense } from 'react';
+const Dashboard = lazy(() => import('./features/dashboard/Dashboard'));
+const AlertQueuePage = lazy(() => import('./components/AlertQueue').then(m => ({ default: m.AlertQueue })));
+const RescuePage = lazy(() => import('./features/rescue/RescuePage'));
+const AnalyticsPage = lazy(() => import('./features/analytics/Analytics'));
+const ModelsPage = lazy(() => import('./features/models/ModelsPage'));
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage'));
+const SubscriptionsPage = lazy(() => import('./features/subscriptions/SubscriptionsPage'));
+const SystemHealthPage = lazy(() => import('./components/SystemHealth').then(m => ({ default: m.SystemHealth })));
+const ComponentShowcase = lazy(() => import('./features/showcase/ComponentShowcase'));
+const MapBoardPage = lazy(() => import('./components/MapBoard').then(m => ({ default: m.MapBoard })));
+
+type NavItem = {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+  roles?: UserRole[];
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/map', label: 'District Map', icon: Map },
+  { path: '/alerts', label: 'Alert Queue', icon: Bell, roles: ['OPERATOR', 'ANALYST', 'ADMIN', 'RESPONDER'] },
+  { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
+  { path: '/analytics', label: 'Analytics', icon: BarChart2, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
+  { path: '/models', label: 'Models', icon: FlaskConical, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
+  { path: '/reports', label: 'Reports', icon: FileText, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
+  { path: '/subscriptions', label: 'Subscriptions', icon: Mail },
+  { path: '/system', label: 'System Health', icon: Activity, roles: ['OPERATOR', 'ADMIN'] },
+];
+
+const MOBILE_NAV: NavItem[] = [
+  { path: '/', label: 'Map', icon: LayoutDashboard },
+  { path: '/map', label: 'Map', icon: Map },
+  { path: '/alerts', label: 'Alerts', icon: Bell },
+  { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
+  { path: '/subscriptions', label: 'Subscribe', icon: Mail },
+];
+
+const LANGUAGES: { code: Language; label: string }[] = [
+  { code: 'en', label: 'EN' },
+  { code: 'as', label: 'অস' },
+  { code: 'bn', label: 'বাং' },
+  { code: 'hi', label: 'हिं' },
+];
+
+const ROLES: UserRole[] = ['RESIDENT', 'RESPONDER', 'OPERATOR', 'ANALYST', 'ADMIN'];
+
+function canAccess(role: UserRole, item: NavItem): boolean {
+  if (!item.roles) return true;
+  return item.roles.includes(role);
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-64 text-slate-400 text-sm animate-pulse">
+      Loading…
+    </div>
+  );
+}
+
+function LockedPage({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+        <Lock className="w-7 h-7 text-slate-400" />
+      </div>
+      <div>
+        <h2 className="text-base font-bold text-slate-700">{label}</h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Access to this page requires a higher role. Contact your administrator.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AppShell() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('OPERATOR');
   const [lang, setLang] = useState<Language>('en');
-
-  // Application Data States
-  const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [shelters, setShelters] = useState<ShelterItem[]>([]);
-  const [reports, setReports] = useState<IncidentReportItem[]>([]);
-  const [dataSources, setDataSources] = useState<DataSourceItem[]>([]);
-
-  const [selectedLocation, setSelectedLocation] = useState<LocationItem | null>(null);
-  const [shelterStateFilter, setShelterStateFilter] = useState<string>('ALL');
+  const [predictions, setPredictions] = useState<PredictionItem[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [shelters, setShelters] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const location = useLocation();
 
   const t = translations[lang] || translations.en;
 
-  const loadAllData = async () => {
-    try {
-      const [locs, preds, alts, shels, reps, sources] = await Promise.all([
-        api.getLocations(),
-        api.getPredictions(),
-        api.getAlerts(),
-        api.getShelters(),
-        api.getReports(),
-        api.getDataStatus()
-      ]);
-      setLocations(locs);
-      setPredictions(preds);
-      setAlerts(alts);
-      setShelters(shels);
-      setReports(reps);
-      setDataSources(sources);
-    } catch (e) {
-      console.error("Failed to load initial data", e);
-    }
-  };
-
+  // Load app data
   useEffect(() => {
-    loadAllData();
+    api.getAlerts().then(setAlerts).catch(() => {});
+    api.getPredictions().then(setPredictions).catch(() => {});
+    api.getLocations().then(setLocations).catch(() => {});
+    api.getShelters().then(setShelters).catch(() => {});
+    api.getReports().then(setReports).catch(() => {});
   }, []);
 
+
+  // Dark mode
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
   const isSimulationActive = alerts.some(a => a.simulation_flag) || predictions.some(p => p.simulation_flag);
+  const proposedCount = alerts.filter(a => a.lifecycle_status === 'PROPOSED').length;
+  const activeCount = alerts.filter(a => a.lifecycle_status === 'ISSUED').length;
+  const bellCount = proposedCount + activeCount;
+
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
-      {/* Navigation Header */}
-      <Navbar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        userRole={userRole}
-        setUserRole={setUserRole}
-        lang={lang}
-        setLang={setLang}
-        isSimulationActive={isSimulationActive}
-        alertCount={alerts.filter(a => a.lifecycle_status === 'PROPOSED' || a.lifecycle_status === 'ISSUED').length}
-        onRefresh={loadAllData}
-      />
+    <div className={`h-dvh min-h-0 overflow-hidden flex flex-col font-sans ${darkMode ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <OfflineBanner />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        {/* SIH 5-Minute Demonstration Controller (Accessible across tabs) */}
-        <DemoController lang={lang} onScenarioLoaded={loadAllData} />
-
-        {/* Tab 0: Interactive Disaster Map Board (map-first interface) */}
-        {currentTab === 'mapboard' && (
-          <Suspense fallback={
-            <div className="bg-white rounded-xl p-8 border border-slate-200 text-center text-slate-500 font-medium shadow-sm">
-              Loading Northeast India Map Board…
-            </div>
-          }>
-            <MapBoard
-              locations={locations}
-              alerts={alerts}
-              shelters={shelters}
-              reports={reports}
-            />
-          </Suspense>
-        )}
-
-        {/* Tab 1: Situational Map & Dashboard */}
-        {currentTab === 'dashboard' && (
-          <div className="space-y-4">
-            <KPISummary
-              alerts={alerts}
-              predictions={predictions}
-              dataSources={dataSources}
-              lang={lang}
-              onFilterHazard={(hazard) => {
-                if (hazard === 'OFFICIAL') setCurrentTab('alerts');
-              }}
-            />
-
-            <Suspense fallback={null}><MapView
-              locations={locations}
-              predictions={predictions}
-              alerts={alerts}
-              shelters={shelters}
-              reports={reports}
-              lang={lang}
-              onSelectLocation={(loc) => setSelectedLocation(loc)}
-              />
-              </Suspense>
-
-             <LiveNewsFeed />
+      {/* Sticky Top Header */}
+      <header className={`sticky top-0 z-50 h-14 flex items-center justify-between px-2 sm:px-4 gap-1 sm:gap-3 border-b shadow-sm ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        {/* Logo + hamburger */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-slate-100 transition hidden md:flex"
+            aria-label="Toggle sidebar"
+          >
+            <AlignJustify className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-teal-700 flex items-center justify-center text-white font-black text-xs">NE</div>
+            <span className="font-black text-teal-700 text-sm hidden sm:inline">NE-SAFE AI</span>
+            {isSimulationActive && <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold text-amber-800"><span className="sm:hidden">Demo</span><span className="hidden sm:inline">Demo records present</span></span>}
           </div>
-        )}
-
-        {/* Tab 2: Resident Portal */}
-        {currentTab === 'resident' && (
-          <ResidentPortal
-            locations={locations}
-            alerts={alerts}
-            shelters={shelters}
-           lang={lang}
-         />
-         )}
-
-
-        {/* Tab 3: Alert & Early Warning Queue */}
-        {currentTab === 'alerts' && (
-          <AlertQueue
-            alerts={alerts}
-            predictions={predictions}
-            userRole={userRole}
-            lang={lang}
-            onRefresh={loadAllData}
-          />
-        )}
-
-        {/* Tab 4: Community Incident Reports */}
-        {currentTab === 'incidents' && (
-          <IncidentReporting
-            reports={reports}
-            userRole={userRole}
-            lang={lang}
-            onRefresh={loadAllData}
-          />
-        )}
-
-        {/* Tab 5: Verified Shelters */}
-        {currentTab === 'shelters' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Verified Emergency Relief Shelters Directory</h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  PRD FR-USER-07: All shelter coordinates, capacities, operational statuses, and accessibility accommodations are verified by State & District Disaster Authorities (SDMA / DDMA) across Northeast India.
-                </p>
-              </div>
-
-              {/* State Filter for Shelters */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-xs font-semibold text-slate-600">Filter State:</span>
-                <select
-                  value={shelterStateFilter}
-                  onChange={(e) => setShelterStateFilter(e.target.value)}
-                  className="text-xs font-bold px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ALL">All Northeast States (NER)</option>
-                  <option value="Assam">Assam</option>
-                  <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                  <option value="Meghalaya">Meghalaya</option>
-                  <option value="Manipur">Manipur</option>
-                  <option value="Mizoram">Mizoram</option>
-                  <option value="Nagaland">Nagaland</option>
-                  <option value="Tripura">Tripura</option>
-                  <option value="Sikkim">Sikkim</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {shelters
-                .filter(shelter => {
-                  if (shelterStateFilter === 'ALL') return true;
-                  const st = shelterStateFilter.toLowerCase();
-                  return shelter.location_name.toLowerCase().includes(st) || shelter.verified_by.toLowerCase().includes(st);
-                })
-                .map((shelter) => (
-                  <div key={shelter.id} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-2">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-xs font-bold text-slate-900">{shelter.name}</h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        {shelter.operational_status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600">{shelter.location_name}</p>
-                    <div className="text-xs text-slate-600 space-y-1 pt-1 border-t border-slate-100">
-                      <div className="flex justify-between">
-                        <span>Verified Capacity:</span>
-                        <span className="font-bold text-slate-800">{shelter.capacity} persons</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Accessibility:</span>
-                        <span className="text-blue-700 font-medium">{shelter.accessibility_info}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Verified by:</span>
-                        <span className="text-slate-700 font-medium">{shelter.verified_by}</span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-slate-500 pt-1">
-                        <span>Contact:</span>
-                        <span>{shelter.contact_phone}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 6: Analytics & Situation Dashboards */}
-        {currentTab === 'analytics' && (
-          <Suspense fallback={<div className="analytics-empty">Loading analytics…</div>}>
-            <AnalyticsCharts />
-          </Suspense>
-        )}
-
-        {/* Tab 7: System Health & Audit Trail */}
-        {currentTab === 'health' && (
-          <SystemHealth dataSources={dataSources} onRefresh={loadAllData} />
-        )}
-
-        {/* Tab 8: AI Model Evaluation */}
-        {currentTab === 'models' && (
-          <ModelEvaluation />
-        )}
-      </main>
-
-      {/* Location Details Modal */}
-      {selectedLocation && (
-        <Suspense fallback={null}><LocationDetailModal
-          location={selectedLocation}
-          onClose={() => setSelectedLocation(null)}
-          lang={lang}
-        />
-        </Suspense>
-      )}
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 space-y-1">
-            <p className="font-semibold text-slate-700">
-              NE-SAFE AI — AI-Powered Disaster Risk Monitoring & Early Warning Platform (SIH Prototype v1.0)
-            </p>
-          <p>
-            Study Area: Northeast India (NER — All 8 States). Compliant with CWC, IMD, GSI & ISRO Bhuvan Guidelines.
-          </p>
-          <p className="text-[11px] text-slate-400">
-            {t.disclaimerSafety}
-          </p>
         </div>
-      </footer>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Role selector */}
+          <select
+            value={userRole}
+            onChange={e => setUserRole(e.target.value as UserRole)}
+            className={`text-xs font-semibold px-1 sm:px-2 py-1 rounded-lg border max-w-[5.5rem] sm:max-w-none ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-700'} focus:outline-none`}
+            aria-label="Select role"
+          >
+            {ROLES.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+
+          <span className="hidden sm:inline-flex"><RoleBadge role={userRole} /></span>
+
+          {/* Language */}
+          <select
+            value={lang}
+            onChange={e => setLang(e.target.value as Language)}
+            className={`text-xs px-1 sm:px-2 py-1 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-700'} focus:outline-none`}
+            aria-label="Language"
+          >
+            {LANGUAGES.map(l => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setDarkMode(d => !d)}
+            className={`p-1.5 rounded-lg transition ${darkMode ? 'text-yellow-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark (Night Ops) mode'}
+          >
+            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Bell */}
+          <button className="relative p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition" aria-label="Notifications">
+            <Bell className="w-4 h-4" />
+            {bellCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {bellCount > 99 ? '99+' : bellCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Body: Sidebar + Main */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left Sidebar (desktop) */}
+        <aside
+          className={`hidden md:flex flex-col border-r shadow-sm transition-all duration-200 flex-shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} ${collapsed ? 'w-16' : 'w-56'}`}
+        >
+          <nav className="flex-1 py-3 space-y-0.5">
+            {NAV_ITEMS.map(item => {
+              const Icon = item.icon;
+              const accessible = canAccess(userRole, item);
+              const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+
+              return (
+                <NavLink
+                  key={item.path}
+                  to={accessible ? item.path : '#'}
+                  onClick={e => !accessible && e.preventDefault()}
+                  className={({ isActive: navActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg text-sm font-medium transition ${
+                      (navActive || isActive)
+                        ? 'bg-teal-50 text-teal-700 font-semibold'
+                        : accessible
+                        ? (darkMode ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
+                        : 'text-slate-300 cursor-not-allowed opacity-60'
+                    }`
+                  }
+                  title={!accessible ? 'Insufficient role' : item.label}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && !accessible && <Lock className="w-3 h-3 ml-auto text-slate-400" />}
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          {/* Collapse toggle */}
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className={`m-2 p-2 rounded-lg flex items-center justify-center transition ${darkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-400 hover:bg-slate-100'}`}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
+        </aside>
+
+        {/* Main Content */}
+        <main className={`flex-1 min-h-0 p-4 md:p-6 ${location.pathname === '/map' ? 'overflow-hidden pb-16 md:pb-6' : 'overflow-y-auto'}`}>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Dashboard userRole={userRole} lang={lang} />} />
+              <Route path="/map" element={<MapBoardPage locations={locations} alerts={alerts} shelters={shelters} reports={reports} />} />
+              <Route
+                path="/alerts"
+                element={
+                  canAccess(userRole, NAV_ITEMS[2])
+                    ? <AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRefresh={() => api.getAlerts().then(setAlerts)} />
+                    : <LockedPage label="Alert Queue" />
+                }
+              />
+              <Route path="/rescue" element={<RescuePage userRole={userRole} />} />
+              <Route
+                path="/analytics"
+                element={
+                  canAccess(userRole, NAV_ITEMS[4])
+                    ? <AnalyticsPage />
+                    : <LockedPage label="Analytics" />
+                }
+              />
+              <Route
+                path="/models"
+                element={
+                  canAccess(userRole, NAV_ITEMS[5])
+                    ? <ModelsPage />
+                    : <LockedPage label="Models & Validation" />
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  canAccess(userRole, NAV_ITEMS[6])
+                    ? <ReportsPage />
+                    : <LockedPage label="Reports" />
+                }
+              />
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
+              <Route
+                path="/system"
+                element={
+                  canAccess(userRole, NAV_ITEMS[8])
+                    ? <SystemHealthPage dataSources={[]} onRefresh={() => {}} />
+                    : <LockedPage label="System Health" />
+                }
+              />
+              <Route path="/dev/components" element={<ComponentShowcase />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        {MOBILE_NAV.map(item => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={`flex-1 flex flex-col items-center justify-center py-2 text-[10px] font-medium transition ${
+                isActive ? 'text-teal-700' : (darkMode ? 'text-slate-400' : 'text-slate-500')
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
     </div>
   );
-};
+}
+
+export const App: React.FC = () => (
+  <BrowserRouter>
+    <ToastProvider>
+      <AppShell />
+    </ToastProvider>
+  </BrowserRouter>
+);
 
 export default App;
-

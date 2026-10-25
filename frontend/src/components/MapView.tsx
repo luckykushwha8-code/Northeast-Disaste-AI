@@ -54,11 +54,13 @@ export const MapView: React.FC<MapViewProps> = ({
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [baseMapProvider, setBaseMapProvider] = useState<BaseMapProvider>(() => defaultBaseProvider());
   const [styleVersion, setStyleVersion] = useState<number>(0);
+  const [mapMetric, setMapMetric] = useState<'ALL' | 'FLOOD' | 'LANDSLIDE' | 'RAINFALL'>('ALL');
   const [layers, setLayers] = useState({ risk: true, terrain: false, history: false, shelters: true, incidents: true, districts: true });
   const [riskData, setRiskData] = useState<GeoJSONFeatureCollection | null>(null);
   const [history, setHistory] = useState<HistoricalEventItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [boundaryData, setBoundaryData] = useState<GeoJSONFeatureCollection | null>(null);
+  const [districtSummaries, setDistrictSummaries] = useState<any[]>([]);
 
   const loadLiveLayers = async () => {
     try {
@@ -69,6 +71,11 @@ export const MapView: React.FC<MapViewProps> = ({
       if (asi.ok) {
         const geo = await asi.json();
         setRiskData(geo as GeoJSONFeatureCollection);
+      }
+      const distRes = await fetch(`${API_BASE}/map/districts`);
+      if (distRes.ok) {
+        const distData = await distRes.json();
+        setDistrictSummaries(distData.districts || []);
       }
       const he = await fetch(`${API_BASE}/data/historical-events`);
       if (he.ok) {
@@ -612,7 +619,7 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
         {lastUpdated && (
           <div className="text-[10px] text-slate-400 mt-1.5 border-t border-slate-100 pt-1">
-            Risk engine updated {new Date(lastUpdated).toLocaleTimeString()} • All thresholds CWC/GSI-validated
+            Assessment updated {new Date(lastUpdated).toLocaleTimeString()} • See source details for threshold provenance
           </div>
         )}
       </div>

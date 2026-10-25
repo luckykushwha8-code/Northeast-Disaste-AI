@@ -1,0 +1,148 @@
+/* ============================================================
+   NE-SAFE AI — Design System CSS Tokens (Part F)
+   Brand: Teal #0F766E, Navy #0B1F3A, Cyan #22D3EE
+   ============================================================ */
+
+:root {
+  /* ── Brand ─────────────────────────────────────────── */
+  --color-brand-teal:   #0F766E;
+  --color-brand-teal-light: #14B8A6;
+  --color-brand-teal-dark:  #0D6461;
+  --color-brand-navy:   #0B1F3A;
+  --color-brand-navy-light: #142E54;
+  --color-brand-cyan:   #22D3EE;
+  --color-brand-cyan-light: #67E8F9;
+
+  /* ── Severity ───────────────────────────────────────── */
+  --severity-low-bg:       #F0FDF4;
+  --severity-low-border:   #86EFAC;
+  --severity-low-text:     #15803D;
+  --severity-low-icon:     #22C55E;
+
+  --severity-moderate-bg:    #FFFBEB;
+  --severity-moderate-border: #FDE68A;
+  --severity-moderate-text:  #B45309;
+  --severity-moderate-icon:  #F59E0B;
+
+  --severity-high-bg:      #FFF7ED;
+  --severity-high-border:  #FDBA74;
+  --severity-high-text:    #C2410C;
+  --severity-high-icon:    #F97316;
+
+  --severity-critical-bg:    #FEF2F2;
+  --severity-critical-border: #FCA5A5;
+  --severity-critical-text:  #991B1B;
+  --severity-critical-icon:  #EF4444;
+
+  --severity-unavailable-bg:   #F8FAFC;
+  --severity-unavailable-border: #CBD5E1;
+  --severity-unavailable-text:  #64748B;
+  --severity-unavailable-icon:  #94A3B8;
+
+  /* ── Data Mode ──────────────────────────────────────── */
+  --mode-live:         #16A34A;
+  --mode-live-bg:      #F0FDF4;
+  --mode-live-text:    #14532D;
+
+  --mode-cached:       #2563EB;
+  --mode-cached-bg:    #EFF6FF;
+  --mode-cached-text:  #1E3A8A;
+
+  --mode-baseline:     #D97706;
+  --mode-baseline-bg:  #FFFBEB;
+  --mode-baseline-text:#78350F;
+
+  --mode-simulated:    #7C3AED;
+  --mode-simulated-bg: #F5F3FF;
+  --mode-simulated-text:#4C1D95;
+
+  --mode-unavailable:  #64748B;
+  --mode-unavailable-bg:#F8FAFC;
+  --mode-unavailable-text:#1E293B;
+
+  /* ── Freshness ──────────────────────────────────────── */
+  --fresh-color:       #16A34A;
+  --fresh-bg:          #DCFCE7;
+  --stale-color:       #D97706;
+  --stale-bg:          #FEF3C7;
+  --missing-color:     #DC2626;
+  --missing-bg:        #FEE2E2;
+
+  /* ── Neutrals ───────────────────────────────────────── */
+  --color-bg:          #F8FAFC;
+  --color-surface:     #FFFFFF;
+  --color-border:      #E2E8F0;
+  --color-text-primary:   #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #94A3B8;
+
+  /* ── Sidebar ────────────────────────────────────────── */
+  --sidebar-width:     240px;
+  --sidebar-collapsed: 64px;
+  --header-height:     56px;
+
+  /* ── Spacing ────────────────────────────────────────── */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ────────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* ── Typography ─────────────────────────────────────── */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Night Ops (Dark) Theme ─────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:          #0B1F3A;
+  --color-surface:     #112240;
+  --color-border:      #1E3A5F;
+  --color-text-primary:   #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted:     #475569;
+
+  --severity-low-bg:       #052e16;
+  --severity-low-text:     #86efac;
+  --severity-moderate-bg:  #3b1a01;
+  --severity-moderate-text:#fcd34d;
+  --severity-high-bg:      #3b1a01;
+  --severity-high-text:    #fdba74;
+  --severity-critical-bg:  #3b0000;
+  --severity-critical-text:#fca5a5;
+
+  --mode-live-bg:      #052e16;
+  --mode-live-text:    #86efac;
+  --mode-cached-bg:    #1e3a8a;
+  --mode-cached-text:  #bfdbfe;
+  --mode-baseline-bg:  #3b1a01;
+  --mode-baseline-text:#fcd34d;
+  --mode-simulated-bg: #2e1065;
+  --mode-simulated-text:#c4b5fd;
+  --mode-unavailable-bg: #1e293b;
+  --mode-unavailable-text:#cbd5e1;
+}
+
+/* ── Simulation Stripe Pattern ──────────────────────────── */
+.simulation-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    #7C3AED,
+    #7C3AED 10px,
+    #5B21B6 10px,
+    #5B21B6 20px
+  );
+}
+
+/* ── Badge Simulated ────────────────────────────────────── */
+.badge-simulated {
+  background: var(--mode-simulated-bg);
+  color: var(--mode-simulated-text);
+  border: 1px solid #8B5CF6;
+}
