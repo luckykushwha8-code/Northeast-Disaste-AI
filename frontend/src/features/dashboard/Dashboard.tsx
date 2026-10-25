@@ -165,26 +165,6 @@ export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: Dashbo
         </div>
       </div>
 
-      {/* Editorial Figures Strip */}
-      <div className="flex flex-wrap border-t-2 border-slate-900 border-b border-slate-200 py-3.5 mb-1 gap-y-3 bg-white px-4 rounded-lg">
-        <div className="pr-6 mr-6 min-w-[120px] border-r border-slate-200">
-          <b className="font-serif text-3xl sm:text-4xl font-medium text-red-600 block leading-none">{criticalAlerts.length}</b>
-          <span className="text-xs text-slate-500 font-medium">Critical</span>
-        </div>
-        <div className="pr-6 mr-6 min-w-[160px] border-r border-slate-200">
-          <b className="font-serif text-3xl sm:text-4xl font-medium text-amber-600 block leading-none">{proposedAlerts.length}</b>
-          <span className="text-xs text-slate-500 font-medium">Proposals awaiting review</span>
-        </div>
-        <div className="pr-6 mr-6 min-w-[180px] border-r border-slate-200">
-          <b className="font-serif text-3xl sm:text-4xl font-medium text-slate-900 block leading-none">{highPlusFloodAssessments.length}</b>
-          <span className="text-xs text-slate-500 font-medium">High+ flood assessments</span>
-        </div>
-        <div className="pr-6 min-w-[160px]">
-          <b className="font-serif text-3xl sm:text-4xl font-medium text-slate-900 block leading-none">{feedHealthLabel}</b>
-          <span className="text-xs text-slate-500 font-medium">Feeds operational</span>
-        </div>
-      </div>
-
       {/* KPI Cards Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
