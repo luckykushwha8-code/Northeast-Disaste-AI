@@ -1,7 +1,8 @@
 ﻿import datetime
 import json
 import logging
-from typing import Dict, Any, Optional
+import threading
+from typing import Any, Dict, Iterable, Optional
 
 import httpx
 from sqlalchemy.orm import Session
@@ -38,12 +39,19 @@ class OpenMeteoService:
     """
 
     CACHE_KEY_FMT = "open_meteo_{loc_id}"
+    FAILURE_KEY_FMT = "open_meteo_failure_{loc_id}"
     TTL_MINUTES = 30
+    FAILURE_COOLDOWN_MINUTES = 15
+
+    def __init__(self):
+        # Concurrent map requests share one upstream batch request.
+        self._fetch_lock = threading.Lock()
 
     def _get_cache(self, db, key):
         return db.query(LiveDataCache).filter(LiveDataCache.cache_key == key).first()
 
-    def _save_cache(self, db: Session, key: str, payload: Dict[str, Any], source_url: str):
+    def _save_cache(self, db: Session, key: str, payload: Dict[str, Any], source_url: str,
+                    *, commit: bool = True):
         # Deterministic upsert: purge ALL rows with this key first so stale or
         # duplicate entries from previous runs can never shadow fresh data.
         db.query(LiveDataCache).filter(LiveDataCache.cache_key == key).delete()
@@ -55,9 +63,10 @@ class OpenMeteoService:
             fetched_at=_now()
         )
         db.add(entry)
-        db.commit()
+        if commit:
+            db.commit()
 
-    def _mark_health(self, db: Session, succeeded: bool):
+    def _mark_health(self, db: Session, succeeded: bool, *, commit: bool = True):
         source = db.query(DataSource).filter(DataSource.id == "src_open_meteo").first()
         if not source:
             return
@@ -67,11 +76,12 @@ class OpenMeteoService:
         else:
             source.last_error_at = _now()
             source.status = "FAILED"
-        db.commit()
+        if commit:
+            db.commit()
 
     def _cached_fallback(self, db: Session, key: str, live_error: str) -> Dict[str, Any]:
         cached = self._get_cache(db, key)
-        if cached:
+        if cached and cached.data_mode == "LIVE":
             payload = json.loads(cached.payload_json)
             payload["data_mode"] = "CACHED"
             payload["cached_at"] = cached.fetched_at.isoformat() if cached.fetched_at else None
@@ -86,86 +96,134 @@ class OpenMeteoService:
             "forecast_precipitation_72h_mm": None
         }
 
+    @staticmethod
+    def _age_minutes(entry) -> Optional[float]:
+        if not entry or not entry.fetched_at:
+            return None
+        return max(0.0, (_now() - entry.fetched_at).total_seconds() / 60.0)
+
+    def _build_payload(self, data: Dict[str, Any], location_id: str,
+                       latitude: float, longitude: float, request_url: str,
+                       now: datetime.datetime) -> Dict[str, Any]:
+        hourly = data.get("hourly", {})
+        times = hourly.get("time") or []
+        precip = hourly.get("precipitation") or []
+        if not times or len(times) != len(precip):
+            raise ValueError("Open-Meteo payload has no usable hourly series")
+        parsed = [(t, _parse_iso(t), v) for t, v in zip(times, precip)]
+        parsed = [(t, dt, float(v) if v is not None else 0.0) for (t, dt, v) in parsed
+                  if dt is not None]
+        past = [(t, dt, v) for (t, dt, v) in parsed if dt <= now]
+        future = [(t, dt, v) for (t, dt, v) in parsed if dt > now]
+        obs24 = sum(v for (_, dt, v) in past if dt > now - datetime.timedelta(hours=24))
+        obs72 = sum(v for (_, dt, v) in past if dt > now - datetime.timedelta(hours=72))
+        fc24 = sum(v for (_, dt, v) in future if dt <= now + datetime.timedelta(hours=24))
+        fc72 = sum(v for (_, dt, v) in future if dt <= now + datetime.timedelta(hours=72))
+        last_observed = max((dt for (_, dt, _) in past), default=None)
+        age = (now - last_observed).total_seconds() / 3600.0 if last_observed else None
+        return {
+            "location_id": location_id,
+            "latitude": latitude,
+            "longitude": longitude,
+            "source": "Open-Meteo (station-assimilated reanalysis + numerical weather forecast)",
+            "api_request_url": request_url,
+            "model_note": data.get("generationstatus", ""),
+            "elevation_m": data.get("elevation"),
+            "retrieved_at": now.isoformat(),
+            "last_observed_at": last_observed.isoformat() if last_observed else None,
+            "last_observed_age_hours": round(age, 2) if age is not None else None,
+            "observed_precipitation_24h_mm": round(obs24, 2),
+            "observed_precipitation_72h_mm": round(obs72, 2),
+            "forecast_precipitation_24h_mm": round(fc24, 2),
+            "forecast_precipitation_72h_mm": round(fc72, 2),
+            "forecast_period_start_at": now.isoformat(),
+            "forecast_period_end_at": (now + datetime.timedelta(hours=24)).isoformat(),
+            "data_mode": "LIVE",
+            "cache_hit": False,
+            "provenance_policy": "Observed precipitation is station-assimilated reanalysis; "
+                                 "forecast precipitation is model output. Never labeled as "
+                                 "IMD or CWC data."
+        }
+
     def fetch_forecast(self, db: Session, location_id: str,
                        latitude: float, longitude: float) -> Dict[str, Any]:
-        """
-        Fetch observed + forecast precipitation for one point from Open-Meteo.
-        Computes real ARI inputs (24h/72h observed sums, 24h/72h forecast sums).
-        """
-        key = self.CACHE_KEY_FMT.format(loc_id=location_id)
+        """Fetch one point; high-volume callers should use fetch_forecasts."""
+        from types import SimpleNamespace
+        return self.fetch_forecasts(db, [SimpleNamespace(
+            id=location_id, latitude=latitude, longitude=longitude
+        )])[location_id]
 
-        cached = self._get_cache(db, key)
-        if cached and cached.fetched_at:
-            age_min = max(0.0, (_now() - cached.fetched_at).total_seconds() / 60.0)
-            if age_min < self.TTL_MINUTES and cached.data_mode == "LIVE":
-                payload = json.loads(cached.payload_json)
-                payload["data_mode"] = "LIVE"
-                payload["cache_hit"] = True
-                return payload
+    def fetch_forecasts(self, db: Session, locations: Iterable[Any]) -> Dict[str, Dict[str, Any]]:
+        """Fetch multiple points in one request and cache both success and failures."""
+        with self._fetch_lock:
+            locations = list({loc.id: loc for loc in locations}.values())
+            results: Dict[str, Dict[str, Any]] = {}
+            pending = []
+            for loc in locations:
+                key = self.CACHE_KEY_FMT.format(loc_id=loc.id)
+                cached = self._get_cache(db, key)
+                age = self._age_minutes(cached)
+                if cached and cached.data_mode == "LIVE" and age is not None and age < self.TTL_MINUTES:
+                    payload = json.loads(cached.payload_json)
+                    payload["data_mode"] = "LIVE"
+                    payload["cache_hit"] = True
+                    results[loc.id] = payload
+                    continue
+                failure_key = self.FAILURE_KEY_FMT.format(loc_id=loc.id)
+                failure = self._get_cache(db, failure_key)
+                failure_age = self._age_minutes(failure)
+                if failure and failure_age is not None and failure_age < self.FAILURE_COOLDOWN_MINUTES:
+                    failure_payload = json.loads(failure.payload_json)
+                    results[loc.id] = self._cached_fallback(
+                        db, key, failure_payload.get("live_error", "Retry cooldown")
+                    )
+                    continue
+                pending.append(loc)
 
-        request_url = (
-            f"{settings.OPEN_METEO_API_URL}"
-            f"?latitude={latitude:.4f}&longitude={longitude:.4f}"
-            f"&hourly=precipitation&past_days=3&forecast_days=4&timezone=UTC"
-        )
-        now = _now()
-        try:
-            with httpx.Client(timeout=settings.OPEN_METEO_TIMEOUT_SECONDS) as client:
-                resp = client.get(request_url, headers={"User-Agent": "NESAFE-AI/1.0"})
-                resp.raise_for_status()
-                data = resp.json()
-            hourly = data.get("hourly", {})
-            times = hourly.get("time") or []
-            precip = hourly.get("precipitation") or []
-            if not times or len(times) != len(precip):
-                raise ValueError("Open-Meteo payload has no usable hourly series")
+            if not pending:
+                return results
 
-            parsed = [(t, _parse_iso(t), v) for t, v in zip(times, precip)]
-            parsed = [(t, dt, float(v) if v is not None else 0.0) for (t, dt, v) in parsed
-                      if dt is not None]
-
-            past = [(t, dt, v) for (t, dt, v) in parsed if dt <= now]
-            future = [(t, dt, v) for (t, dt, v) in parsed if dt > now]
-
-            obs24 = sum(v for (_, dt, v) in past if dt > now - datetime.timedelta(hours=24))
-            obs72 = sum(v for (_, dt, v) in past if dt > now - datetime.timedelta(hours=72))
-            fc24 = sum(v for (_, dt, v) in future if dt <= now + datetime.timedelta(hours=24))
-            fc72 = sum(v for (_, dt, v) in future if dt <= now + datetime.timedelta(hours=72))
-
-            last_observed = max((dt for (_, dt, _) in past), default=None)
-            last_observed_age = (now - last_observed).total_seconds() / 3600.0 if last_observed else None
-
-            payload = {
-                "location_id": location_id,
-                "latitude": latitude,
-                "longitude": longitude,
-                "source": "Open-Meteo (station-assimilated reanalysis + numerical weather forecast)",
-                "api_request_url": request_url,
-                "model_note": data.get("generationstatus", ""),
-                "elevation_m": data.get("elevation"),
-                "retrieved_at": now.isoformat(),
-                "last_observed_at": last_observed.isoformat() if last_observed else None,
-                "last_observed_age_hours": round(last_observed_age, 2) if last_observed_age is not None else None,
-                "observed_precipitation_24h_mm": round(obs24, 2),
-                "observed_precipitation_72h_mm": round(obs72, 2),
-                "forecast_precipitation_24h_mm": round(fc24, 2),
-                "forecast_precipitation_72h_mm": round(fc72, 2),
-                "forecast_period_start_at": now.isoformat(),
-                "forecast_period_end_at": (now + datetime.timedelta(hours=24)).isoformat(),
-                "data_mode": "LIVE",
-                "cache_hit": False,
-                "provenance_policy": "Observed precipitation is station-assimilated reanalysis; "
-                                     "forecast precipitation is model output. Never labeled as "
-                                     "IMD or CWC data."
-            }
-            self._save_cache(db, key, payload, request_url)
-            self._mark_health(db, True)
-            return payload
-
-        except Exception as e:
-            logger.warning("Open-Meteo fetch failed for %s: %s", location_id, e)
-            self._mark_health(db, False)
-            return self._cached_fallback(db, key, str(e))
+            latitudes = ",".join(f"{loc.latitude:.4f}" for loc in pending)
+            longitudes = ",".join(f"{loc.longitude:.4f}" for loc in pending)
+            request_url = (
+                f"{settings.OPEN_METEO_API_URL}?latitude={latitudes}&longitude={longitudes}"
+                "&hourly=precipitation&past_days=3&forecast_days=4&timezone=UTC"
+            )
+            now = _now()
+            try:
+                with httpx.Client(timeout=settings.OPEN_METEO_TIMEOUT_SECONDS) as client:
+                    response = client.get(request_url, headers={"User-Agent": "NESAFE-AI/1.0"})
+                    response.raise_for_status()
+                    data = response.json()
+                series = data if isinstance(data, list) else [data]
+                if len(series) != len(pending):
+                    raise ValueError("Open-Meteo returned an unexpected number of locations")
+                for loc, point_data in zip(pending, series):
+                    payload = self._build_payload(
+                        point_data, loc.id, loc.latitude, loc.longitude, request_url, now
+                    )
+                    key = self.CACHE_KEY_FMT.format(loc_id=loc.id)
+                    failure_key = self.FAILURE_KEY_FMT.format(loc_id=loc.id)
+                    db.query(LiveDataCache).filter(LiveDataCache.cache_key == failure_key).delete()
+                    self._save_cache(db, key, payload, request_url, commit=False)
+                    results[loc.id] = payload
+                self._mark_health(db, True, commit=False)
+                db.commit()
+            except Exception as e:
+                logger.warning("Open-Meteo batch fetch failed for %s location(s): %s", len(pending), e)
+                error = str(e)[:300]
+                for loc in pending:
+                    failure_key = self.FAILURE_KEY_FMT.format(loc_id=loc.id)
+                    self._save_cache(
+                        db, failure_key,
+                        {"data_mode": "UNAVAILABLE", "live_error": error},
+                        request_url, commit=False
+                    )
+                    key = self.CACHE_KEY_FMT.format(loc_id=loc.id)
+                    results[loc.id] = self._cached_fallback(db, key, error)
+                self._mark_health(db, False, commit=False)
+                db.commit()
+            return results
 
 
 open_meteo_service = OpenMeteoService()

@@ -102,7 +102,10 @@ def test_at03_query_prediction():
     p = preds[0]
     assert p["hazard_type"] == "FLOOD"
     assert p["model_version"] == "cwc-ml-hybrid-v1.2"
-    assert p["risk_category"] in ["LOW", "MODERATE", "HIGH", "CRITICAL"]
+    assert p["risk_category"] in ["LOW", "MODERATE", "HIGH", "CRITICAL", "UNAVAILABLE"]
+    if p["risk_category"] == "UNAVAILABLE":
+        assert p["probability"] is None
+        assert p["data_quality_status"] in ["MISSING_CRITICAL", "STALE"]
 
 def test_at04_simulate_stale_data():
     """AT-04: Simulate stale data -> UI/API shows stale status; no false live claim is made (Rule R-02)"""

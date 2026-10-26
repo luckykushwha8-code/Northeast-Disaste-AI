@@ -24,12 +24,8 @@ def run_auto_sync():
         if settings.OPEN_METEO_ENABLED:
             from app.services.open_meteo_service import open_meteo_service
             from app.models.entities import Location
-            for loc in db.query(Location).filter(Location.active == True).all():
-                try:
-                    open_meteo_service.fetch_forecast(db, loc.id, loc.latitude, loc.longitude)
-                except Exception as e:
-                    logger.warning("Open-Meteo refresh skipped for %s: %s", loc.id, e)
-            db.commit()
+            locations = db.query(Location).filter(Location.active == True).all()
+            open_meteo_service.fetch_forecasts(db, locations)
         # Automation workflow: validated data -> risk rules -> proposals (deduped)
         from app.services.auto_alert_service import auto_alert_service
         alerts_result = auto_alert_service.evaluate_and_generate_alerts(db)

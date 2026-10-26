@@ -1,5 +1,6 @@
 import pytest
 import datetime
+from types import SimpleNamespace
 from unittest import mock
 
 import httpx
@@ -111,3 +112,51 @@ def test_malformed_payload_is_unavailable(db_session):
     with mock.patch.object(oms.httpx, "Client", _fake_client({"hourly": {"time": [], "precipitation": []}})):
         out = oms.open_meteo_service.fetch_forecast(db_session, "loc_test_e", 26.1, 91.7)
     assert out["data_mode"] == "UNAVAILABLE"
+
+
+def test_batch_fetch_uses_one_request_for_multiple_locations(db_session):
+    calls = []
+
+    class BatchClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def get(self, url, **kwargs):
+            calls.append(url)
+            response = mock.Mock()
+            response.json.return_value = [_om_payload(), _om_payload()]
+            response.raise_for_status.return_value = None
+            return response
+
+    locations = [
+        SimpleNamespace(id="batch_a", latitude=26.1, longitude=91.7),
+        SimpleNamespace(id="batch_b", latitude=27.2, longitude=92.8),
+    ]
+    with mock.patch.object(oms.httpx, "Client", BatchClient):
+        result = oms.open_meteo_service.fetch_forecasts(db_session, locations)
+
+    assert len(calls) == 1
+    assert "latitude=26.1000,27.2000" in calls[0]
+    assert result["batch_a"]["data_mode"] == "LIVE"
+    assert result["batch_b"]["data_mode"] == "LIVE"
+
+
+def test_failed_batch_is_cached_during_retry_cooldown(db_session):
+    calls = []
+    failing_client = _fake_client({}, status=429)
+
+    def counted_client(*args, **kwargs):
+        calls.append(True)
+        return failing_client(*args, **kwargs)
+
+    locations = [SimpleNamespace(id="cooldown_a", latitude=26.1, longitude=91.7)]
+    with mock.patch.object(oms.httpx, "Client", counted_client):
+        first = oms.open_meteo_service.fetch_forecasts(db_session, locations)["cooldown_a"]
+        second = oms.open_meteo_service.fetch_forecasts(db_session, locations)["cooldown_a"]
+
+    assert first["data_mode"] == "UNAVAILABLE"
+    assert second["data_mode"] == "UNAVAILABLE"
+    assert len(calls) == 1

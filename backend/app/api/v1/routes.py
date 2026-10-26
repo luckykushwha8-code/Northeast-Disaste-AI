@@ -46,6 +46,15 @@ from app.auth import get_principal, require_roles, authenticate_credentials, iss
 from app.schemas.gemini import DistrictExplanationRequest, PreparednessQuestion
 from app.services.gemini_service import gemini_service, GeminiUnavailable, GeminiRequestFailed
 
+
+def _prefetch_open_meteo(db: Session, locations=None):
+    if not settings.OPEN_METEO_ENABLED:
+        return
+    if locations is None:
+        locations = db.query(Location).filter(Location.active == True).all()
+    if locations:
+        open_meteo_service.fetch_forecasts(db, locations)
+
 router = APIRouter()
 
 
@@ -65,6 +74,7 @@ def get_ai_status():
 
 @router.post("/ai/district-explanation")
 def explain_district_risk(payload: DistrictExplanationRequest, db: Session = Depends(get_db)):
+    _prefetch_open_meteo(db)
     data = map_service.district_summaries(db)
     row = next((d for d in data["districts"]
                 if d["district"].casefold() == payload.district.strip().casefold()
@@ -1090,6 +1100,7 @@ def map_districts(state: Optional[str] = Query(None, description="Filter by stat
     official warnings, verified incidents inside boundary polygons, shelters
     count, per-district data-quality status, and boundary resolution status.
     """
+    _prefetch_open_meteo(db)
     data = map_service.district_summaries(db)
     if state:
         wanted = state.strip().lower()
@@ -1588,6 +1599,7 @@ def get_geo_risk(db: Session = Depends(get_db), location_id: Optional[str] = Non
     if location_id:
         query = query.filter(Location.id == location_id)
     locs = query.all()
+    _prefetch_open_meteo(db, locs)
     results = [IntegratedRiskEngine.evaluate_location(db, loc) for loc in locs]
     features = []
     for r in results:
@@ -1713,17 +1725,7 @@ def get_weather_forecast(
             "note": "Open-Meteo adapter disabled by configuration."
         }
 
-    out = []
-    for loc in locations:
-        try:
-            ctx = open_meteo_service.fetch_forecast(db, loc.id, loc.latitude, loc.longitude)
-        except Exception as e:
-            ctx = {
-                "location_id": loc.id,
-                "data_mode": "UNAVAILABLE",
-                "live_error": str(e)[:300]
-            }
-        out.append(ctx)
+    out = list(open_meteo_service.fetch_forecasts(db, locations).values())
 
     return {
         "retrieved_at": utcnow().isoformat(),
@@ -1860,6 +1862,7 @@ def get_analytics_overview(
     now = utcnow()
     window_cutoff = now - datetime.timedelta(hours=hours_window)
     locs = {l.id: l for l in db.query(Location).filter(Location.active == True).all()}
+    _prefetch_open_meteo(db, locs.values())
     src_map = {s.id: s for s in db.query(DataSource).all()}
 
     # 1-2. Rainfall trend (hourly buckets from all IMD/OpenMeteo rainfall obs)
