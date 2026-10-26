@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.config import settings
 
@@ -13,8 +13,6 @@ logger = logging.getLogger("nesafe.gemini")
 
 
 class AssistanceResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     summary: str = Field(max_length=1200)
     supporting_observations: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=5)
     uncertainties: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=5)
