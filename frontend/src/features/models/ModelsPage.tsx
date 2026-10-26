@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/client';
-import type { ModelVersionItem, ModelValidationReport } from '../../types';
+import type { ModelVersionItem, ModelValidationReport, UserRole } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { SimulationRibbon } from '../../components/ui/SimulationRibbon';
@@ -44,7 +44,7 @@ function MetricBar({ value, label, color }: { value: number; label: string; colo
   );
 }
 
-export default function ModelsPage() {
+export default function ModelsPage({ userRole, onRequestLogin }: { userRole: UserRole; onRequestLogin: () => void }) {
   const [models, setModels] = useState<ModelVersionItem[]>([]);
   const [validation, setValidation] = useState<ModelValidationReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,19 +52,15 @@ export default function ModelsPage() {
   const [runningCase, setRunningCase] = useState<string | null>(null);
   const [scenarioResult, setScenarioResult] = useState<Record<string, unknown> | null>(null);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
+  const canRunScenario = userRole === 'ADMIN';
 
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([api.getModels(), api.getAnalyticsOverview()])
-      .then(([m]) => setModels(m))
+    Promise.all([api.getModels(), api.getModelValidation()])
+      .then(([m, v]) => { setModels(m); setValidation(v); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-
-    fetch('/api/v1/models/validation')
-      .then(r => r.json())
-      .then(setValidation)
-      .catch(() => {});
   };
 
   useEffect(load, []);
@@ -74,14 +70,7 @@ export default function ModelsPage() {
     setScenarioResult(null);
     setScenarioError(null);
     try {
-      const res = await fetch('/api/v1/models/demo-scenario', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail ?? 'Scenario failed');
-      setScenarioResult(data);
+      setScenarioResult(await api.runDemoScenario(caseId));
     } catch (e) {
       setScenarioError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -242,17 +231,13 @@ export default function ModelsPage() {
                     {dc.hazard_type}
                   </span>
                 </div>
-                <button
+                {canRunScenario ? <button
                   onClick={() => runScenario(dc.id)}
                   disabled={runningCase === dc.id}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 disabled:opacity-50 transition flex-shrink-0"
                 >
-                  {runningCase === dc.id ? (
-                    <><span className="animate-spin">⟳</span> Running…</>
-                  ) : (
-                    <><Play className="w-3 h-3" /> Run</>
-                  )}
-                </button>
+                  {runningCase === dc.id ? <><span className="animate-spin">⟳</span> Running…</> : <><Play className="w-3 h-3" /> Run</>}
+                </button> : <button onClick={onRequestLogin} className="flex-shrink-0 rounded-lg border border-purple-300 px-2.5 py-1.5 text-[11px] font-semibold text-purple-800">Admin login to run</button>}
               </div>
             </div>
           ))}

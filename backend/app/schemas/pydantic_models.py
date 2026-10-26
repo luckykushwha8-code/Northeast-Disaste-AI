@@ -150,6 +150,25 @@ class AlertOut(BaseModel):
     deliveries: List[NotificationDeliveryOut] = []
     model_config = ConfigDict(from_attributes=True)
 
+class PublicAlertOut(BaseModel):
+    """Publicly visible, non-simulated issued alerts without staff or delivery metadata."""
+    id: str
+    location_id: str
+    location_name: Optional[str] = None
+    hazard_type: str
+    source_type: str
+    severity: str
+    lifecycle_status: str
+    issued_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    official_source_reference: Optional[str] = None
+    title: str
+    description: str
+    action_instructions: str
+    simulation_flag: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Shelters ---
 class ShelterOut(BaseModel):
     id: str
@@ -196,6 +215,18 @@ class IncidentReportOut(BaseModel):
     photo_reference: Optional[str] = Field(default=None, max_length=500)
     model_config = ConfigDict(from_attributes=True)
 
+class PublicIncidentReportOut(BaseModel):
+    """Verified incident marker without reporter identity or free-text description."""
+    id: str
+    category: str
+    location_name: str
+    latitude: float
+    longitude: float
+    report_time: datetime
+    verification_status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Rescue Requests (citizen assistance; responder-confirmed only) ---
 class RescueRequestCreate(BaseModel):
     location_name: str = Field(min_length=2, max_length=150)
@@ -228,6 +259,13 @@ class RescueRequestOut(BaseModel):
     submitted_at: datetime
     last_updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class PublicRescueRequestOut(BaseModel):
+    """Tracking status returned to a requester; excludes contact, coordinates, and needs."""
+    public_reference: str
+    status: str
+    submitted_at: datetime
+    last_updated_at: datetime
 
 # --- Analytics (chart datasets) ---
 class AnalyticsOverview(BaseModel):

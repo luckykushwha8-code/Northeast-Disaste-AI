@@ -3,13 +3,18 @@ import { DataSourceItem, AuditLogItem, LiveDataSyncItem, ImdApiStatus } from '..
 import { api } from '../api/client';
 import { Database, History, RefreshCw, Rss } from 'lucide-react';
 import { TinyFishPanel } from './TinyFishPanel';
+import type { UserRole } from '../types';
 
 interface SystemHealthProps {
   dataSources?: DataSourceItem[];
   onRefresh: () => void;
+  userRole: UserRole;
+  onRequestLogin: () => void;
 }
 
-export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initialDataSources, onRefresh }) => {
+export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initialDataSources, onRefresh, userRole, onRequestLogin }) => {
+  const canManage = ['OPERATOR', 'ADMIN'].includes(userRole);
+  const loginAction = userRole === 'RESIDENT' ? 'Staff login' : 'Switch staff account';
   const [dataSources, setDataSources] = useState<DataSourceItem[]>(initialDataSources ?? []);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -21,6 +26,10 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
   useEffect(() => {
     api.getDataStatus().then(setDataSources).catch((e) => console.error('Failed to fetch data source status', e));
     const fetchLogs = async () => {
+      if (!canManage) {
+        setAuditLogs([]);
+        return;
+      }
       try {
         const logs = await api.getAuditLogs();
         setAuditLogs(logs);
@@ -30,7 +39,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
     };
     fetchLogs();
     api.getImdApiStatus().then(setImdStatus).catch(() => setImdStatus(null));
-  }, []);
+  }, [canManage]);
 
   const runSync = async () => {
     setSyncing(true);
@@ -75,7 +84,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
   return (
     <div className="space-y-6">
       {/* Live Data Sync Control */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+      {canManage ? <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <Rss className="w-5 h-5 text-emerald-600" />
           <h3 className="text-sm font-bold text-slate-900">Live Government Data Sync</h3>
@@ -111,7 +120,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
             ))}
           </div>
         )}
-      </div>
+      </div> : <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">Feed status and freshness are public. Operator or administrator access is required to trigger manual source refreshes. <button onClick={onRequestLogin} className="ml-1 font-semibold text-teal-700 underline">{loginAction}</button></div>}
 
       {/* Environmental Feeds & Freshness Policy Table (FR-DATA-06) */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
@@ -192,14 +201,14 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
                 IMD_API_KEY {imdStatus.api_key_configured ? 'configured' : 'not configured'}
               </span>
             )}
-            <button
+            {canManage && <button
               onClick={runImdRefresh}
               disabled={imdSyncing}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 disabled:opacity-50 transition"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${imdSyncing ? 'animate-spin' : ''}`} />
               {imdSyncing ? 'Refreshing…' : 'Refresh IMD feeds'}
-            </button>
+            </button>}
           </div>
         </div>
         <p className="text-xs text-slate-500 mb-3">
@@ -244,10 +253,10 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
       </div>
 
       {/* TinyFish Web Extraction Service & Published Disaster Bulletins */}
-      <TinyFishPanel />
+      {canManage ? <TinyFishPanel /> : <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">Source retrieval controls are available to authorized operators. <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">{loginAction}</button></div>}
 
       {/* Immutable Audit Log Records (FR-ADMIN-04) */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+      {canManage ? <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <History className="w-5 h-5 text-indigo-600" />
           <h3 className="text-sm font-bold text-slate-900">Immutable Compliance & Action Audit Trail</h3>
@@ -280,7 +289,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
             </tbody>
           </table>
         </div>
-      </div>
+      </div> : <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">The audit trail contains staff and operational details. Operator or administrator access is required. <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">{loginAction}</button></div>}
     </div>
   );
 };

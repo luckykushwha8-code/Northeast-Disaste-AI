@@ -9,6 +9,7 @@ interface AlertQueueProps {
   predictions: PredictionItem[];
   userRole: UserRole;
   lang: Language;
+  onRequestLogin: () => void;
   onRefresh: () => void;
 }
 
@@ -17,6 +18,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
   predictions,
   userRole,
   lang,
+  onRequestLogin,
   onRefresh
 }) => {
   const t = translations[lang] || translations.en;
@@ -34,12 +36,15 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
   const [newTitle, setNewTitle] = useState<string>('');
   const [newDescription, setNewDescription] = useState<string>('');
   const [newInstructions, setNewInstructions] = useState<string>('');
+  const canPropose = ['OPERATOR', 'ADMIN'].includes(userRole);
+  const canRespond = ['RESPONDER', 'OPERATOR', 'ADMIN'].includes(userRole);
+  const canResolve = ['OPERATOR', 'ADMIN'].includes(userRole);
 
   const handleApprove = async (alertId: string) => {
     try {
       setErrorMessage(null);
       await api.approveAlert(alertId, actionReason || 'Operator verified against hydrometeorological radar');
-      setSuccessMessage("Alert approved & test notification dispatched!");
+      setSuccessMessage("Alert approved. Check the delivery receipt for provider acceptance status.");
       setActionModalAlert(null);
       setActionReason('');
       onRefresh();
@@ -149,13 +154,15 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
           </select>
 
           {/* Create Manual Proposal Button */}
-          <button
-            onClick={() => setIsNewProposalModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-sm"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Propose Alert</span>
-          </button>
+          {canPropose ? (
+            <button
+              onClick={() => setIsNewProposalModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-sm"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Propose Alert</span>
+            </button>
+          ) : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Operator login for alert actions</button>}
         </div>
       </div>
 
@@ -271,7 +278,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
 
                 {/* Operator Actions Bar */}
                 <div className="mt-3 pt-2 border-t border-slate-200 flex flex-wrap justify-end gap-2">
-                  {isProposed && (
+                  {isProposed && canPropose && (
                     <button
                       onClick={() => setActionModalAlert(alert)}
                       className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition flex items-center gap-1 shadow-sm"
@@ -281,7 +288,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
                     </button>
                   )}
 
-                  {isIssued && (
+                  {isIssued && canRespond && (
                     <button
                       onClick={() => handleAcknowledge(alert.id)}
                       className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1 shadow-sm"
@@ -291,7 +298,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
                     </button>
                   )}
 
-                  {(isIssued || isAcknowledged) && (
+                  {(isIssued || isAcknowledged) && canResolve && (
                     <button
                       onClick={() => handleResolve(alert.id)}
                       className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-1 shadow-sm"
@@ -316,7 +323,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
               <span>Operator Authorization & Approval</span>
             </h3>
             <p className="text-xs text-slate-600 mb-4">
-              Per Rule R-11 and FR-ADMIN-02: Approving will immediately transition status to <strong>ISSUED</strong>, trigger test-channel notifications, and log an audit record under role <strong>{userRole}</strong>.
+              Approval immediately changes the alert to <strong>ISSUED</strong> and records an audit event under role <strong>{userRole}</strong>. Any configured delivery attempt is shown with its provider status; acceptance does not confirm recipient receipt.
             </p>
 
             <div className="mb-4 p-3 bg-slate-50 rounded-lg text-xs border border-slate-200">

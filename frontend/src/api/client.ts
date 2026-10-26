@@ -2,9 +2,9 @@ import {
   LocationItem, DataSourceItem, ObservationItem, PredictionItem,
   AlertItem, ShelterItem, IncidentReportItem, AuditLogItem, ModelVersionItem,
   LiveNewsFeedItem, LiveDataSyncItem,
-  RescueRequestItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
+  RescueRequestItem, RescueTrackingItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
   ImdApiStatus, AlertDistrictItem, SubscriptionResult,
-  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, AuthenticatedUser
+  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ||
@@ -118,6 +118,12 @@ export const api = {
     return res.json();
   },
 
+  async getPublicAlerts(): Promise<AlertItem[]> {
+    const res = await apiFetch(`${API_BASE}/alerts/public`);
+    if (!res.ok) throw new Error('Failed to fetch public alerts');
+    return res.json();
+  },
+
   async createAlert(data: {
     location_id: string;
     hazard_type: string;
@@ -176,7 +182,7 @@ export const api = {
   },
 
   async getReports(): Promise<IncidentReportItem[]> {
-    const res = await apiFetch(`${API_BASE}/reports`);
+    const res = await apiFetch(`${API_BASE}/reports/public`);
     if (!res.ok) throw new Error("Failed to fetch reports");
     return res.json();
   },
@@ -218,6 +224,23 @@ export const api = {
     const res = await apiFetch(`${API_BASE}/models`);
     if (!res.ok) throw new Error("Failed to fetch models");
     return res.json();
+  },
+
+  async getModelValidation(): Promise<ModelValidationReport> {
+    const res = await apiFetch(`${API_BASE}/models/validation`);
+    if (!res.ok) throw new Error('Failed to load model validation');
+    return res.json();
+  },
+
+  async runDemoScenario(caseId: string): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`${API_BASE}/models/demo-scenario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_id: caseId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail ?? 'Scenario failed');
+    return data;
   },
 
   async triggerScenario(scenario: string): Promise<any> {
@@ -280,7 +303,7 @@ export const api = {
     return res.json();
   },
 
-  async trackRescueRequest(errorOrPublicReferenceIgnored: string): Promise<RescueRequestItem[]> {
+  async trackRescueRequest(errorOrPublicReferenceIgnored: string): Promise<RescueTrackingItem[]> {
     const res = await apiFetch(`${API_BASE}/rescue-requests?public_reference=${encodeURIComponent(errorOrPublicReferenceIgnored)}`);
     if (!res.ok) throw new Error("Failed to track rescue request");
     return res.json();

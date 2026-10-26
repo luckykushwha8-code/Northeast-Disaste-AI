@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 're
 import {
   LayoutDashboard, Map, Bell, LifeBuoy, BarChart2, FlaskConical,
   FileText, Mail, Activity, ChevronLeft, ChevronRight, Moon, Sun,
-  AlignJustify, Lock, Layers, LogIn, LogOut
+  AlignJustify, Layers, LogIn, LogOut
 } from 'lucide-react';
 
 import { RoleBadge } from './components/ui/RoleBadge';
@@ -31,28 +31,31 @@ type NavItem = {
   path: string;
   label: string;
   icon: React.ElementType;
-  roles?: UserRole[];
 };
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/map', label: 'District Map', icon: Map },
   { path: '/layers', label: 'Layers & legend', icon: Layers },
-  { path: '/alerts', label: 'Alert Queue', icon: Bell, roles: ['OPERATOR', 'ANALYST', 'ADMIN', 'RESPONDER'] },
+  { path: '/alerts', label: 'Alert Queue', icon: Bell },
   { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
-  { path: '/analytics', label: 'Analytics', icon: BarChart2, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
-  { path: '/models', label: 'Models', icon: FlaskConical, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
-  { path: '/reports', label: 'Reports', icon: FileText, roles: ['OPERATOR', 'ANALYST', 'ADMIN'] },
+  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { path: '/models', label: 'Models', icon: FlaskConical },
+  { path: '/reports', label: 'Reports', icon: FileText },
   { path: '/subscriptions', label: 'Subscriptions', icon: Mail },
-  { path: '/system', label: 'System Health', icon: Activity, roles: ['OPERATOR', 'ADMIN'] },
+  { path: '/system', label: 'System Health', icon: Activity },
 ];
 
 const MOBILE_NAV: NavItem[] = [
-  { path: '/', label: 'Map', icon: LayoutDashboard },
-  { path: '/map', label: 'Map', icon: Map },
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/map', label: 'District Map', icon: Map },
   { path: '/layers', label: 'Layers', icon: Layers },
   { path: '/alerts', label: 'Alerts', icon: Bell },
   { path: '/rescue', label: 'Rescue', icon: LifeBuoy },
+  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { path: '/models', label: 'Models', icon: FlaskConical },
+  { path: '/reports', label: 'Reports', icon: FileText },
+  { path: '/system', label: 'System', icon: Activity },
   { path: '/subscriptions', label: 'Subscribe', icon: Mail },
 ];
 
@@ -63,35 +66,10 @@ const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'hi', label: 'हिं' },
 ];
 
-function canAccess(role: UserRole, item: NavItem): boolean {
-  if (!item.roles) return true;
-  return item.roles.includes(role);
-}
-
-function navItemFor(path: string): NavItem {
-  return NAV_ITEMS.find(item => item.path === path)!;
-}
-
 function LoadingFallback() {
   return (
     <div className="flex items-center justify-center h-64 text-slate-400 text-sm animate-pulse">
       Loading…
-    </div>
-  );
-}
-
-function LockedPage({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
-        <Lock className="w-7 h-7 text-slate-400" />
-      </div>
-      <div>
-        <h2 className="text-base font-bold text-slate-700">{label}</h2>
-        <p className="text-sm text-slate-400 mt-1">
-          Access to this page requires a higher role. Contact your administrator.
-        </p>
-      </div>
     </div>
   );
 }
@@ -118,14 +96,14 @@ function AppShell() {
     return () => window.removeEventListener('nesafe:auth-expired', onExpired);
   }, []);
 
-  // Load app data
+  // Public views use sanitized, verified data. Staff see the full alert queue after login.
   useEffect(() => {
-    api.getAlerts().then(setAlerts).catch(() => {});
+    (authenticatedUser ? api.getAlerts() : api.getPublicAlerts()).then(setAlerts).catch(() => setAlerts([]));
     api.getPredictions().then(setPredictions).catch(() => {});
     api.getLocations().then(setLocations).catch(() => {});
     api.getShelters().then(setShelters).catch(() => {});
     api.getReports().then(setReports).catch(() => {});
-  }, []);
+  }, [authenticatedUser]);
 
 
   // Dark mode
@@ -219,28 +197,23 @@ function AppShell() {
           <nav className="flex-1 py-3 space-y-0.5">
             {NAV_ITEMS.map(item => {
               const Icon = item.icon;
-              const accessible = canAccess(userRole, item);
               const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
 
               return (
                 <NavLink
                   key={item.path}
-                  to={accessible ? item.path : '#'}
-                  onClick={e => !accessible && e.preventDefault()}
+                  to={item.path}
                   className={({ isActive: navActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg text-sm font-medium transition ${
                       (navActive || isActive)
                         ? 'bg-teal-50 text-teal-700 font-semibold'
-                        : accessible
-                        ? (darkMode ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
-                        : 'text-slate-300 cursor-not-allowed opacity-60'
+                        : (darkMode ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')
                     }`
                   }
-                  title={!accessible ? 'Insufficient role' : item.label}
+                  title={item.label}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   {!collapsed && <span>{item.label}</span>}
-                  {!collapsed && !accessible && <Lock className="w-3 h-3 ml-auto text-slate-400" />}
                 </NavLink>
               );
             })}
@@ -265,46 +238,14 @@ function AppShell() {
               <Route path="/layers" element={<LayersGuidePage />} />
               <Route
                 path="/alerts"
-                element={
-                  canAccess(userRole, navItemFor('/alerts'))
-                    ? <AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRefresh={() => api.getAlerts().then(setAlerts)} />
-                    : <LockedPage label="Alert Queue" />
-                }
+                element={<AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRequestLogin={() => setLoginOpen(true)} onRefresh={() => (authenticatedUser ? api.getAlerts() : api.getPublicAlerts()).then(setAlerts)} />}
               />
-              <Route path="/rescue" element={<RescuePage userRole={userRole} />} />
-              <Route
-                path="/analytics"
-                element={
-                  canAccess(userRole, navItemFor('/analytics'))
-                    ? <AnalyticsPage />
-                    : <LockedPage label="Analytics" />
-                }
-              />
-              <Route
-                path="/models"
-                element={
-                  canAccess(userRole, navItemFor('/models'))
-                    ? <ModelsPage />
-                    : <LockedPage label="Models & Validation" />
-                }
-              />
-              <Route
-                path="/reports"
-                element={
-                  canAccess(userRole, navItemFor('/reports'))
-                    ? <ReportsPage />
-                    : <LockedPage label="Reports" />
-                }
-              />
+              <Route path="/rescue" element={<RescuePage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/models" element={<ModelsPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
+              <Route path="/reports" element={<ReportsPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
-              <Route
-                path="/system"
-                element={
-                  canAccess(userRole, navItemFor('/system'))
-                    ? <SystemHealthPage dataSources={[]} onRefresh={() => {}} />
-                    : <LockedPage label="System Health" />
-                }
-              />
+              <Route path="/system" element={<SystemHealthPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} onRefresh={() => { void api.getPublicAlerts().then(setAlerts); }} />} />
               <Route path="/dev/components" element={<ComponentShowcase />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -313,7 +254,7 @@ function AppShell() {
       </div>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex overflow-x-auto border-t ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} aria-label="Main navigation">
         {MOBILE_NAV.map(item => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -321,7 +262,7 @@ function AppShell() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex-1 flex flex-col items-center justify-center py-2 text-[10px] font-medium transition ${
+              className={`min-w-[4.5rem] flex flex-col items-center justify-center py-2 text-[10px] font-medium transition ${
                 isActive ? 'text-teal-700' : (darkMode ? 'text-slate-400' : 'text-slate-500')
               }`}
             >

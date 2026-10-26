@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional, Dict, Any
 import datetime
 from app.time_utils import utcnow
@@ -18,11 +19,11 @@ from app.services.email_alert_service import EMAIL_RE
 from app.schemas.pydantic_models import (
     LocationOut, DataSourceOut, ObservationOut, ObservationCreate,
     PredictionOut, AlertOut, AlertCreate, AlertAction,
-    ShelterOut, IncidentReportOut, IncidentReportCreate, IncidentReportVerify,
+    ShelterOut, IncidentReportOut, PublicIncidentReportOut, IncidentReportCreate, IncidentReportVerify,
     AuditLogOut, ModelVersionOut,
     TinyFishStatusOut, TinyFishRetrievalRequest, TinyFishRetrievalResultOut,
     RescueRequestCreate, RescueRequestStatusUpdate, RescueRequestOut,
-    AnalyticsOverview, AlertSubscribeRequest, AlertDistrictOut, AuthLogin
+    PublicRescueRequestOut, PublicAlertOut, AnalyticsOverview, AlertSubscribeRequest, AlertDistrictOut, AuthLogin
 )
 from app.services.ingestion import IngestionService
 from app.services.flood_engine import FloodPredictionEngine
@@ -512,8 +513,10 @@ def generate_assessments(
 def list_alerts(
     lifecycle_status: Optional[str] = None,
     hazard_type: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ANALYST", "ADMIN"))
 ):
+    """Staff alert queue, including proposals and audited delivery metadata."""
     query = db.query(Alert)
     if lifecycle_status:
         query = query.filter(Alert.lifecycle_status == lifecycle_status)
@@ -545,6 +548,32 @@ def list_alerts(
         }
         result.append(AlertOut(**a_dict))
     return result
+
+@router.get("/alerts/public", response_model=List[PublicAlertOut])
+def list_public_alerts(db: Session = Depends(get_db)):
+    """Only current issued, non-simulated official alerts are visible publicly."""
+    alerts = db.query(Alert).filter(
+        Alert.source_type == "OFFICIAL_AGENCY",
+        Alert.simulation_flag.is_(False),
+        Alert.lifecycle_status.in_(["ISSUED", "ACKNOWLEDGED"]),
+        or_(Alert.expires_at.is_(None), Alert.expires_at > utcnow()),
+    ).order_by(Alert.issued_at.desc()).all()
+    return [{
+        "id": a.id,
+        "location_id": a.location_id,
+        "location_name": a.location.name if a.location else None,
+        "hazard_type": a.hazard_type,
+        "source_type": a.source_type,
+        "severity": a.severity,
+        "lifecycle_status": a.lifecycle_status,
+        "issued_at": a.issued_at,
+        "expires_at": a.expires_at,
+        "official_source_reference": a.official_source_reference,
+        "title": a.title,
+        "description": a.description,
+        "action_instructions": a.action_instructions,
+        "simulation_flag": False,
+    } for a in alerts]
 
 @router.get("/alerts/districts", response_model=List[AlertDistrictOut])
 def list_subscribable_districts(db: Session = Depends(get_db)):
@@ -730,6 +759,13 @@ def list_shelters(db: Session = Depends(get_db)):
     return db.query(Shelter).all()
 
 # ----------------- 7. INCIDENT REPORTS -----------------
+@router.get("/reports/public", response_model=List[PublicIncidentReportOut])
+def list_public_incident_reports(db: Session = Depends(get_db)):
+    """Only verified map markers are public; reporter names and descriptions stay private."""
+    return db.query(IncidentReport).filter(
+        IncidentReport.verification_status == "VERIFIED"
+    ).order_by(IncidentReport.report_time.desc()).all()
+
 @router.get("/reports", response_model=List[IncidentReportOut])
 def list_incident_reports(
     db: Session = Depends(get_db),
@@ -827,7 +863,7 @@ def submit_rescue_request(payload: RescueRequestCreate, db: Session = Depends(ge
     return req
 
 
-@router.get("/rescue-requests", response_model=List[RescueRequestOut])
+@router.get("/rescue-requests")
 def list_rescue_requests(
     status: Optional[str] = None,
     public_reference: Optional[str] = None,
@@ -835,6 +871,7 @@ def list_rescue_requests(
     authorization: Optional[str] = Header(default=None)
 ):
     """Responder worklist / citizen tracking lookup (by public_reference)."""
+    principal = None
     if public_reference is None:
         principal = get_principal(authorization)
         if principal.role not in {"RESPONDER", "OPERATOR", "ADMIN"}:
@@ -844,7 +881,15 @@ def list_rescue_requests(
         query = query.filter(RescueRequest.status == status.upper())
     if public_reference:
         query = query.filter(RescueRequest.public_reference == public_reference.upper())
-    return query.order_by(RescueRequest.submitted_at.desc()).limit(200).all()
+    requests = query.order_by(RescueRequest.submitted_at.desc()).limit(200).all()
+    if public_reference is not None:
+        return [PublicRescueRequestOut(
+            public_reference=r.public_reference,
+            status=r.status,
+            submitted_at=r.submitted_at,
+            last_updated_at=r.last_updated_at,
+        ) for r in requests]
+    return requests
 
 
 @router.post("/rescue-requests/{request_id}/status", response_model=RescueRequestOut)

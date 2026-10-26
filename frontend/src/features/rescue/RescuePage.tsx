@@ -8,7 +8,7 @@ import { Drawer } from '../../components/ui/Drawer';
 import { DataTable } from '../../components/ui/DataTable';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
-import type { RescueRequestItem, RescueStatus, UserRole } from '../../types';
+import type { RescueRequestItem, RescueTrackingItem, RescueStatus, UserRole } from '../../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,12 +50,13 @@ const RESPONDER_ROLES: UserRole[] = ['RESPONDER', 'OPERATOR', 'ADMIN'];
 
 interface RescuePageProps {
   userRole: UserRole;
+  onRequestLogin: () => void;
 }
 
-export default function RescuePage({ userRole }: RescuePageProps) {
+export default function RescuePage({ userRole, onRequestLogin }: RescuePageProps) {
   const isResponder = RESPONDER_ROLES.includes(userRole);
   const [trackRef, setTrackRef] = useState('');
-  const [trackResult, setTrackResult] = useState<RescueRequestItem | null>(null);
+  const [trackResult, setTrackResult] = useState<RescueTrackingItem | null>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
   const [trackLoading, setTrackLoading] = useState(false);
 
@@ -138,9 +139,6 @@ export default function RescuePage({ userRole }: RescuePageProps) {
                 {trackResult.status === 'CLOSED' && 'This request has been closed.'}
                 {trackResult.status === 'UNREACHABLE' && '⚠ We were unable to reach this location. Please call 112.'}
               </div>
-              {trackResult.status_notes && (
-                <p className="text-xs text-slate-500">Note: {trackResult.status_notes}</p>
-              )}
             </div>
           )}
 
@@ -153,6 +151,11 @@ export default function RescuePage({ userRole }: RescuePageProps) {
         <div>
           <h2 className="text-base font-bold text-slate-900 mb-3">Rescue Request Worklist</h2>
           <ResponderView userRole={userRole} />
+        </div>
+      )}
+      {!isResponder && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
+          Citizen request and reference tracking are available here. The responder worklist contains private contact and location details. {userRole === 'RESIDENT' ? <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">Staff login for responder access</button> : <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">Switch to a responder account</button>}
         </div>
       )}
     </div>
@@ -521,8 +524,6 @@ function ResponderView({ userRole }: { userRole: UserRole }) {
     try {
       const updated = await api.updateRescueRequestStatus(selectedReq.id, {
         new_status: newStatus,
-        responder_id: userRole + '-user',
-        responder_role: userRole,
         notes: comment ?? notes,
       });
       setRequests(prev => prev.map(r => r.id === updated.id ? updated : r));

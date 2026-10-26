@@ -24,7 +24,7 @@ export default function Dashboard({ userRole: _userRole = 'OPERATOR' }: Dashboar
     setError(null);
     try {
       const [nextLocations, nextAlerts, nextShelters, nextReports] = await Promise.all([
-        api.getLocations(), api.getAlerts(), api.getShelters(), api.getReports()
+        api.getLocations(), api.getPublicAlerts(), api.getShelters(), api.getReports()
       ]);
       setLocations(nextLocations);
       setAlerts(nextAlerts);

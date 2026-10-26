@@ -123,13 +123,13 @@ export interface AlertItem {
   issued_at?: string;
   expires_at?: string;
   official_source_reference?: string;
-  created_by: string;
+  created_by?: string;
   title: string;
   description: string;
   action_instructions: string;
   simulation_flag: boolean;
-  events: AlertEventItem[];
-  deliveries: NotificationDeliveryItem[];
+  events?: AlertEventItem[];
+  deliveries?: NotificationDeliveryItem[];
 }
 
 export interface ShelterItem {
@@ -149,13 +149,13 @@ export interface ShelterItem {
 
 export interface IncidentReportItem {
   id: string;
-  reporter_name: string;
+  reporter_name?: string;
   category: string;
   location_name: string;
   latitude: number;
   longitude: number;
   report_time: string;
-  description: string;
+  description?: string;
   verification_status: 'UNVERIFIED' | 'VERIFIED' | 'REJECTED';
   reviewer_id?: string;
   reviewed_at?: string;
@@ -344,6 +344,13 @@ export interface RescueRequestItem {
   last_updated_at: string;
 }
 
+export interface RescueTrackingItem {
+  public_reference: string;
+  status: RescueStatus;
+  submitted_at: string;
+  last_updated_at: string;
+}
+
 export interface RescueRequestCreate {
   location_name: string;
   latitude: number;
@@ -356,7 +363,7 @@ export interface RescueRequestCreate {
 }
 
 export interface UpdateRescueStatusPayload {
-  responder_id: string;
+  responder_id?: string;
   new_status: RescueStatus;
   responder_role?: string;
   notes?: string;

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { FileText, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../../api/client';
+import type { UserRole } from '../../types';
 
-export default function ReportsPage() {
+export default function ReportsPage({ userRole, onRequestLogin }: { userRole: UserRole; onRequestLogin: () => void }) {
   const [reportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [downloading, setDownloading] = useState<'pdf' | 'csv' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -10,6 +11,7 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState<any>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState('');
+  const canSummarize = ['OPERATOR', 'ANALYST', 'ADMIN'].includes(userRole);
 
   const summarize = async () => {
     if (summarizing) return;
@@ -71,9 +73,9 @@ export default function ReportsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h3 className="text-sm font-bold text-slate-900">AI situation summary</h3>
               <p className="mt-1 text-xs text-slate-600">Summarizes stored observations and assessments. Only operators and analysts can request it.</p></div>
-            <button onClick={summarize} disabled={summarizing} className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            {canSummarize ? <button onClick={summarize} disabled={summarizing} className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
               {summarizing ? 'Summarizing…' : 'Summarize report'}
-            </button>
+            </button> : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Staff login for AI summary</button>}
           </div>
           {summaryError && <p role="alert" className="mt-2 text-xs text-red-700">{summaryError}</p>}
           {summary && <div className="mt-3 space-y-2 border-t border-teal-200 pt-3 text-xs text-slate-700">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertItem, ShelterItem, Language, LocationItem, RescueRequestItem, RescueStatus } from '../types';
+import { AlertItem, ShelterItem, Language, LocationItem, RescueRequestItem, RescueTrackingItem, RescueStatus } from '../types';
 import { api } from '../api/client';
 import { translations } from '../locales/translations';
 import { MapPin, AlertTriangle, ShieldCheck, Home, Phone, Accessibility, CheckCircle2, Building2, LifeBuoy, Search } from 'lucide-react';
@@ -60,7 +60,7 @@ export const ResidentPortal: React.FC<ResidentPortalProps> = ({
   const [rescueResult, setRescueResult] = useState<RescueRequestItem | null>(null);
   const [rescueError, setRescueError] = useState<string | null>(null);
   const [trackRef, setTrackRef] = useState('');
-  const [trackResults, setTrackResults] = useState<RescueRequestItem[] | null>(null);
+  const [trackResults, setTrackResults] = useState<RescueTrackingItem[] | null>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
 
   const submitRescue = async () => {
@@ -350,15 +350,14 @@ export const ResidentPortal: React.FC<ResidentPortalProps> = ({
           {trackResults && trackResults.length > 0 && (
             <div className="rescue-track-result mt-2 space-y-1.5" data-testid="rescue-track-result">
               {trackResults.map(r => (
-                <div key={r.id} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                <div key={r.public_reference} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                   <div className="flex items-center justify-between">
                     <span className="font-bold">{r.public_reference}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusStyle(r.status)}`}>{r.status}</span>
                   </div>
                   <div className="text-[11px] text-slate-600 mt-1">
-                    {r.location_name} · {r.people_count} person(s) · Submitted {new Date(r.submitted_at).toLocaleString()}
+                    Submitted {new Date(r.submitted_at).toLocaleString()} · Updated {new Date(r.last_updated_at).toLocaleString()}
                   </div>
-                  {r.status_notes && <div className="text-[11px] text-slate-700 mt-1">{r.status_notes}</div>}
                 </div>
               ))}
             </div>
