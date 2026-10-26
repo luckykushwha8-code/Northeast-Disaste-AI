@@ -8,6 +8,7 @@ from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
 from app.models.entities import DataSource, Location, Observation, RescueRequest
 from app.services.report_service import build_report_data
+from auth_test_support import AUTH_HEADERS
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -22,7 +23,7 @@ def setup_rescue_module():
 
 
 # NOTE: sole module-level TestClient without context manager — no lifespan/scheduler in tests
-client = TestClient(app)
+client = TestClient(app, headers=AUTH_HEADERS["RESPONDER"])
 
 
 def test_rescue_request_lifecycle_never_auto_dispatch():
@@ -66,7 +67,7 @@ def test_rescue_request_lifecycle_never_auto_dispatch():
         "notes": "Boat team 2 assigned"
     })
     assert assign.status_code == 200 and assign.json()["status"] == "ASSIGNED"
-    assert assign.json()["assigned_responder_id"] == "resp_NDRF1"
+    assert assign.json()["assigned_responder_id"] == "test-responder"
 
     enroute = client.post(f"/api/v1/rescue-requests/{req['id']}/status", json={
         "responder_id": "resp_NDRF1", "new_status": "EN_ROUTE", "responder_role": "RESPONDER"

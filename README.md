@@ -64,6 +64,12 @@ flowchart TD
 5. **Rescue honesty**: Citizen rescue forms explicitly display: *"This form does not dispatch help automatically. In an emergency call 112."*
 6. **Public notification guardrail**: `PUBLIC_ALERTS_ENABLED=false` by default until models and telemetry are officially validated by local disaster authorities.
 
+### Operator and responder login
+
+Protected review, verification, responder-status and synchronization actions require a signed bearer token. A frontend role selector or `X-User-Role` header does not grant permissions. Login stays disabled until an administrator provisions a signing secret and password-hash accounts; seeded demo users are not login accounts.
+
+For local development, run `python -m app.auth hash-password` from `backend/` to create a PBKDF2 hash, then configure `AUTH_SECRET_KEY` (at least 32 random bytes) and `AUTH_USERS_JSON` in the local environment. The JSON maps usernames to roles and hashes, for example `{"operator":{"role":"OPERATOR","password_hash":"<generated hash>"}}`. Keep the real secret and hashes in local environment/secrets storage only; never commit them. Use HTTPS and managed secret storage when deployed.
+
 ---
 
 ## 3. Data Source Status Matrix

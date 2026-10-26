@@ -133,6 +133,10 @@ class ImdApiService:
                 payload["cache_hit"] = True
                 return payload
 
+        if not settings.IMD_API_KEY:
+            self._mark_health(db, False, status="AUTH_REQUIRED")
+            return self._cached_fallback(db, slug, "IMD_API_KEY is not configured", status="AUTH_REQUIRED")
+
         request_url = self._auth_request(ep_def["path"], id_param)
         headerless_url = self._endpoint_base(slug) + (f"?id={id_param}" if id_param else "")
 
@@ -144,6 +148,7 @@ class ImdApiService:
                 status_code = resp.status_code
                 if status_code in (401, 403):
                     detail = f"HTTP {status_code}: IMD API key missing/invalid or not provisioned"
+                    self._mark_health(db, False, status="AUTH_ERROR")
                     payload = self._cached_fallback(db, slug, detail, status="AUTH_ERROR")
                     if payload.get("data_mode") == "UNAVAILABLE":
                         payload["auth_note"] = (
@@ -185,7 +190,7 @@ class ImdApiService:
                 last_error = str(e)
                 break
 
-        self._mark_health(db, False)
+        self._mark_health(db, False, status="FAILED")
         return self._cached_fallback(db, slug, last_error or "unknown error")
 
     def _normalize_rows(self, raw: Any) -> List[Dict[str, Any]]:
@@ -208,14 +213,15 @@ class ImdApiService:
             return raw
         raise ValueError("unsupported payload shape")
 
-    def _mark_health(self, db: Session, ok: bool):
+    def _mark_health(self, db: Session, ok: bool, status: str = "FAILED"):
         try:
             src = db.query(DataSource).filter(DataSource.id == "src_imd_api").first()
             if src:
-                src.status = "OPERATIONAL" if ok else "FAILED"
+                src.status = "OPERATIONAL" if ok else status
                 if ok:
                     src.last_success_at = _now()
-                src.next_update_due_at = _now() + datetime.timedelta(hours=1)
+                else:
+                    src.last_error_at = _now()
                 db.commit()
         except Exception as e:  # health marking must never break the fetch flow
             logger.warning("IMD source health mark failed: %s", e)

@@ -1,9 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  ShieldAlert, Search, RefreshCw, Moon, Sun, Bell,
-  ChevronRight, Filter, AlertTriangle, EyeOff, Radio,
-  Waves, Mountain, CheckCircle2, Download, ExternalLink,
-  Flame, Clock
+  RefreshCw, Moon, Sun, ChevronRight, Filter, Waves, Clock
 } from 'lucide-react';
 import {
   LocationItem, PredictionItem, AlertItem, ShelterItem,
@@ -39,7 +36,6 @@ export const CommandDashboard: React.FC<CommandDashboardProps> = ({
   reports,
   dataSources,
   lang: _lang,
-  userRole,
   setUserRole: _setUserRole,
   nightOps,
   setNightOps,
@@ -54,8 +50,6 @@ export const CommandDashboard: React.FC<CommandDashboardProps> = ({
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [hideStale, setHideStale] = useState(false);
   const [rightTab, setRightTab] = useState<'RISKS' | 'ALERTS' | 'NEWS'>('RISKS');
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   // Compute metrics
   const proposedAlerts = alerts.filter(a => a.lifecycle_status === 'PROPOSED');
@@ -223,7 +217,7 @@ export const CommandDashboard: React.FC<CommandDashboardProps> = ({
       {/* 4. Operator Workspace: Left Filters + Center Map + Right Top Risks */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
         {/* Left Floating/Collapsible Filters (3 cols) */}
-        <div className={`lg:col-span-3 space-y-2.5 transition-all ${leftPanelOpen ? 'block' : 'hidden lg:block'}`}>
+        <div className="lg:col-span-3 space-y-2.5 transition-all">
           <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">

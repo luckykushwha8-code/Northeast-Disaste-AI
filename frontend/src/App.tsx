@@ -3,15 +3,15 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 're
 import {
   LayoutDashboard, Map, Bell, LifeBuoy, BarChart2, FlaskConical,
   FileText, Mail, Activity, ChevronLeft, ChevronRight, Moon, Sun,
-  Globe, AlignJustify, Lock, Layers
+  AlignJustify, Lock, Layers, LogIn, LogOut
 } from 'lucide-react';
 
 import { RoleBadge } from './components/ui/RoleBadge';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 import { ToastProvider } from './components/ui/Toast';
+import { AuthDialog } from './components/AuthDialog';
 import { api } from './api/client';
-import type { UserRole, Language, AlertItem, PredictionItem } from './types';
-import { translations } from './locales/translations';
+import type { UserRole, Language, AlertItem, PredictionItem, AuthenticatedUser } from './types';
 
 // Lazy-load pages
 import { lazy, Suspense } from 'react';
@@ -63,8 +63,6 @@ const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'hi', label: 'हिं' },
 ];
 
-const ROLES: UserRole[] = ['RESIDENT', 'RESPONDER', 'OPERATOR', 'ANALYST', 'ADMIN'];
-
 function canAccess(role: UserRole, item: NavItem): boolean {
   if (!item.roles) return true;
   return item.roles.includes(role);
@@ -101,7 +99,9 @@ function LockedPage({ label }: { label: string }) {
 function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole>('OPERATOR');
+  const [authenticatedUser, setAuthenticatedUser] = useState<AuthenticatedUser | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const userRole: UserRole = authenticatedUser?.role ?? 'RESIDENT';
   const [lang, setLang] = useState<Language>('en');
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
@@ -110,7 +110,13 @@ function AppShell() {
   const [reports, setReports] = useState<any[]>([]);
   const location = useLocation();
 
-  const t = translations[lang] || translations.en;
+
+  useEffect(() => {
+    api.getCurrentUser().then(setAuthenticatedUser).catch(() => setAuthenticatedUser(null));
+    const onExpired = () => setAuthenticatedUser(null);
+    window.addEventListener('nesafe:auth-expired', onExpired);
+    return () => window.removeEventListener('nesafe:auth-expired', onExpired);
+  }, []);
 
   // Load app data
   useEffect(() => {
@@ -158,19 +164,18 @@ function AppShell() {
 
         {/* Right controls */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Role selector */}
-          <select
-            value={userRole}
-            onChange={e => setUserRole(e.target.value as UserRole)}
-            className={`text-xs font-semibold px-1 sm:px-2 py-1 rounded-lg border max-w-[5.5rem] sm:max-w-none ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-700'} focus:outline-none`}
-            aria-label="Select role"
-          >
-            {ROLES.map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          <span className="hidden sm:inline-flex"><RoleBadge role={userRole} /></span>
+          {authenticatedUser ? (
+            <>
+              <span className="hidden sm:inline-flex"><RoleBadge role={authenticatedUser.role} /></span>
+              <button onClick={() => { api.logout(); setAuthenticatedUser(null); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50" aria-label={`Sign out ${authenticatedUser.username}`}>
+                <LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setLoginOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-teal-800">
+              <LogIn className="h-3.5 w-3.5" /> Staff login
+            </button>
+          )}
 
           {/* Language */}
           <select
@@ -326,6 +331,8 @@ function AppShell() {
           );
         })}
       </nav>
+
+      {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onLogin={setAuthenticatedUser} />}
     </div>
   );
 }

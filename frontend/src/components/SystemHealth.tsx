@@ -5,11 +5,12 @@ import { Database, History, RefreshCw, Rss } from 'lucide-react';
 import { TinyFishPanel } from './TinyFishPanel';
 
 interface SystemHealthProps {
-  dataSources: DataSourceItem[];
+  dataSources?: DataSourceItem[];
   onRefresh: () => void;
 }
 
-export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefresh }) => {
+export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initialDataSources, onRefresh }) => {
+  const [dataSources, setDataSources] = useState<DataSourceItem[]>(initialDataSources ?? []);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<LiveDataSyncItem | null>(null);
@@ -18,6 +19,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefre
   const [imdSyncNote, setImdSyncNote] = useState<string | null>(null);
 
   useEffect(() => {
+    api.getDataStatus().then(setDataSources).catch((e) => console.error('Failed to fetch data source status', e));
     const fetchLogs = async () => {
       try {
         const logs = await api.getAuditLogs();
@@ -36,6 +38,8 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefre
       const result = await api.syncLiveData();
       setSyncResult(result);
       onRefresh();
+      const sources = await api.getDataStatus();
+      setDataSources(sources);
       const logs = await api.getAuditLogs();
       setAuditLogs(logs);
     } catch (e) {
@@ -50,6 +54,8 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefre
     setImdSyncNote(null);
     try {
       const result = await api.runImdSync();
+      const sources = await api.getDataStatus();
+      setDataSources(sources);
       const rf = result?.rainfall ?? {};
       const of = result?.official_warnings ?? {};
       setImdSyncNote(
@@ -122,16 +128,17 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefre
             <thead className="bg-slate-50 text-slate-700 font-bold">
               <tr>
                 <th className="py-2.5 px-3 text-left">Data Source / Agency</th>
-                <th className="py-2.5 px-3 text-left">Type</th>
-                <th className="py-2.5 px-3 text-left">Expected Interval</th>
-                <th className="py-2.5 px-3 text-left">Last Ingested</th>
-                <th className="py-2.5 px-3 text-left">Quality Status</th>
+                <th className="py-2.5 px-3 text-left">Connection</th>
+                <th className="py-2.5 px-3 text-left">Last successful fetch</th>
+                <th className="py-2.5 px-3 text-left">Latest observed value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {dataSources.map((ds) => {
-                const isOp = ds.status === 'OPERATIONAL';
-                const isStale = ds.status === 'STALE' || ds.status === 'DELAYED';
+                const statusStyle = ds.status === 'OPERATIONAL' ? 'bg-emerald-100 text-emerald-800'
+                  : ds.status === 'SIMULATED' ? 'bg-purple-100 text-purple-800'
+                  : ['STALE', 'DELAYED', 'NOT_CHECKED', 'AUTH_REQUIRED', 'AUTH_ERROR'].includes(ds.status) ? 'bg-amber-100 text-amber-800'
+                  : 'bg-red-100 text-red-800';
 
                 return (
                   <tr key={ds.id} className="hover:bg-slate-50 transition">
@@ -139,19 +146,28 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources, onRefre
                       <div>{ds.name}</div>
                       <div className="text-[10px] text-slate-400 font-normal">{ds.configuration_reference}</div>
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-slate-600">{ds.source_type}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{ds.expected_update_interval_hours} hrs</td>
                     <td className="py-2.5 px-3 text-slate-600">
-                      {ds.last_success_at ? new Date(ds.last_success_at).toLocaleTimeString() : 'Pending'}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusStyle}`}>{ds.status}</span>
+                      <div className="mt-1 text-[10px] text-slate-400">Expected interval: {ds.expected_update_interval_hours}h · {ds.source_type}</div>
                     </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isOp ? 'bg-emerald-100 text-emerald-800' :
-                        isStale ? 'bg-amber-100 text-amber-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {ds.status}
-                      </span>
+                    <td className="py-2.5 px-3 text-slate-600">
+                      <div>{ds.last_success_at ? new Date(ds.last_success_at).toLocaleString() : 'No successful fetch recorded'}</div>
+                      <div className="mt-1 text-[10px] text-slate-400">Last attempt: {ds.last_fetch_attempt_at ? new Date(ds.last_fetch_attempt_at).toLocaleString() : 'not checked'}</div>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600">
+                      {ds.latest_observation_at ? (
+                        <>
+                          <div className="font-semibold">{ds.latest_value ?? '—'} {ds.latest_unit ?? ''} · {ds.latest_variable?.replaceAll('_', ' ')}</div>
+                          <div className="mt-1 text-[10px] text-slate-400">Observed {new Date(ds.latest_observation_at).toLocaleString()} · {ds.latest_observation_status ?? 'UNKNOWN'}</div>
+                          {ds.latest_observation_simulated && <div className="mt-1 text-[10px] font-bold text-purple-700">SIMULATED — not a live observation</div>}
+                        </>
+                      ) : <div className="text-slate-400">No observation recorded</div>}
+                      {ds.latest_forecast_24h_mm != null && (
+                        <div className="mt-1.5 border-t border-slate-100 pt-1 text-[10px] text-blue-700">
+                          Forecast: {ds.latest_forecast_24h_mm} mm / 24h · {ds.latest_forecast_status ?? 'UNKNOWN'}
+                          {ds.latest_forecast_fetched_at ? ` · fetched ${new Date(ds.latest_forecast_fetched_at).toLocaleString()}` : ''}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

@@ -11,10 +11,12 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmergencyContactsCard } from '../../components/ui/EmergencyContactsCard';
 import { RoleBadge } from '../../components/ui/RoleBadge';
-import { OfflineBanner } from '../../components/ui/OfflineBanner';
 import { RiskGauge } from '../../components/ui/RiskGauge';
 import { StatCard } from '../../components/ui/StatCard';
 import { FlaskConical, WifiOff, Shield } from 'lucide-react';
+
+const SHOWCASE_RECENT_UPDATE = new Date(Date.now() - 5 * 60000).toISOString();
+const SHOWCASE_OLD_UPDATE = new Date(Date.now() - 200 * 60000).toISOString();
 
 export default function ComponentShowcase() {
   return (
@@ -51,8 +53,8 @@ export default function ComponentShowcase() {
       {/* FreshnessBadge */}
       <Section title="FreshnessBadge">
         <div className="flex flex-wrap gap-3">
-          <FreshnessBadge updatedAt={new Date(Date.now() - 5 * 60000).toISOString()} />
-          <FreshnessBadge updatedAt={new Date(Date.now() - 200 * 60000).toISOString()} />
+          <FreshnessBadge updatedAt={SHOWCASE_RECENT_UPDATE} />
+          <FreshnessBadge updatedAt={SHOWCASE_OLD_UPDATE} />
           <FreshnessBadge updatedAt={null} />
         </div>
       </Section>

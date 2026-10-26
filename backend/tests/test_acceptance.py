@@ -11,6 +11,7 @@ from app.data.seed_data import seed_database
 from app.models.entities import Alert, DataSource, Observation
 from app.services.alert_engine import AlertEngine
 from app.services.notification_service import NotificationProvider
+from auth_test_support import AUTH_HEADERS
 
 # Use StaticPool with in-memory SQLite so all sessions connect to the exact same database
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -43,7 +44,7 @@ def setup_test_db():
     app.dependency_overrides.pop(get_db, None)
     Base.metadata.drop_all(bind=engine)
 
-client = TestClient(app)
+client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
 
 def test_health():
     res = client.get("/api/v1/health")
@@ -152,7 +153,7 @@ def test_at06_unauthorized_approval_attempt():
     res = client.post(
         f"/api/v1/alerts/{alert_id}/approve",
         json={"actor_id": "usr_resident_01", "reason": "Attempting resident approval"},
-        headers={"x-user-role": "RESIDENT"}
+        headers={**AUTH_HEADERS["RESIDENT"], "x-user-role": "OPERATOR"}
     )
     assert res.status_code == 403
     assert "not authorized" in res.json()["detail"]
@@ -174,14 +175,14 @@ def test_at07_approve_test_alert():
     res = client.post(
         f"/api/v1/alerts/{alert_id}/approve",
         json={"actor_id": "usr_operator_01", "reason": "Verified against gauge data"},
-        headers={"x-user-role": "OPERATOR"}
+        headers={"x-user-role": "RESIDENT"}
     )
     assert res.status_code == 200
     data = res.json()
     assert data["lifecycle_status"] == "ISSUED"
     assert len(data["deliveries"]) == 1
     delivery = data["deliveries"][0]
-    assert delivery["provider_status"] == "DELIVERED"
+    assert delivery["provider_status"] == "SIMULATED"
     assert "[SIMULATION_SANDBOX]" in delivery["recipient_reference"]
 
 def test_at08_notification_failure_retry():
@@ -201,7 +202,8 @@ def test_at08_notification_failure_retry():
 
     # Retry delivery
     retried_delivery = NotificationProvider.retry_delivery(db, failed_delivery.id)
-    assert retried_delivery.provider_status == "DELIVERED"
+    assert retried_delivery.provider_status == "SIMULATED"
+    assert retried_delivery.delivered_at is None
     assert retried_delivery.retry_count == 1
     db.close()
 

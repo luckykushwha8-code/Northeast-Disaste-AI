@@ -208,8 +208,8 @@ class EmailAlertService:
         recipients = self._recipients_for_alert(db, alert)
         if not recipients:
             return {
-                "alert_id": alert.id, "status": "DISPATCHED",
-                "reason": "no consenting subscribers or verified authority contacts for this district",
+                "alert_id": alert.id, "status": "NO_ELIGIBLE_RECIPIENTS",
+                "reason": "No consenting subscribers or verified authority contacts are configured for this district; no delivery attempt was made.",
                 "recipients_total": 0, "accepted_by_provider": 0, "failed": 0, "deliveries": []
             }
 
@@ -286,9 +286,14 @@ class EmailAlertService:
                 "failed": failed_count
             })
         )
+        dispatch_status = (
+            "ACCEPTED_BY_PROVIDER" if accepted_count == len(recipients)
+            else "PARTIALLY_ACCEPTED" if accepted_count > 0
+            else "FAILED"
+        )
         return {
-            "alert_id": alert.id, "status": "DISPATCHED",
-            "reason": f"dispatched to {len(recipients)} recipients ({district})",
+            "alert_id": alert.id, "status": dispatch_status,
+            "reason": f"SMTP accepted {accepted_count} of {len(recipients)} messages for {district}; inbox receipt is unconfirmed.",
             "recipients_total": len(recipients),
             "accepted_by_provider": accepted_count,
             "failed": failed_count,

@@ -38,7 +38,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
   const handleApprove = async (alertId: string) => {
     try {
       setErrorMessage(null);
-      await api.approveAlert(alertId, `usr_${userRole.toLowerCase()}`, userRole, actionReason || 'Operator verified against hydrometeorological radar');
+      await api.approveAlert(alertId, actionReason || 'Operator verified against hydrometeorological radar');
       setSuccessMessage("Alert approved & test notification dispatched!");
       setActionModalAlert(null);
       setActionReason('');
@@ -52,7 +52,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
   const handleAcknowledge = async (alertId: string) => {
     try {
       setErrorMessage(null);
-      await api.acknowledgeAlert(alertId, `usr_${userRole.toLowerCase()}`, userRole);
+      await api.acknowledgeAlert(alertId);
       setSuccessMessage("Alert acknowledged by response team!");
       onRefresh();
       setTimeout(() => setSuccessMessage(null), 4000);
@@ -64,7 +64,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
   const handleResolve = async (alertId: string) => {
     try {
       setErrorMessage(null);
-      await api.resolveAlert(alertId, `usr_${userRole.toLowerCase()}`, userRole);
+      await api.resolveAlert(alertId);
       setSuccessMessage("Alert successfully resolved.");
       onRefresh();
       setTimeout(() => setSuccessMessage(null), 4000);
@@ -253,7 +253,11 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
                           <span className="font-medium text-slate-700">{del.channel} → {del.recipient_reference}</span>
                           <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                              del.provider_status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                              del.provider_status === 'ACCEPTED_BY_PROVIDER' ? 'bg-blue-100 text-blue-800'
+                                : del.provider_status === 'SIMULATED' ? 'bg-purple-100 text-purple-800'
+                                : del.provider_status === 'QUEUED' ? 'bg-amber-100 text-amber-800'
+                                : del.provider_status === 'BLOCKED_DISABLED' ? 'bg-slate-100 text-slate-700'
+                                  : 'bg-red-100 text-red-800'
                             }`}>
                               {del.provider_status}
                             </span>

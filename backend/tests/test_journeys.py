@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
+from auth_test_support import AUTH_HEADERS
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -30,7 +31,7 @@ def setup_journey_db():
 
 
 # TestClient without context manager: lifespan/scheduler not started in tests
-client = TestClient(app)
+client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
 
 
 def test_journey_a_dashboard_to_region_risk():
@@ -53,7 +54,7 @@ def test_journey_a_dashboard_to_region_risk():
     f = one.json()["features"]
     assert len(f) == 1
     p = f[0]["properties"]
-    assert p["risk_category"] in ("LOW", "MODERATE", "HIGH", "CRITICAL", "UNAVAILABLE")
+    assert p["risk_category"] in ("LOW", "MODERATE", "HIGH", "CRITICAL", "UNAVAILABLE", "UNKNOWN")
     # explanation must be auditable (threshold provenance + notes present)
     fp = f[0]["properties"]
     assert isinstance(fp.get("explanation_notes", []), (list, str))

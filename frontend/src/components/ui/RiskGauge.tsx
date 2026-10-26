@@ -52,8 +52,6 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
   const cy = 60;
   const startAngle = -210;
   const sweepAngle = 240;
-  const arcLen = (sweepAngle / 360) * 2 * Math.PI * r;
-  const filled = pct * arcLen;
 
   function polarToXY(angle: number, radius: number) {
     const rad = ((angle - 90) * Math.PI) / 180;

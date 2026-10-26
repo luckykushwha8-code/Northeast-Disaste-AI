@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Phone, ChevronRight, ChevronLeft, Share2, Printer, Copy, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Phone, ChevronRight, ChevronLeft, Printer, Copy, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../../api/client';
 import { StatusStepper } from '../../components/ui/StatusStepper';
 import { EmergencyContactsCard } from '../../components/ui/EmergencyContactsCard';
@@ -7,7 +7,6 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Drawer } from '../../components/ui/Drawer';
 import { DataTable } from '../../components/ui/DataTable';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import type { RescueRequestItem, RescueStatus, UserRole } from '../../types';
 

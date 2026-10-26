@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # Security: per-IP limit for mutating (POST) API requests, sliding 60 s window
     RATE_LIMIT_POST_PER_MINUTE: int = 30
 
+    # Operator/responder login. Accounts are provisioned as PBKDF2 hashes in
+    # AUTH_USERS_JSON; no demo passwords or roles are enabled by default.
+    AUTH_SECRET_KEY: str = ""
+    AUTH_USERS_JSON: str = "{}"
+    AUTH_TOKEN_TTL_MINUTES: int = 480
+
     # ---- Automatic public alert emails (disabled until validated) ----
     # Master switch: resident + authority email dispatch stays OFF until the data
     # sources and risk model are independently validated (never enabled to

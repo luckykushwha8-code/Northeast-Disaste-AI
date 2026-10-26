@@ -3,7 +3,7 @@ import json
 from sqlalchemy.orm import Session
 from app.models.entities import (
     Location, TerrainFeature, DataSource, Shelter, ModelVersion, User, Observation,
-    DisasterEvent, HistoricalValidationCase
+    DisasterEvent, HistoricalValidationCase, LiveDataCache
 )
 from app.services.validation_service import seed_historical_validation_cases
 from app.data.historical_cases import documented_disaster_events
@@ -70,8 +70,7 @@ def seed_database(db: Session):
             configuration_reference="https://api.imd.gov.in/api/v1/districtwarning",
             expected_update_interval_hours=3.0,
             enabled=True,
-            status="OPERATIONAL",
-            last_success_at=now
+            status="NOT_CHECKED"
         ),
         DataSource(
             id="src_cwc_brahmaputra",
@@ -80,8 +79,7 @@ def seed_database(db: Session):
             configuration_reference="https://ffs.india-water.gov.in/station/022-MBAPU",
             expected_update_interval_hours=2.0,
             enabled=True,
-            status="OPERATIONAL",
-            last_success_at=now
+            status="NOT_CHECKED"
         ),
         DataSource(
             id="src_gsi_landslide",
@@ -90,8 +88,7 @@ def seed_database(db: Session):
             configuration_reference="https://bhusanket.gsi.gov.in/landslide-hazard",
             expected_update_interval_hours=720.0,
             enabled=True,
-            status="OPERATIONAL",
-            last_success_at=now
+            status="NOT_CHECKED"
         ),
         DataSource(
             id="src_isro_bhuvan",
@@ -100,8 +97,7 @@ def seed_database(db: Session):
             configuration_reference="https://bhuvan.nrsc.gov.in/thematic/wms",
             expected_update_interval_hours=24.0,
             enabled=True,
-            status="OPERATIONAL",
-            last_success_at=now
+            status="NOT_CHECKED"
         ),
         DataSource(
             id="src_smart_city_iot",
@@ -110,13 +106,53 @@ def seed_database(db: Session):
             configuration_reference="iot://smartcity.guwahati.gov.in/sensors",
             expected_update_interval_hours=1.0,
             enabled=True,
-            status="OPERATIONAL",
-            last_success_at=now
+            status="SIMULATED"
+        ),
+        DataSource(
+            id="src_open_meteo",
+            name="Open-Meteo observed and forecast precipitation",
+            source_type="WEATHER_API",
+            configuration_reference="https://api.open-meteo.com/v1/forecast",
+            expected_update_interval_hours=0.5,
+            enabled=True,
+            status="NOT_CHECKED"
         )
     ]
     for s in sources:
         if s.id not in existing_sources:
             db.add(s)
+            continue
+        current = db.query(DataSource).filter(DataSource.id == s.id).first()
+        if not current:
+            continue
+        if current.source_type == "SYNTH_IOT":
+            current.status = "SIMULATED"
+            current.last_success_at = None
+            continue
+        has_real_observation = db.query(Observation.id).filter(
+            Observation.source_id == s.id,
+            Observation.simulation_flag == False,
+            Observation.quality_status.in_(["VALID", "DELAYED", "STALE"])
+        ).first() is not None
+        cache_prefixes = {
+            "src_imd_api": ("imd_", "imd_warnings"),
+            "src_cwc_brahmaputra": ("cwc_stations",),
+            "src_gsi_landslide": ("gsi_susceptibility",),
+            "src_open_meteo": ("open_meteo_",),
+        }.get(s.id, ())
+        has_live_cache = False
+        if cache_prefixes:
+            cache_rows = db.query(LiveDataCache.cache_key).filter(LiveDataCache.data_mode == "LIVE").all()
+            has_live_cache = any(
+                key.startswith(prefix) if prefix.endswith("_") else key == prefix
+                for (key,) in cache_rows for prefix in cache_prefixes
+            )
+        # Older seed revisions marked their synthetic timestamps as successful
+        # source fetches. Clear that status unless an actual observation or live
+        # source cache proves a real fetch happened.
+        if current.status == "OPERATIONAL" and not has_real_observation and not has_live_cache:
+            current.status = "NOT_CHECKED"
+            current.last_success_at = None
 
     # 3. Locations across all 8 Northeast States
     existing_locations = {l.id for l in db.query(Location).all()}

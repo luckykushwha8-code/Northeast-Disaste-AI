@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models.entities import LiveDataCache
+from app.models.entities import LiveDataCache, DataSource
 from app.config import settings
 
 logger = logging.getLogger("open_meteo_service")
@@ -55,6 +55,18 @@ class OpenMeteoService:
             fetched_at=_now()
         )
         db.add(entry)
+        db.commit()
+
+    def _mark_health(self, db: Session, succeeded: bool):
+        source = db.query(DataSource).filter(DataSource.id == "src_open_meteo").first()
+        if not source:
+            return
+        if succeeded:
+            source.last_success_at = _now()
+            source.status = "OPERATIONAL"
+        else:
+            source.last_error_at = _now()
+            source.status = "FAILED"
         db.commit()
 
     def _cached_fallback(self, db: Session, key: str, live_error: str) -> Dict[str, Any]:
@@ -138,6 +150,8 @@ class OpenMeteoService:
                 "observed_precipitation_72h_mm": round(obs72, 2),
                 "forecast_precipitation_24h_mm": round(fc24, 2),
                 "forecast_precipitation_72h_mm": round(fc72, 2),
+                "forecast_period_start_at": now.isoformat(),
+                "forecast_period_end_at": (now + datetime.timedelta(hours=24)).isoformat(),
                 "data_mode": "LIVE",
                 "cache_hit": False,
                 "provenance_policy": "Observed precipitation is station-assimilated reanalysis; "
@@ -145,10 +159,12 @@ class OpenMeteoService:
                                      "IMD or CWC data."
             }
             self._save_cache(db, key, payload, request_url)
+            self._mark_health(db, True)
             return payload
 
         except Exception as e:
             logger.warning("Open-Meteo fetch failed for %s: %s", location_id, e)
+            self._mark_health(db, False)
             return self._cached_fallback(db, key, str(e))
 
 

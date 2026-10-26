@@ -6,6 +6,7 @@ from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
 from app.config import settings
+from auth_test_support import AUTH_HEADERS
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -29,7 +30,7 @@ def reset_rate_limit_state():
 
 def test_post_rate_limit_returns_429(monkeypatch):
     monkeypatch.setattr(settings, "RATE_LIMIT_POST_PER_MINUTE", 1)
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
     # Invalid payloads -> 422 validation responses, but every POST still counts
     bad_body = {"nope": 1}
     r1 = client.post("/api/v1/rescue-requests", json=bad_body)
@@ -45,7 +46,7 @@ def test_post_rate_limit_returns_429(monkeypatch):
 
 
 def test_cors_hardened_to_frontend_origin():
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
     origin = "http://localhost:5173"
     r = client.get("/api/v1/alerts", headers={"Origin": origin})
     assert r.headers.get("access-control-allow-origin") == origin
@@ -53,3 +54,14 @@ def test_cors_hardened_to_frontend_origin():
     rogue = "https://evil.example.com"
     r2 = client.get("/api/v1/alerts", headers={"Origin": rogue})
     assert r2.headers.get("access-control-allow-origin") != rogue
+
+
+def test_role_header_cannot_authorize_protected_reports():
+    client = TestClient(app)
+    response = client.get("/api/v1/reports", headers={"x-user-role": "ADMIN"})
+    assert response.status_code == 401
+
+    denied = client.get("/api/v1/reports", headers={
+        **AUTH_HEADERS["RESIDENT"], "x-user-role": "ADMIN"
+    })
+    assert denied.status_code == 403

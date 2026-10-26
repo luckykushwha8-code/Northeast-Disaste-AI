@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Header, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 import datetime
@@ -22,7 +22,7 @@ from app.schemas.pydantic_models import (
     AuditLogOut, ModelVersionOut,
     TinyFishStatusOut, TinyFishRetrievalRequest, TinyFishRetrievalResultOut,
     RescueRequestCreate, RescueRequestStatusUpdate, RescueRequestOut,
-    AnalyticsOverview, AlertSubscribeRequest, AlertDistrictOut
+    AnalyticsOverview, AlertSubscribeRequest, AlertDistrictOut, AuthLogin
 )
 from app.services.ingestion import IngestionService
 from app.services.flood_engine import FloodPredictionEngine
@@ -42,6 +42,7 @@ from app.services.report_service import build_report_data, render_csv, render_pd
 from app.services.imd_api_service import imd_api_service
 from app.services.imd_ingest import imd_ingest_service
 from app.config import settings
+from app.auth import get_principal, require_roles, authenticate_credentials, issue_token, authentication_ready, Principal
 
 router = APIRouter()
 
@@ -56,6 +57,28 @@ STATION_OFFICIAL_MARKS = {
 }
 
 # ----------------- 1. HEALTH & SYSTEM STATUS -----------------
+@router.post("/auth/login")
+def login(payload: AuthLogin):
+    """Issue a short-lived signed bearer token for an explicitly configured account."""
+    if not authentication_ready():
+        raise HTTPException(status_code=503, detail="Login is disabled until AUTH_SECRET_KEY and password-hash accounts are configured")
+    principal = authenticate_credentials(payload.username, payload.password)
+    if not principal:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token, expires_at = issue_token(principal.username, principal.role)
+    return {
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_at": datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc).isoformat(),
+        "user": {"username": principal.username, "role": principal.role}
+    }
+
+
+@router.get("/auth/me")
+def get_current_account(principal: Principal = Depends(get_principal)):
+    return {"username": principal.username, "role": principal.role}
+
+
 @router.get("/health")
 def get_health(db: Session = Depends(get_db)):
     """Basic service health check according to PRD 11.1"""
@@ -75,20 +98,84 @@ def get_health(db: Session = Depends(get_db)):
 def get_data_source_status(db: Session = Depends(get_db)):
     """Shows all data feeds and their freshness/operational health (FR-DATA-06, FR-DATA-07)"""
     sources = db.query(DataSource).all()
-    # Check if feeds are delayed or stale based on expected interval
     now = utcnow()
+    result = []
     for s in sources:
-        if s.status != "FAILED" and s.last_success_at:
+        latest_observation = db.query(Observation).filter(
+            Observation.source_id == s.id
+        ).order_by(Observation.observed_at.desc()).first()
+        forecast_cache = None
+        forecast_payload: Dict[str, Any] = {}
+        if s.id == "src_open_meteo":
+            forecast_cache = db.query(LiveDataCache).filter(
+                LiveDataCache.cache_key.like("open\\_meteo\\_%", escape="\\"),
+                LiveDataCache.data_mode == "LIVE"
+            ).order_by(LiveDataCache.fetched_at.desc()).first()
+            if forecast_cache and forecast_cache.payload_json:
+                try:
+                    forecast_payload = json.loads(forecast_cache.payload_json)
+                except json.JSONDecodeError:
+                    forecast_payload = {}
+        fetch_attempt = max(
+            (stamp for stamp in (s.last_success_at, s.last_error_at) if stamp is not None),
+            default=None
+        )
+
+        if s.source_type == "SYNTH_IOT":
+            s.status = "SIMULATED"
+        elif not s.enabled:
+            s.status = "DISABLED"
+        elif s.id == "src_imd_api" and not settings.IMD_API_KEY and (not s.last_success_at or s.status == "AUTH_REQUIRED"):
+            s.status = "AUTH_REQUIRED"
+        elif s.last_error_at and (not s.last_success_at or s.last_error_at >= s.last_success_at):
+            if s.status not in {"AUTH_REQUIRED", "AUTH_ERROR"}:
+                s.status = "FAILED"
+        elif s.last_success_at:
             age_hours = (now - s.last_success_at).total_seconds() / 3600.0
             if age_hours > (s.expected_update_interval_hours * 2):
                 s.status = "STALE"
             elif age_hours > s.expected_update_interval_hours:
                 s.status = "DELAYED"
+            else:
+                s.status = "OPERATIONAL"
+        else:
+            s.status = "NOT_CHECKED"
+
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "source_type": s.source_type,
+            "configuration_reference": s.configuration_reference,
+            "expected_update_interval_hours": s.expected_update_interval_hours,
+            "enabled": s.enabled,
+            "last_success_at": s.last_success_at,
+            "last_error_at": s.last_error_at,
+            "status": s.status,
+            "last_fetch_attempt_at": fetch_attempt,
+            "latest_observation_at": latest_observation.observed_at if latest_observation else None,
+            "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation else None,
+            "latest_variable": latest_observation.variable if latest_observation else None,
+            "latest_value": latest_observation.value if latest_observation else None,
+            "latest_unit": latest_observation.unit if latest_observation else None,
+            "latest_observation_status": (
+                "SIMULATED" if latest_observation and latest_observation.simulation_flag
+                else latest_observation.quality_status if latest_observation else None
+            ),
+            "latest_observation_simulated": latest_observation.simulation_flag if latest_observation else None,
+            "latest_forecast_24h_mm": forecast_payload.get("forecast_precipitation_24h_mm"),
+            "latest_forecast_period_start_at": forecast_payload.get("forecast_period_start_at"),
+            "latest_forecast_period_end_at": forecast_payload.get("forecast_period_end_at"),
+            "latest_forecast_fetched_at": forecast_cache.fetched_at if forecast_cache else None,
+            "latest_forecast_status": (
+                "FRESH" if forecast_cache and (now - forecast_cache.fetched_at).total_seconds() <= 3600
+                else "STALE" if forecast_cache else None
+            )
+        })
     db.commit()
-    return sources
+    return result
 
 @router.get("/system/audit-logs", response_model=List[AuditLogOut])
-def get_audit_logs(db: Session = Depends(get_db), limit: int = 50):
+def get_audit_logs(db: Session = Depends(get_db), limit: int = Query(50, ge=1, le=200), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     """Retrieve immutable audit trail records for compliance (FR-ADMIN-04)"""
     return db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
 
@@ -159,7 +246,7 @@ def get_observations(
     return query.order_by(Observation.observed_at.desc()).limit(limit).all()
 
 @router.post("/observations", response_model=ObservationOut)
-def ingest_observation(payload: ObservationCreate, db: Session = Depends(get_db)):
+def ingest_observation(payload: ObservationCreate, db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     try:
         obs = IngestionService.normalize_and_ingest(
             db=db,
@@ -216,7 +303,8 @@ def generate_assessments(
     location_id: Optional[str] = None,
     force_stale: bool = False,
     force_missing: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("OPERATOR", "ANALYST", "ADMIN"))
 ):
     """
     Evaluates current observations across monitored locations and generates dual hazard assessments.
@@ -446,7 +534,7 @@ def unsubscribe_from_alerts(payload: AlertSubscribeRequest, db: Session = Depend
     return {"status": "unsubscribed", "email": email, "district": district}
 
 @router.post("/alerts", response_model=AlertOut)
-def create_alert(payload: AlertCreate, db: Session = Depends(get_db)):
+def create_alert(payload: AlertCreate, db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     """Create a proposed alert record under PRD FR-ALERT-01"""
     alert = AlertEngine.create_proposal(
         db=db,
@@ -458,7 +546,7 @@ def create_alert(payload: AlertCreate, db: Session = Depends(get_db)):
         action_instructions=payload.action_instructions,
         source_type=payload.source_type,
         official_source_reference=payload.official_source_reference,
-        created_by="OPERATOR_CONSOLE",
+        created_by=principal.username,
         simulation_flag=payload.simulation_flag
     )
     return alert
@@ -467,8 +555,8 @@ def create_alert(payload: AlertCreate, db: Session = Depends(get_db)):
 def approve_alert(
     alert_id: str,
     action: AlertAction,
-    x_user_role: str = Header("OPERATOR"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))
 ):
     """Operator approves a proposed alert, issuing it and triggering notification (FR-ALERT-04, FR-ADMIN-02)"""
     try:
@@ -476,8 +564,8 @@ def approve_alert(
             db=db,
             alert_id=alert_id,
             target_status="APPROVED",
-            actor_id=action.actor_id,
-            actor_role=x_user_role,
+            actor_id=principal.username,
+            actor_role=principal.role,
             reason=action.reason or "Authorized operator review and verification completed."
         )
         return alert
@@ -490,8 +578,8 @@ def approve_alert(
 def acknowledge_alert(
     alert_id: str,
     action: AlertAction,
-    x_user_role: str = Header("RESPONDER"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ADMIN"))
 ):
     """Responder acknowledges alert receipt (FR-USER-12)"""
     try:
@@ -499,8 +587,8 @@ def acknowledge_alert(
             db=db,
             alert_id=alert_id,
             target_status="ACKNOWLEDGED",
-            actor_id=action.actor_id,
-            actor_role=x_user_role,
+            actor_id=principal.username,
+            actor_role=principal.role,
             reason=action.reason or "SDRF responder team acknowledged on-site deployment."
         )
         return alert
@@ -511,8 +599,8 @@ def acknowledge_alert(
 def resolve_alert(
     alert_id: str,
     action: AlertAction,
-    x_user_role: str = Header("OPERATOR"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))
 ):
     """Resolve active alert after hazard recedes"""
     try:
@@ -520,8 +608,8 @@ def resolve_alert(
             db=db,
             alert_id=alert_id,
             target_status="RESOLVED",
-            actor_id=action.actor_id,
-            actor_role=x_user_role,
+            actor_id=principal.username,
+            actor_role=principal.role,
             reason=action.reason or "Floodwaters subsided below danger levels; slope secured."
         )
         return alert
@@ -536,7 +624,10 @@ def list_shelters(db: Session = Depends(get_db)):
 
 # ----------------- 7. INCIDENT REPORTS -----------------
 @router.get("/reports", response_model=List[IncidentReportOut])
-def list_incident_reports(db: Session = Depends(get_db)):
+def list_incident_reports(
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ADMIN"))
+):
     return db.query(IncidentReport).order_by(IncidentReport.report_time.desc()).all()
 
 @router.post("/reports", response_model=IncidentReportOut)
@@ -559,17 +650,22 @@ def submit_incident_report(payload: IncidentReportCreate, db: Session = Depends(
 def verify_incident_report(
     report_id: str,
     payload: IncidentReportVerify,
-    x_user_role: str = Header("RESPONDER"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ADMIN"))
 ):
     report = db.query(IncidentReport).filter(IncidentReport.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Incident report not found")
     report.verification_status = payload.status
-    report.reviewer_id = payload.reviewer_id
+    report.reviewer_id = principal.username
     report.reviewed_at = utcnow()
     db.commit()
     db.refresh(report)
+    log_audit(
+        db=db, actor_id=principal.username, action=f"INCIDENT_{payload.status}",
+        resource_type="IncidentReport", resource_id=report.id,
+        reason=payload.notes or f"Incident report {payload.status.lower()} by {principal.role.lower()}"
+    )
     return report
 
 # ----------------- 7B. RESCUE / ASSISTANCE REQUESTS -----------------
@@ -582,9 +678,6 @@ RESCUE_VALID_TRANSITIONS = {
     "UNREACHABLE": [],
     "CLOSED": []
 }
-RESCUE_DISPATCH_ROLES = {"RESPONDER", "OPERATOR", "ADMIN", "DISASTER_MANAGER"}
-
-
 def _new_public_reference(db: Session) -> str:
     import random as _random
     while True:
@@ -631,9 +724,14 @@ def submit_rescue_request(payload: RescueRequestCreate, db: Session = Depends(ge
 def list_rescue_requests(
     status: Optional[str] = None,
     public_reference: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(default=None)
 ):
     """Responder worklist / citizen tracking lookup (by public_reference)."""
+    if public_reference is None:
+        principal = get_principal(authorization)
+        if principal.role not in {"RESPONDER", "OPERATOR", "ADMIN"}:
+            raise HTTPException(status_code=403, detail="A responder login is required to view the worklist")
     query = db.query(RescueRequest)
     if status:
         query = query.filter(RescueRequest.status == status.upper())
@@ -646,7 +744,8 @@ def list_rescue_requests(
 def update_rescue_request_status(
     request_id: str,
     payload: RescueRequestStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ADMIN"))
 ):
     req = db.query(RescueRequest).filter(RescueRequest.id == request_id).first()
     if not req:
@@ -661,33 +760,25 @@ def update_rescue_request_status(
                    f"Allowed: {RESCUE_VALID_TRANSITIONS.get(current, [])}"
         )
 
-    role = (payload.responder_role or "RESPONDER").upper()
-    if role not in RESCUE_DISPATCH_ROLES and not payload.responder_id.startswith("SYSTEM"):
-        raise HTTPException(
-            status_code=403,
-            detail=f"Role '{role}' is not authorised to update rescue-request status. "
-                   f"An authorised responder must confirm assignment/dispatch."
-        )
-
     req.status = target
-    req.assigned_responder_id = payload.responder_id if target == "ASSIGNED" else req.assigned_responder_id
+    req.assigned_responder_id = principal.username if target == "ASSIGNED" else req.assigned_responder_id
     req.status_notes = payload.notes or req.status_notes
     req.last_updated_at = utcnow()
     db.commit()
     db.refresh(req)
     log_audit(
         db=db,
-        actor_id=payload.responder_id,
+        actor_id=principal.username,
         action=f"RESCUE_STATUS_{target}",
         resource_type="RescueRequest",
         resource_id=req.id,
-        reason=f"{req.public_reference}: {current} -> {target} (role {role})"
+        reason=f"{req.public_reference}: {current} -> {target} (role {principal.role})" + (f" — {payload.notes}" if payload.notes else "")
     )
     return req
 
 # ----------------- 8. SIMULATION SCENARIO RUNNER (SIH 5-MIN DEMO) -----------------
 @router.post("/simulation/scenario/{scenario_name}")
-def trigger_scenario(scenario_name: str, db: Session = Depends(get_db)):
+def trigger_scenario(scenario_name: str, db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     """
     SIH Repeatable Demo Scenarios:
     1. 'normal': Baseline conditions across Guwahati.
@@ -999,7 +1090,7 @@ def imd_aws_mapping(db: Session = Depends(get_db)):
 
 
 @router.post("/imd/sync")
-def imd_full_refresh(db: Session = Depends(get_db)):
+def imd_full_refresh(db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     """One-cycle refresh of all official IMD REST feeds:
     districtrainfall + basinqpf -> observations (deduped, provenance-stamped),
     districtwarning -> OFFICIAL lifecycle alerts (verbatim, deduped by source ref).
@@ -1305,7 +1396,8 @@ def get_tinyfish_status(db: Session = Depends(get_db)):
 @router.post("/sources/tinyfish/retrieve", response_model=TinyFishRetrievalResultOut)
 def request_tinyfish_retrieval(
     payload: TinyFishRetrievalRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))
 ):
     """
     Executes an approved disaster data retrieval task using TinyFish.
@@ -1343,7 +1435,7 @@ def get_tinyfish_history(
 
 # ----------------- 10. LIVE DATA SYNC & REGIONAL NEWS -----------------
 @router.post("/data/sync")
-def sync_live_data(db: Session = Depends(get_db)):
+def sync_live_data(db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
     """
     Full live data refresh:
     1. CWC Flood Forecasting System telemetry (real station levels above warning).
@@ -1594,7 +1686,8 @@ def list_demo_cases(db: Session = Depends(get_db)):
 @router.post("/models/demo-scenario")
 def post_demo_scenario(
     payload: Optional[Dict[str, Any]] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(require_roles("ADMIN"))
 ):
     """
     Runs the recorded demo replay for one documented historical event:

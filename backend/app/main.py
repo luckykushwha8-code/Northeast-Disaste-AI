@@ -38,7 +38,10 @@ def run_auto_sync():
         # AUTH_ERROR (no API key provisioned) is expected until credentials exist.
         try:
             from app.api.v1.routes import imd_full_refresh  # reuse the same flow
-            imd_summary = imd_full_refresh(db)
+            from app.auth import Principal
+            # Internal scheduled work runs with an explicit system principal;
+            # the HTTP endpoint still enforces a real operator/admin token.
+            imd_summary = imd_full_refresh(db, Principal(username="system_scheduler", role="ADMIN"))
             logger.info("IMD REST refresh: %s", str(imd_summary)[:300])
         except Exception as e:
             logger.warning("IMD REST refresh skipped: %s", e)

@@ -3,6 +3,7 @@ import { FileText, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../../api/client';
 
 export default function ReportsPage() {
+  const [reportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [downloading, setDownloading] = useState<'pdf' | 'csv' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export default function ReportsPage() {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = `ne-safe-situation-report-${new Date().toISOString().slice(0,10)}.${format}`;
+      a.download = `ne-safe-situation-report-${reportDate}.${format}`;
       a.click();
       URL.revokeObjectURL(blobUrl);
       setSuccess(`${format.toUpperCase()} report downloaded.`);

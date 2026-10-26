@@ -11,6 +11,7 @@ from app.database import Base, get_db
 from app.data.seed_data import seed_database
 from app.config import settings
 from app.services.tinyfish_service import tinyfish_service, _rate_limiter
+from auth_test_support import AUTH_HEADERS
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -46,7 +47,7 @@ def reset_tinyfish_state(monkeypatch):
     _rate_limiter.max_requests = settings.TINYFISH_RATE_LIMIT_PER_MINUTE
     _rate_limiter.timestamps = []
 
-client = TestClient(app)
+client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
 
 # 1. Status without API key
 def test_tinyfish_status_missing_key():

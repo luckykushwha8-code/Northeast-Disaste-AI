@@ -1,6 +1,11 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
+
+
+class AuthLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=1024)
 
 # --- Locations ---
 class LocationBase(BaseModel):
@@ -30,6 +35,19 @@ class DataSourceOut(BaseModel):
     last_success_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
     status: str  # OPERATIONAL, DELAYED, STALE, FAILED
+    last_fetch_attempt_at: Optional[datetime] = None
+    latest_observation_at: Optional[datetime] = None
+    latest_observation_ingested_at: Optional[datetime] = None
+    latest_variable: Optional[str] = None
+    latest_value: Optional[float] = None
+    latest_unit: Optional[str] = None
+    latest_observation_status: Optional[str] = None
+    latest_observation_simulated: Optional[bool] = None
+    latest_forecast_24h_mm: Optional[float] = None
+    latest_forecast_period_start_at: Optional[datetime] = None
+    latest_forecast_period_end_at: Optional[datetime] = None
+    latest_forecast_fetched_at: Optional[datetime] = None
+    latest_forecast_status: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Observations ---
@@ -77,19 +95,19 @@ class PredictionOut(BaseModel):
 
 # --- Alerts & Lifecycles ---
 class AlertCreate(BaseModel):
-    location_id: str
-    hazard_type: str  # FLOOD, LANDSLIDE
-    source_type: str = "OPERATOR_MANUAL"
-    severity: str  # LOW, MODERATE, HIGH, CRITICAL
-    title: str
-    description: str
-    action_instructions: str
-    official_source_reference: Optional[str] = None
+    location_id: str = Field(min_length=1, max_length=50)
+    hazard_type: Literal["FLOOD", "LANDSLIDE"]
+    source_type: Literal["OPERATOR_MANUAL", "AI_ASSESSMENT", "OFFICIAL_AGENCY", "SIMULATION"] = "OPERATOR_MANUAL"
+    severity: Literal["LOW", "MODERATE", "HIGH", "CRITICAL"]
+    title: str = Field(min_length=3, max_length=200)
+    description: str = Field(min_length=3, max_length=2000)
+    action_instructions: str = Field(min_length=3, max_length=2000)
+    official_source_reference: Optional[str] = Field(default=None, max_length=255)
     simulation_flag: bool = False
 
 class AlertAction(BaseModel):
-    actor_id: str
-    reason: Optional[str] = None
+    actor_id: Optional[str] = None  # Ignored for authorization; actor comes from signed login token.
+    reason: Optional[str] = Field(default=None, max_length=1000)
 
 class NotificationDeliveryOut(BaseModel):
     id: str
@@ -97,7 +115,7 @@ class NotificationDeliveryOut(BaseModel):
     recipient_reference: str
     provider_message_id: Optional[str] = None
     requested_at: datetime
-    provider_status: str  # QUEUED, SENT, DELIVERED, FAILED
+    provider_status: str  # QUEUED, ACCEPTED_BY_PROVIDER, SIMULATED, FAILED, BLOCKED_DISABLED
     delivered_at: Optional[datetime] = None
     failure_reason: Optional[str] = None
     retry_count: int
@@ -150,17 +168,18 @@ class ShelterOut(BaseModel):
 
 # --- Incident Reports ---
 class IncidentReportCreate(BaseModel):
-    reporter_name: Optional[str] = "Concerned Citizen"
-    category: str
-    location_name: str
-    latitude: float
-    longitude: float
-    description: str
+    reporter_name: Optional[str] = Field(default="Concerned Citizen", max_length=100)
+    category: Literal["WATERLOGGING", "RIVER_BREACH", "SLOPE_CRACK", "ROAD_BLOCKED", "DEBRIS_FALL"]
+    location_name: str = Field(min_length=2, max_length=150)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    description: str = Field(min_length=5, max_length=2000)
+    photo_reference: Optional[str] = Field(default=None, max_length=500)
 
 class IncidentReportVerify(BaseModel):
-    reviewer_id: str
-    status: str  # VERIFIED, REJECTED
-    notes: Optional[str] = None
+    reviewer_id: Optional[str] = None  # Ignored; reviewer comes from signed login token.
+    status: Literal["VERIFIED", "REJECTED"]
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
 class IncidentReportOut(BaseModel):
     id: str
@@ -174,14 +193,14 @@ class IncidentReportOut(BaseModel):
     verification_status: str
     reviewer_id: Optional[str] = None
     reviewed_at: Optional[datetime] = None
-    photo_reference: Optional[str] = None
+    photo_reference: Optional[str] = Field(default=None, max_length=500)
     model_config = ConfigDict(from_attributes=True)
 
 # --- Rescue Requests (citizen assistance; responder-confirmed only) ---
 class RescueRequestCreate(BaseModel):
-    location_name: str
-    latitude: float
-    longitude: float
+    location_name: str = Field(min_length=2, max_length=150)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
     requester_contact: str = Field(min_length=5, max_length=60)
     people_count: int = Field(default=1, ge=1, le=200)
     needs_summary: str = Field(min_length=5, max_length=2000)
@@ -189,10 +208,10 @@ class RescueRequestCreate(BaseModel):
     consent_shared_location: bool = True
 
 class RescueRequestStatusUpdate(BaseModel):
-    responder_id: str
-    new_status: str  # RECEIVED, ASSIGNED, EN_ROUTE, SERVED, CLOSED, UNREACHABLE
-    responder_role: Optional[str] = None
-    notes: Optional[str] = None
+    responder_id: Optional[str] = None  # Ignored; responder comes from signed login token.
+    new_status: Literal["RECEIVED", "ASSIGNED", "EN_ROUTE", "SERVED", "CLOSED", "UNREACHABLE"]
+    responder_role: Optional[str] = None  # Ignored; role comes from signed login token.
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
 class RescueRequestOut(BaseModel):
     id: str
@@ -310,7 +329,7 @@ class AlertDistrictOut(BaseModel):
 
 class AlertDispatchStatusOut(BaseModel):
     alert_id: str
-    status: str  # DISPATCHED, BLOCKED_SIMULATED, BLOCKED_STALE, BLOCKED_DISABLED, BLOCKED_LOW_SEVERITY, DUPLICATE_SUPPRESSED, SMTP_UNCONFIGURED
+    status: str  # ACCEPTED_BY_PROVIDER, PARTIALLY_ACCEPTED, FAILED, NO_ELIGIBLE_RECIPIENTS, or BLOCKED_*
     reason: Optional[str] = None
     recipients_total: int = 0
     accepted_by_provider: int = 0

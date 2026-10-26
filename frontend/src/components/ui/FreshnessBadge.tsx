@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 export type FreshnessState = 'FRESH' | 'STALE' | 'MISSING';
@@ -9,8 +9,8 @@ interface FreshnessBadgeProps {
   className?: string;
 }
 
-function formatMinutesAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+function formatMinutesAgo(iso: string, now: number): string {
+  const diff = Math.floor((now - new Date(iso).getTime()) / 60000);
   if (diff < 1) return 'just now';
   if (diff === 1) return '1 min ago';
   return `${diff} min ago`;
@@ -35,12 +35,19 @@ export const FreshnessBadge: React.FC<FreshnessBadgeProps> = ({
   updatedAt,
   className = '',
 }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   let resolvedState: FreshnessState = state || 'MISSING';
   if (!state) {
     if (!updatedAt) {
       resolvedState = 'MISSING';
     } else {
-      const diffHours = (Date.now() - new Date(updatedAt).getTime()) / (1000 * 3600);
+      const diffHours = (now - new Date(updatedAt).getTime()) / (1000 * 3600);
       resolvedState = diffHours > 3 ? 'STALE' : 'FRESH';
     }
   }
@@ -48,7 +55,7 @@ export const FreshnessBadge: React.FC<FreshnessBadgeProps> = ({
   const config = STATE_CONFIG[resolvedState];
   const Icon = config.icon;
 
-  const relTime = updatedAt ? formatMinutesAgo(updatedAt) : null;
+  const relTime = updatedAt ? formatMinutesAgo(updatedAt, now) : null;
   const istTime = updatedAt ? toIST(updatedAt) : null;
 
   return (

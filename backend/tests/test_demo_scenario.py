@@ -37,7 +37,7 @@ def test_demo_replay_end_to_end():
         statuses = [ev["new_status"] for ev in lc["events"]]
         assert "PROPOSED" in statuses and "ISSUED" in statuses
         assert len(lc["delivery_receipts"]) >= 1
-        assert all(d["provider_status"] in ("SENT", "DELIVERED") for d in lc["delivery_receipts"])
+        assert all(d["provider_status"] == "SIMULATED" for d in lc["delivery_receipts"])
         # Watermarked, not presented as a real warning
         assert result["watermark"].startswith("DEMO")
     finally:

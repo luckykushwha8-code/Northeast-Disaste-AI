@@ -4,6 +4,7 @@ export type QualityStatus = 'VALID' | 'FRESH' | 'DELAYED' | 'STALE' | 'MISSING' 
 export type LifecycleStatus = 'PROPOSED' | 'REVIEWED' | 'APPROVED' | 'ISSUED' | 'ACKNOWLEDGED' | 'RESOLVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
 export type UserRole = 'RESIDENT' | 'RESPONDER' | 'OPERATOR' | 'ANALYST' | 'ADMIN';
 export type Language = 'en' | 'as' | 'bn' | 'hi';
+export interface AuthenticatedUser { username: string; role: UserRole; }
 
 export interface LocationItem {
   id: string;
@@ -31,13 +32,26 @@ export type float = number;
 export interface DataSourceItem {
   id: string;
   name: string;
-  source_type: 'IMD' | 'CWC' | 'GSI' | 'SYNTH_IOT';
+  source_type: string;
   configuration_reference?: string;
   expected_update_interval_hours: number;
   enabled: boolean;
   last_success_at?: string;
   last_error_at?: string;
-  status: 'OPERATIONAL' | 'DELAYED' | 'STALE' | 'FAILED';
+  status: string;
+  last_fetch_attempt_at?: string | null;
+  latest_observation_at?: string | null;
+  latest_observation_ingested_at?: string | null;
+  latest_variable?: string | null;
+  latest_value?: number | null;
+  latest_unit?: string | null;
+  latest_observation_status?: string | null;
+  latest_observation_simulated?: boolean | null;
+  latest_forecast_24h_mm?: number | null;
+  latest_forecast_period_start_at?: string | null;
+  latest_forecast_period_end_at?: string | null;
+  latest_forecast_fetched_at?: string | null;
+  latest_forecast_status?: string | null;
 }
 
 export interface ObservationItem {
@@ -83,7 +97,7 @@ export interface NotificationDeliveryItem {
   recipient_reference: string;
   provider_message_id?: string;
   requested_at: string;
-  provider_status: 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
+  provider_status: 'QUEUED' | 'ACCEPTED_BY_PROVIDER' | 'SIMULATED' | 'FAILED' | 'BLOCKED_DISABLED';
   delivered_at?: string;
   failure_reason?: string;
   retry_count: number;

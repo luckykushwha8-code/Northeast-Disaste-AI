@@ -51,7 +51,7 @@ export const IncidentReporting: React.FC<IncidentReportingProps> = ({
 
   const handleVerify = async (reportId: string, status: 'VERIFIED' | 'REJECTED') => {
     try {
-      await api.verifyReport(reportId, status, `usr_${userRole.toLowerCase()}`, userRole);
+      await api.verifyReport(reportId, status);
       setMessage(`Report marked as ${status}.`);
       onRefresh();
       setTimeout(() => setMessage(null), 4000);

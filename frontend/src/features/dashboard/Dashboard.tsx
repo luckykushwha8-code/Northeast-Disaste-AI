@@ -32,7 +32,7 @@ interface DashboardProps {
   lang?: Language;
 }
 
-export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: DashboardProps) {
+export default function Dashboard({ userRole: _userRole = 'OPERATOR', lang = 'en' }: DashboardProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +46,7 @@ export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: Dashbo
   const [dataSources, setDataSources] = useState<DataSourceItem[]>([]);
   const [rescueRequestCount, setRescueRequestCount] = useState<number | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LocationItem | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   // Filters from URL
   const filterState = searchParams.get('state') ?? 'ALL';
@@ -97,6 +98,10 @@ export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: Dashbo
   }
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // KPI computations
   const isSimulationActive = alerts.some(a => a.simulation_flag) || predictions.some(p => p.simulation_flag);
@@ -115,7 +120,7 @@ export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: Dashbo
     .map(alert => alert.issued_at ? new Date(alert.issued_at).getTime() : NaN)
     .filter(Number.isFinite);
   const oldestProposedMin = proposedIssuedTimes.length > 0
-    ? Math.max(0, Math.floor((Date.now() - Math.min(...proposedIssuedTimes)) / 60000))
+    ? Math.max(0, Math.floor((now - Math.min(...proposedIssuedTimes)) / 60000))
     : null;
 
   const usablePredictions = predictions.filter(p => showSimulated || !p.simulation_flag);
@@ -386,7 +391,7 @@ export default function Dashboard({ userRole = 'OPERATOR', lang = 'en' }: Dashbo
                     {a.official_source_reference ? `Official (${a.official_source_reference})` : 'AI Proposal, awaiting review'}
                   </td>
                   <td className="py-2.5 px-3 text-xs text-slate-500 font-mono">
-                    {a.issued_at && Number.isFinite(new Date(a.issued_at).getTime()) ? `${Math.max(0, Math.floor((Date.now() - new Date(a.issued_at).getTime()) / 60000))} min` : 'Time unavailable'}
+                    {a.issued_at && Number.isFinite(new Date(a.issued_at).getTime()) ? `${Math.max(0, Math.floor((now - new Date(a.issued_at).getTime()) / 60000))} min` : 'Time unavailable'}
                   </td>
                   <td className="py-2.5 px-3 text-right">
                     <button

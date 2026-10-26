@@ -52,7 +52,7 @@ class DataSource(Base):
     enabled = Column(Boolean, default=True)
     last_success_at = Column(DateTime, nullable=True)
     last_error_at = Column(DateTime, nullable=True)
-    status = Column(String(50), default="OPERATIONAL")  # OPERATIONAL, DELAYED, STALE, FAILED
+    status = Column(String(50), default="NOT_CHECKED")  # OPERATIONAL, DELAYED, STALE, FAILED, AUTH_REQUIRED, SIMULATED
 
     observations = relationship("Observation", back_populates="source")
 
@@ -194,7 +194,7 @@ class NotificationDelivery(Base):
     recipient_reference = Column(String(100), nullable=False)  # e.g., "Kamrup Metro Disaster Response Hub"
     provider_message_id = Column(String(100), nullable=True)
     requested_at = Column(DateTime, default=utcnow)
-    provider_status = Column(String(30), default="QUEUED")  # QUEUED, SENT, DELIVERED, FAILED
+    provider_status = Column(String(30), default="QUEUED")  # QUEUED, ACCEPTED_BY_PROVIDER, SIMULATED, FAILED, BLOCKED_DISABLED
     delivered_at = Column(DateTime, nullable=True)
     failure_reason = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0)

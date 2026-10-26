@@ -50,6 +50,26 @@ def test_boundaries_loaded_and_all_eight_states(client):
     assert data["geodata"]["crs"] == "EPSG:4326 (GeoJSON lon/lat as delivered)"
 
 
+def test_source_freshness_never_promotes_seeded_or_missing_data(client):
+    response = client.get("/api/v1/system/data-status")
+    assert response.status_code == 200
+    sources = {source["id"]: source for source in response.json()}
+
+    synthetic = sources["src_smart_city_iot"]
+    assert synthetic["status"] == "SIMULATED"
+    assert synthetic["last_success_at"] is None
+
+    imd = sources["src_imd_api"]
+    assert imd["status"] == "AUTH_REQUIRED"
+    assert imd["last_success_at"] is None
+
+    assert all(
+        source["status"] != "OPERATIONAL"
+        for source in sources.values()
+        if source["last_success_at"] is None
+    )
+
+
 def test_alias_resolution_kamrup_metropolitan_is_documented_approximation():
     status = geographic_service.boundary_status_for("Kamrup Metropolitan")
     assert status["status"] == "APPROXIMATED"

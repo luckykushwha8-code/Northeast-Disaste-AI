@@ -19,6 +19,7 @@ from app.models.entities import Observation, Alert, LiveDataCache
 from app.services.imd_api_service import imd_api_service
 from app.services.imd_ingest import imd_ingest_service
 from app.config import settings
+from auth_test_support import AUTH_HEADERS
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -162,8 +163,7 @@ def spec_texts_verbatim(spec):
 
 
 def test_connection_probe_all_endpoints_auth_gated(db_fixture=None):
-    """Without an API key the live adapter must classify AUTH_ERROR and never
-    claim LIVE. Performs the real HTTP call (verified 401 in connectivity probe)."""
+    """Without an API key, fail closed without a network call or LIVE claim."""
     if settings.IMD_API_KEY:
         pytest.skip("API key is configured; live 401 path not applicable")
     db = SessionLocal()
@@ -171,8 +171,8 @@ def test_connection_probe_all_endpoints_auth_gated(db_fixture=None):
         for slug in ("rainfall", "warnings", "nowcast"):
             p = imd_api_service.fetch_endpoint(db, slug)
             assert p["data_mode"] == "UNAVAILABLE"
-            assert p["source_status"] == "AUTH_ERROR"
-            assert "401" in str(p.get("live_error"))
+            assert p["source_status"] == "AUTH_REQUIRED"
+            assert "not configured" in str(p.get("live_error"))
     finally:
         db.close()
 
@@ -188,7 +188,7 @@ def test_route_imd_sync_with_live_mocked(monkeypatch):
                                 "qpf": _mocked_fetch(QPF_ROWS),
                                 "nowcast": _mocked_fetch([]),
                             }.get(slug, _mocked_fetch([])))
-        client = TestClient(app)
+        client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
         resp = client.post("/api/v1/imd/sync")
         assert resp.status_code == 200, resp.text[:300]
         body = resp.json()
@@ -216,7 +216,7 @@ def test_route_imd_sync_with_live_mocked(monkeypatch):
 
 
 def test_route_imd_status_shape():
-    client = TestClient(app)
+    client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
     resp = client.get("/api/v1/imd/status")
     assert resp.status_code == 200
     d = resp.json()

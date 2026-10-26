@@ -102,9 +102,10 @@ class IngestionService:
         )
         db.add(obs)
 
-        # Update data source health timestamp
-        source.last_success_at = now
-        source.status = "OPERATIONAL"
+        # Synthetic replay rows are never evidence of a successful live source.
+        if not simulation_flag and quality_status in {"VALID", "DELAYED"}:
+            source.last_success_at = now
+            source.status = "OPERATIONAL" if quality_status == "VALID" else "DELAYED"
 
         db.commit()
         db.refresh(obs)
