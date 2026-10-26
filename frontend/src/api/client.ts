@@ -7,7 +7,8 @@ import {
   TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, AuthenticatedUser
 } from '../types';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? '/api/v1' : 'http://127.0.0.1:8000/api/v1');
 const AUTH_TOKEN_KEY = 'nesafe.session-token';
 
 async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
