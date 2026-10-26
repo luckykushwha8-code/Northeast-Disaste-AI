@@ -7,6 +7,7 @@ import { api } from '../../api/client';
 import type { AnalyticsOverview } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { useVisibleRefresh } from '../../hooks/useVisibleRefresh';
 import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity } from 'lucide-react';
 
 const CARD_ICONS: Record<string, React.ElementType> = {
@@ -85,6 +86,7 @@ export default function Analytics() {
   };
 
   useEffect(load, [hoursWindow]);
+  useVisibleRefresh(load, 5 * 60 * 1000);
 
   if (loading) return (
     <div className="space-y-4">

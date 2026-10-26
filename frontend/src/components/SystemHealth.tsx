@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { DataSourceItem, AuditLogItem, LiveDataSyncItem, ImdApiStatus } from '../types';
+import { DataSourceItem, AuditLogItem, LiveDataSyncItem, ImdApiStatus, TinyFishStatus } from '../types';
 import { api } from '../api/client';
-import { Database, History, RefreshCw, Rss } from 'lucide-react';
+import { Database, Globe, History, RefreshCw, Rss } from 'lucide-react';
 import { TinyFishPanel } from './TinyFishPanel';
 import type { UserRole } from '../types';
+import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 
 interface SystemHealthProps {
   dataSources?: DataSourceItem[];
@@ -20,11 +21,19 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<LiveDataSyncItem | null>(null);
   const [imdStatus, setImdStatus] = useState<ImdApiStatus | null>(null);
+  const [tinyFishStatus, setTinyFishStatus] = useState<TinyFishStatus | null>(null);
   const [imdSyncing, setImdSyncing] = useState(false);
   const [imdSyncNote, setImdSyncNote] = useState<string | null>(null);
 
+  const refreshFeedStatus = async () => {
+    const [sources, imd, tinyFish] = await Promise.allSettled([api.getDataStatus(), api.getImdApiStatus(), api.getTinyFishStatus()]);
+    if (sources.status === 'fulfilled') setDataSources(sources.value);
+    if (imd.status === 'fulfilled') setImdStatus(imd.value);
+    if (tinyFish.status === 'fulfilled') setTinyFishStatus(tinyFish.value);
+  };
+
   useEffect(() => {
-    api.getDataStatus().then(setDataSources).catch((e) => console.error('Failed to fetch data source status', e));
+    void refreshFeedStatus();
     const fetchLogs = async () => {
       if (!canManage) {
         setAuditLogs([]);
@@ -38,8 +47,8 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
       }
     };
     fetchLogs();
-    api.getImdApiStatus().then(setImdStatus).catch(() => setImdStatus(null));
   }, [canManage]);
+  useVisibleRefresh(refreshFeedStatus, 60 * 1000);
 
   const runSync = async () => {
     setSyncing(true);
@@ -184,6 +193,23 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-teal-700" />
+          <div>
+            <div className="text-xs font-bold text-slate-800">TinyFish scheduled extraction</div>
+            <div className="text-[11px] text-slate-500">
+              Backend sync {tinyFishStatus?.scheduled_sync_enabled ? `every ${tinyFishStatus.scheduled_sync_interval_minutes} minutes` : 'disabled'}
+              {' · '}Last attempt {tinyFishStatus?.last_retrieval_at ? new Date(tinyFishStatus.last_retrieval_at).toLocaleString() : 'not recorded'}
+              {' · '}{tinyFishStatus?.total_retrievals_count ?? 0} retrieval records
+            </div>
+          </div>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tinyFishStatus?.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+          {tinyFishStatus?.configured ? 'LIVE KEY CONFIGURED' : 'LIVE KEY MISSING'}
+        </span>
       </div>
 
       {/* Official IMD REST feeds (api.imd.gov.in) — distinct from TinyFish bulletin scrape */}

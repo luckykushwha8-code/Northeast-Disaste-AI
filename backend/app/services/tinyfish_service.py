@@ -56,14 +56,6 @@ class TinyFishService:
     def is_configured(self) -> bool:
         return bool(self.api_key and self.api_key.strip())
 
-    def get_masked_key(self) -> Optional[str]:
-        if not self.is_configured():
-            return None
-        key = self.api_key.strip()
-        if len(key) <= 6:
-            return "tf_***"
-        return f"{key[:3]}...{key[-3:]}"
-
     def get_status(self, db: Session) -> Dict[str, Any]:
         """
         Reports integration status without revealing credentials.
@@ -84,14 +76,16 @@ class TinyFishService:
             "status": status_str,
             "endpoint": self.api_url,
             "key_present": configured,
-            "key_preview": self.get_masked_key(),
+            "key_preview": None,
             "timeout_seconds": self.timeout,
             "rate_limit_per_minute": settings.TINYFISH_RATE_LIMIT_PER_MINUTE,
             "rate_limit_remaining": remaining,
             "approved_domains": self.approved_domains,
             "last_retrieval_at": last_record.retrieval_timestamp if last_record else None,
             "total_retrievals_count": total_count,
-            "simulation_mode": not configured
+            "simulation_mode": not configured,
+            "scheduled_sync_enabled": settings.AUTO_SYNC_ENABLED,
+            "scheduled_sync_interval_minutes": settings.AUTO_SYNC_INTERVAL_MINUTES
         }
 
     def validate_url(self, url: str) -> Tuple[bool, str, str]:

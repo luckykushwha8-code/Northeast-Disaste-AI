@@ -8,6 +8,7 @@ import { Mountain, Info, MapPin, Radio, ShieldCheck, Megaphone, Layers, CheckCir
 import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
+import { API_BASE } from '../api/client';
 
 interface MapViewProps {
   locations: LocationItem[];
@@ -47,7 +48,6 @@ export const MapView: React.FC<MapViewProps> = ({
   lang: _lang,
   onSelectLocation
 }) => {
-  const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   const mapRef = useRef<HTMLDivElement>(null);
   const mlRef = useRef<MLMap | null>(null);
   const [ready, setReady] = useState(false);

@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { PreparednessAssistant } from '../../components/PreparednessAssistant';
+import { useVisibleRefresh } from '../../hooks/useVisibleRefresh';
 
 const DistrictMap = lazy(() => import('../../components/MapBoard').then(module => ({ default: module.MapBoard })));
 
@@ -41,6 +42,7 @@ export default function Dashboard({ userRole: _userRole = 'OPERATOR' }: Dashboar
     const timer = window.setTimeout(() => { void loadMapData(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  useVisibleRefresh(loadMapData, 5 * 60 * 1000);
 
   if (loading) return <div className="w-full rounded-xl" style={{ height: 'calc(100vh - 10rem)', minHeight: 620 }}><Skeleton className="h-full w-full" /></div>;
   if (error) return <ErrorState message={error} onRetry={() => { setLoading(true); void loadMapData(); }} />;

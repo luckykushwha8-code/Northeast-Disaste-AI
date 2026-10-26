@@ -70,6 +70,15 @@ async def lifespan(app: FastAPI):
     scheduler = None
     if settings.AUTO_SYNC_ENABLED:
         scheduler = BackgroundScheduler(daemon=True)
+        # Prime the data pipeline after each deployment/startup instead of waiting
+        # for the first full interval. The recurring job then follows the source cadence.
+        scheduler.add_job(
+            run_auto_sync,
+            "date",
+            id="nesafe_startup_sync",
+            replace_existing=True,
+            misfire_grace_time=300,
+        )
         scheduler.add_job(
             run_auto_sync,
             "interval",

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 import { TinyFishStatus, TinyFishRetrievalResult } from '../types';
 import {
   Globe,
@@ -57,10 +58,14 @@ export const TinyFishPanel: React.FC = () => {
     }
   };
 
+  const refreshStatusHistory = async () => {
+    await Promise.allSettled([fetchStatus(), fetchHistory()]);
+  };
+
   useEffect(() => {
-    fetchStatus();
-    fetchHistory();
+    void refreshStatusHistory();
   }, []);
+  useVisibleRefresh(refreshStatusHistory, 5 * 60 * 1000);
 
   const handleRetrieve = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -152,7 +157,7 @@ export const TinyFishPanel: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { fetchStatus(); fetchHistory(); }}
+              onClick={() => { void refreshStatusHistory(); }}
               disabled={loadingStatus}
               className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
               title="Refresh status"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Bell, LifeBuoy, BarChart2, FlaskConical,
@@ -11,6 +11,7 @@ import { OfflineBanner } from './components/ui/OfflineBanner';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthDialog } from './components/AuthDialog';
 import { api } from './api/client';
+import { useVisibleRefresh } from './hooks/useVisibleRefresh';
 import type { UserRole, Language, AlertItem, PredictionItem, AuthenticatedUser } from './types';
 
 // Lazy-load pages
@@ -97,13 +98,23 @@ function AppShell() {
   }, []);
 
   // Public views use sanitized, verified data. Staff see the full alert queue after login.
-  useEffect(() => {
-    (authenticatedUser ? api.getAlerts() : api.getPublicAlerts()).then(setAlerts).catch(() => setAlerts([]));
-    api.getPredictions().then(setPredictions).catch(() => {});
-    api.getLocations().then(setLocations).catch(() => {});
-    api.getShelters().then(setShelters).catch(() => {});
-    api.getReports().then(setReports).catch(() => {});
+  const refreshAppData = useCallback(async () => {
+    const results = await Promise.allSettled([
+      authenticatedUser ? api.getAlerts() : api.getPublicAlerts(),
+      api.getPredictions(),
+      api.getLocations(),
+      api.getShelters(),
+      api.getReports(),
+    ]);
+    if (results[0].status === 'fulfilled') setAlerts(results[0].value);
+    if (results[1].status === 'fulfilled') setPredictions(results[1].value);
+    if (results[2].status === 'fulfilled') setLocations(results[2].value);
+    if (results[3].status === 'fulfilled') setShelters(results[3].value);
+    if (results[4].status === 'fulfilled') setReports(results[4].value);
   }, [authenticatedUser]);
+
+  useEffect(() => { void refreshAppData(); }, [refreshAppData]);
+  useVisibleRefresh(refreshAppData, 5 * 60 * 1000);
 
 
   // Dark mode

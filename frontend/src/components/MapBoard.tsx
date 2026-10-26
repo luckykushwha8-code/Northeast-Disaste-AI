@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Map as MLMap, Popup, Marker, NavigationControl, ScaleControl, FullscreenControl
@@ -13,6 +13,8 @@ import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, RISK_PALETTES, severityRank,
   MapDistrictsResponse, DistrictSummary, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
+import { API_BASE } from '../api/client';
+import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 import {
   LocationItem, AlertItem, ShelterItem, IncidentReportItem, HistoricalEventItem,
   GeoJSONFeatureCollection
@@ -102,7 +104,6 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [compactMap, setCompactMap] = useState(() => window.innerWidth < 640);
   const [mobileMapPanel, setMobileMapPanel] = useState<'layers' | 'district' | 'legend' | null>(null);
   const [opacity, setOpacity] = useState({ risk: 0.72, warnings: 0.6 });
-  const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   const [summaries, setSummaries] = useState<MapDistrictsResponse | null>(null);
   const [boundaryData, setBoundaryData] = useState<GeoJSONFeatureCollection | null>(null);
   const [riskGeo, setRiskGeo] = useState<GeoJSONFeatureCollection | null>(null);
@@ -123,26 +124,25 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   }, []);
 
   // ---- data loading ----
+  const refreshMapData = useCallback(async () => {
+    const [summaryResult, riskResult, historyResult] = await Promise.allSettled([
+      fetch(`${API_BASE}/map/districts`),
+      fetch(`${API_BASE}/risk/geo`),
+      fetch(`${API_BASE}/data/historical-events`)
+    ]);
+    if (summaryResult.status === 'fulfilled' && summaryResult.value.ok) setSummaries(await summaryResult.value.json());
+    if (riskResult.status === 'fulfilled' && riskResult.value.ok) setRiskGeo(await riskResult.value.json());
+    if (historyResult.status === 'fulfilled' && historyResult.value.ok) setHistory(await historyResult.value.json());
+  }, []);
+
   useEffect(() => {
-    (async () => {
-      try {
-        const bd = await fetch('/geo/ne_districts.geojson');
-        if (bd.ok) setBoundaryData(await bd.json());
-      } catch { /* boundary failure -> districts unshaded, honest */ }
-      try {
-        const s = await fetch(`${API_BASE}/map/districts`);
-        if (s.ok) setSummaries(await s.json());
-      } catch { /* panel shows unavailable state */ }
-      try {
-        const rg = await fetch(`${API_BASE}/risk/geo`);
-        if (rg.ok) setRiskGeo(await rg.json());
-      } catch { /* terrain layer off if unloaded */ }
-      try {
-        const he = await fetch(`${API_BASE}/data/historical-events`);
-        if (he.ok) setHistory(await he.json());
-      } catch { /* history layer off if unloaded */ }
-    })();
-  }, [API_BASE]);
+    fetch('/geo/ne_districts.geojson')
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (data) setBoundaryData(data); })
+      .catch(() => { /* boundary failure -> districts unshaded, honest */ });
+  }, []);
+  useEffect(() => { void refreshMapData(); }, [refreshMapData]);
+  useVisibleRefresh(refreshMapData, 5 * 60 * 1000);
 
   useEffect(() => {
     const iv = setInterval(() => {

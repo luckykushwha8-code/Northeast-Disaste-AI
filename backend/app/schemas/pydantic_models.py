@@ -318,6 +318,8 @@ class TinyFishStatusOut(BaseModel):
     last_retrieval_at: Optional[datetime] = None
     total_retrievals_count: int = 0
     simulation_mode: bool = False
+    scheduled_sync_enabled: bool = True
+    scheduled_sync_interval_minutes: int = 30
 
 class TinyFishRetrievalRequest(BaseModel):
     url: str

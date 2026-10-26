@@ -25,6 +25,14 @@ services:
         value: production
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: AUTO_SYNC_ENABLED
+        value: "true"
+      - key: AUTO_SYNC_INTERVAL_MINUTES
+        value: "30"
+      - key: IMD_API_KEY
+        sync: false
+      - key: TINYFISH_API_KEY
+        sync: false
       - key: AUTH_SECRET_KEY
         generateValue: true
       - key: AUTH_USERS_JSON

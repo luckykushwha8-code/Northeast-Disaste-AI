@@ -415,6 +415,8 @@ export interface TinyFishStatus {
   last_retrieval_at?: string | null;
   total_retrievals_count: number;
   simulation_mode: boolean;
+  scheduled_sync_enabled: boolean;
+  scheduled_sync_interval_minutes: number;
 }
 
 export interface TinyFishRetrievalRequest {

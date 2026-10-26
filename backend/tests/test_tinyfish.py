@@ -60,6 +60,8 @@ def test_tinyfish_status_missing_key():
     assert data["key_preview"] is None
     assert data["endpoint"] == "https://api.fetch.tinyfish.ai"
     assert "imd.gov.in" in data["approved_domains"]
+    assert data["scheduled_sync_enabled"] is True
+    assert data["scheduled_sync_interval_minutes"] == 30
 
 # 2. Status with API key configured (masked key, no plaintext leaks)
 def test_tinyfish_status_with_key(monkeypatch):
@@ -73,10 +75,9 @@ def test_tinyfish_status_with_key(monkeypatch):
     assert data["configured"] is True
     assert data["status"] == "READY"
     assert data["key_present"] is True
-    # Crucial security check: Secret key must NEVER be leaked in plaintext
+    # Credentials are never returned, even partially, by the public status route.
     assert secret_key not in response.text
-    assert data["key_preview"].startswith("tf_")
-    assert data["key_preview"].endswith("655")
+    assert data["key_preview"] is None
 
 # 3. Strict Domain Allowlist & SSRF Rejection
 def test_tinyfish_invalid_sources_rejected():

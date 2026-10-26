@@ -3,6 +3,7 @@ import { X, Waves, Mountain, Info, ArrowUpRight, Database, Sparkles, Loader2 } f
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid, Legend } from 'recharts';
 import { LocationItem, PredictionItem, ObservationItem, Language } from '../types';
 import { api } from '../api/client';
+import { API_BASE } from '../api/client';
 import { RiverStaffGauge } from './ui/RiverStaffGauge';
 
 interface IntegratedRiskFeature {
@@ -41,7 +42,6 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
   onClose,
   lang: _lang
 }) => {
-  const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [observations, setObservations] = useState<ObservationItem[]>([]);
   const [integratedRisk, setIntegratedRisk] = useState<IntegratedRiskFeature>({ properties: null });
