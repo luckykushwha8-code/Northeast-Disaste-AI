@@ -23,6 +23,33 @@ async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> 
 }
 
 export const api = {
+  async explainDistrictRisk(district: string, state: string) {
+    const res = await apiFetch(`${API_BASE}/ai/district-explanation`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ district, state })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || 'Could not explain district risk');
+    return data;
+  },
+
+  async summarizeSituationReport() {
+    const res = await apiFetch(`${API_BASE}/ai/report-summary`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || 'Could not summarize the report');
+    return data;
+  },
+
+  async askPreparednessAssistant(question: string) {
+    const res = await apiFetch(`${API_BASE}/ai/preparedness`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || 'Assistant is unavailable');
+    return data;
+  },
+
   async login(username: string, password: string): Promise<AuthenticatedUser> {
     const res = await apiFetch(`${API_BASE}/auth/login`, {
       method: 'POST',

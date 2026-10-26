@@ -1,0 +1,39 @@
+# Render preview blueprint. Free Postgres databases expire after 30 days;
+# upgrade to a durable paid database before relying on this operationally.
+databases:
+  - name: ne-safe-preview-db
+    databaseName: nesafe
+    region: singapore
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: ne-safe-preview-api
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ne-safe-preview-db
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: AUTH_SECRET_KEY
+        generateValue: true
+      - key: AUTH_USERS_JSON
+        sync: false
+      - key: ALLOW_SIMULATION
+        value: "false"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_ENABLED
+        value: "true"

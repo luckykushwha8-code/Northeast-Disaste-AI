@@ -7,6 +7,17 @@ export default function ReportsPage() {
   const [downloading, setDownloading] = useState<'pdf' | 'csv' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+
+  const summarize = async () => {
+    if (summarizing) return;
+    setSummarizing(true); setSummaryError(''); setSummary(null);
+    try { setSummary(await api.summarizeSituationReport()); }
+    catch (e) { setSummaryError(e instanceof Error ? e.message : 'Could not summarize report'); }
+    finally { setSummarizing(false); }
+  };
 
   const download = async (format: 'pdf' | 'csv') => {
     setDownloading(format);
@@ -56,6 +67,23 @@ export default function ReportsPage() {
 
       {/* Download Section */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h3 className="text-sm font-bold text-slate-900">AI situation summary</h3>
+              <p className="mt-1 text-xs text-slate-600">Summarizes stored observations and assessments. Only operators and analysts can request it.</p></div>
+            <button onClick={summarize} disabled={summarizing} className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+              {summarizing ? 'Summarizing…' : 'Summarize report'}
+            </button>
+          </div>
+          {summaryError && <p role="alert" className="mt-2 text-xs text-red-700">{summaryError}</p>}
+          {summary && <div className="mt-3 space-y-2 border-t border-teal-200 pt-3 text-xs text-slate-700">
+            <p className="font-semibold">AI-generated summary · {reportDate}</p><p>{summary.summary}</p>
+            {summary.supporting_observations?.length > 0 && <ul className="list-disc pl-4">{summary.supporting_observations.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>}
+            {summary.uncertainties?.length > 0 && <p className="text-amber-900">Data limitations: {summary.uncertainties.join(' · ')}</p>}
+            {summary.preparedness_actions?.length > 0 && <p>Follow-up checks: {summary.preparedness_actions.join(' · ')}</p>}
+            <p className="text-[10px] text-slate-500">AI-generated text; report measurements, records and warning statuses remain from the source database.</p>
+          </div>}
+        </div>
         <h3 className="text-sm font-bold text-slate-900 mb-3">Download Situation Report</h3>
 
         <div className="flex gap-3 flex-wrap mb-4">

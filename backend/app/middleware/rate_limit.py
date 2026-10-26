@@ -38,12 +38,14 @@ class PostRateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Read the limit fresh at request time so tests can tighten it.
-        limit = int(getattr(settings, "RATE_LIMIT_POST_PER_MINUTE", 30))
+        is_ai_request = "/ai/" in request.url.path
+        limit = int(getattr(settings, "GEMINI_RATE_LIMIT_PER_MINUTE", 8) if is_ai_request
+                    else getattr(settings, "RATE_LIMIT_POST_PER_MINUTE", 30))
 
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
         window = int(now // self.WINDOW_SECONDS)
-        key = (client_ip, window)
+        key = (f"{client_ip}:ai" if is_ai_request else client_ip, window)
 
         bucket = self._hits_bucket(request)
         if bucket is None:

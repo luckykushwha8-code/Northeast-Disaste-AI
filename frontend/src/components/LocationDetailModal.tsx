@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Waves, Mountain, Info, ArrowUpRight, Database } from 'lucide-react';
+import { X, Waves, Mountain, Info, ArrowUpRight, Database, Sparkles, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid, Legend } from 'recharts';
 import { LocationItem, PredictionItem, ObservationItem, Language } from '../types';
 import { api } from '../api/client';
@@ -46,6 +46,17 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
   const [observations, setObservations] = useState<ObservationItem[]>([]);
   const [integratedRisk, setIntegratedRisk] = useState<IntegratedRiskFeature>({ properties: null });
   const [loading, setLoading] = useState<boolean>(true);
+  const [explanation, setExplanation] = useState<any>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [explanationError, setExplanationError] = useState('');
+
+  const explainRisk = async () => {
+    if (!location || explaining) return;
+    setExplaining(true); setExplanationError(''); setExplanation(null);
+    try { setExplanation(await api.explainDistrictRisk(location.district, location.state)); }
+    catch (e) { setExplanationError(e instanceof Error ? e.message : 'AI explanation unavailable'); }
+    finally { setExplaining(false); }
+  };
 
   useEffect(() => {
     if (!location) return;
@@ -180,6 +191,28 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
               </ul>
             </div>
           )}
+
+          <section className="rounded-xl border border-teal-200 bg-teal-50/70 p-4" aria-labelledby="risk-explain-title">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 id="risk-explain-title" className="text-xs font-bold text-slate-800">District risk explanation</h3>
+                <p className="mt-0.5 text-[10px] text-slate-600">Uses stored observations, prototype assessments and official advisories for {location.district}, {location.state}.</p>
+              </div>
+              <button type="button" onClick={explainRisk} disabled={explaining}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50">
+                {explaining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {explaining ? 'Explaining…' : 'Explain this risk'}
+              </button>
+            </div>
+            {explanationError && <p role="alert" className="mt-2 text-xs text-red-700">{explanationError}</p>}
+            {explanation && <div className="mt-3 space-y-2 border-t border-teal-200 pt-3 text-xs text-slate-700">
+              <p className="font-semibold">AI-generated explanation</p><p>{explanation.summary}</p>
+              {explanation.supporting_observations?.length > 0 && <div><p className="font-semibold">Evidence</p><ul className="list-disc pl-4">{explanation.supporting_observations.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul></div>}
+              {explanation.uncertainties?.length > 0 && <div className="text-amber-900"><p className="font-semibold">Uncertainty</p><ul className="list-disc pl-4">{explanation.uncertainties.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul></div>}
+              {explanation.preparedness_actions?.length > 0 && <div><p className="font-semibold">Preparedness</p><ul className="list-disc pl-4">{explanation.preparedness_actions.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul></div>}
+              <p className="text-[10px] text-slate-500">AI explanation only; it does not change the risk assessment or represent an official warning.</p>
+            </div>}
+          </section>
 
           {/* Dual Hazard Assessments (FR-FLOOD-04 & FR-LAND-04) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

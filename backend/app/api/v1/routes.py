@@ -43,8 +43,105 @@ from app.services.imd_api_service import imd_api_service
 from app.services.imd_ingest import imd_ingest_service
 from app.config import settings
 from app.auth import get_principal, require_roles, authenticate_credentials, issue_token, authentication_ready, Principal
+from app.schemas.gemini import DistrictExplanationRequest, PreparednessQuestion
+from app.services.gemini_service import gemini_service, GeminiUnavailable, GeminiRequestFailed
 
 router = APIRouter()
+
+
+def _gemini_response(task: str, evidence: Dict[str, Any], question: str = ""):
+    try:
+        return gemini_service.generate(task, evidence, question).model_dump()
+    except GeminiUnavailable:
+        raise HTTPException(status_code=503, detail="AI assistance is unavailable. Configure the backend Gemini service to enable it.")
+    except GeminiRequestFailed:
+        raise HTTPException(status_code=502, detail="AI assistance could not complete the request. Please retry later.")
+
+
+@router.get("/ai/status")
+def get_ai_status():
+    return {"available": gemini_service.available(), "content_type": "AI_GENERATED_EXPLANATION"}
+
+
+@router.post("/ai/district-explanation")
+def explain_district_risk(payload: DistrictExplanationRequest, db: Session = Depends(get_db)):
+    data = map_service.district_summaries(db)
+    row = next((d for d in data["districts"]
+                if d["district"].casefold() == payload.district.strip().casefold()
+                and (d["state"] or "").casefold() == payload.state.strip().casefold()), None)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No district record matches that district and state")
+    # Deliberately omit citizen-submitted incident text, coordinates, personal
+    # records, and all unverified narrative fields from the provider request.
+    evidence = {
+        "district": row["district"], "state": row["state"],
+        "generated_at": data["generated_at"],
+        "prototype_risk": {
+            "flood": row["flood_risk"], "landslide": row["landslide_risk"],
+            "flood_factors": row["flood_explanations"], "landslide_factors": row["landslide_explanations"],
+        },
+        "observed_rainfall_24h": row["observed_rainfall_24h"],
+        "rainfall_status": row["rainfall_status"],
+        "river_level_observations": row["river_level_all_locations"][:10],
+        "official_warnings": [{k: w.get(k) for k in ("source", "title", "severity", "lifecycle_status", "issued_at", "expires_at", "official_source_reference", "action_instructions")} for w in row["official_warnings"][:5]],
+        "data_quality": row["data_quality"],
+        "boundary": row["boundary"],
+    }
+    return _gemini_response("Explain the existing district risk results without changing them.", evidence)
+
+
+@router.post("/ai/report-summary")
+def summarize_situation_report(db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ANALYST", "ADMIN"))):
+    report = build_report_data(db)
+    now = utcnow()
+    locations = {loc.id: loc for loc in db.query(Location).filter(Location.active == True).all()}
+    source_names = {source.id: source.name for source in db.query(DataSource).all()}
+    newest_observations: Dict[tuple, Observation] = {}
+    stored = db.query(Observation).filter(
+        Observation.location_id.in_(locations.keys()) if locations else False,
+        Observation.variable.in_(("rainfall_24h_mm", "river_level_m")),
+        Observation.simulation_flag.is_(False), Observation.quality_status == "VALID",
+    ).order_by(Observation.observed_at.desc()).limit(300).all()
+    for observation in stored:
+        newest_observations.setdefault((observation.location_id, observation.variable), observation)
+    freshness_hours = settings.FRESHNESS_WEATHER_HOURS
+    weather_evidence = []
+    for row in report["weather_summary"][:80]:
+        location = next((loc for loc in locations.values() if loc.name == row["location"] and loc.district == row["district"] and loc.state == row["state"]), None)
+        enriched = {**row}
+        for variable, prefix in (("rainfall_24h_mm", "rainfall"), ("river_level_m", "river_level")):
+            observation = newest_observations.get((location.id, variable)) if location else None
+            age = (now - observation.observed_at).total_seconds() / 3600 if observation else None
+            enriched[f"{prefix}_observed_at"] = observation.observed_at.isoformat() if observation else None
+            enriched[f"{prefix}_unit"] = observation.unit if observation else None
+            enriched[f"{prefix}_source"] = source_names.get(observation.source_id) if observation else None
+            enriched[f"{prefix}_status"] = "MISSING" if not observation else "FRESH" if age is not None and age <= freshness_hours else "STALE"
+        weather_evidence.append(enriched)
+    # Construct an explicit allowlist. This excludes rescue request details and
+    # incident narratives while retaining counts and source provenance.
+    evidence = {
+        "generated_at": report["generated_at"], "study_area": report["study_area"],
+        "weather_summary": weather_evidence,
+        "official_alerts": report["official_alerts"][:50],
+        "ai_assessments": report["ai_assessments"][:50],
+        "verified_incident_count": report["incidents"]["verified"],
+        "data_warnings": report["data_warnings"][:30],
+        "sources": report["sources"][:30],
+    }
+    result = _gemini_response("Summarize this situation report using only the supplied records.", evidence)
+    log_audit(db, actor_id=principal.username, action="AI_REPORT_SUMMARIZED", resource_type="SituationReport",
+              resource_id=report["generated_at"], reason="Grounded AI summary generated; no report data stored in audit record")
+    return result
+
+
+@router.post("/ai/preparedness")
+def ask_preparedness_assistant(payload: PreparednessQuestion):
+    result = _gemini_response(
+        "Answer a public preparedness question. Restrict to general flood/landslide preparedness, safe actions during heavy rain, following official orders, emergency kits, or understanding dashboard labels. Do not claim live conditions, evacuation orders, routes, shelter availability, or contacts. If out of scope, say so.",
+        {"official_emergency_number_india": "112", "current_conditions": "not supplied; do not infer"}, payload.question.strip(),
+    )
+    result["disclaimer"] = "AI-generated preparedness information. Follow current official instructions. This assistant does not dispatch rescue; call 112 for immediate danger in India."
+    return result
 
 STATION_OFFICIAL_MARKS = {
     "loc_pandu_ghat": (48.68, 49.68),

@@ -86,6 +86,14 @@ class Settings(BaseSettings):
     AUTH_USERS_JSON: str = "{}"
     AUTH_TOKEN_TTL_MINUTES: int = 480
 
+    # Gemini is an optional server-side explanation service. It never drives
+    # risk results or alert state.
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    GEMINI_ENABLED: bool = False
+    GEMINI_TIMEOUT_SECONDS: int = 15
+    GEMINI_RATE_LIMIT_PER_MINUTE: int = 8
+
     # ---- Automatic public alert emails (disabled until validated) ----
     # Master switch: resident + authority email dispatch stays OFF until the data
     # sources and risk model are independently validated (never enabled to
