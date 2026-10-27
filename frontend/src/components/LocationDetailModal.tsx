@@ -453,7 +453,7 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
             <div className="text-xs text-blue-900 space-y-1">
               <div className="font-bold">Official Warning Authority Distinction (PRD Section 7):</div>
               <p>
-                Under NE-SAFE AI safety principles, AI probability outputs are purely advisory support tools. Official Central Water Commission (CWC) water level forecasts and India Meteorological Department (IMD) colour-coded weather warnings remain strictly authoritative.
+                Under Geo Shield safety principles, AI probability outputs are purely advisory support tools. Official Central Water Commission (CWC) water level forecasts and India Meteorological Department (IMD) colour-coded weather warnings remain strictly authoritative.
               </p>
               <div className="pt-1 flex gap-3 text-[11px] font-semibold text-blue-700">
                 <a href="https://ffs.india-water.gov.in" target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-1">

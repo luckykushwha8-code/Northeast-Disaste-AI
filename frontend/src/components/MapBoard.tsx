@@ -810,20 +810,20 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       {/* ---- MapBoard shell (fullscreen target) ---- */}
       <div className="mapboard-shell flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         {/* A. Top header */}
-        <div className="mapboard-header flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-900 text-white">
+        <div className="mapboard-header flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 px-4 py-3 border-b border-[#e8e1d8] bg-[#fbfaf8] text-slate-800">
           <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-sky-400" />
-            <span className="font-black tracking-wide text-sm whitespace-nowrap">NE-SAFE · Disaster Map Board</span>
+            <Compass className="w-5 h-5 text-[#806047]" />
+            <span className="font-black tracking-wide text-sm whitespace-nowrap">Geo Shield · District map</span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-slate-300">
+          <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <Clock className="w-3.5 h-3.5" />
             <span className="tabular-nums">{clock}</span>
           </div>
-          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${statusPill.tone === 'ok' ? 'bg-emerald-500/20 text-emerald-300' : statusPill.tone === 'warn' ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/30 text-red-200'}`}>
+          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${statusPill.tone === 'ok' ? 'bg-emerald-100 text-emerald-800' : statusPill.tone === 'warn' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}`}>
             <Database className="w-3 h-3 inline mr-1" />{statusPill.label}
           </div>
           {summaries && (
-            <div className="text-[10px] text-slate-400">
+            <div className="text-[10px] text-slate-500">
               generated {new Date(summaries.generated_at).toLocaleTimeString()} · {dataMode}
             </div>
           )}
@@ -834,12 +834,12 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Find district…"
-                className="pl-7 pr-2 py-1.5 text-xs rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 w-44"
+                className="pl-7 pr-2 py-1.5 text-xs rounded-lg bg-white border border-[#e8e1d8] text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#b59a82] w-44"
               />
               {search && districtSearchList.length > 0 && (
-                <div className="absolute z-[500] mt-1 w-64 max-h-64 overflow-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
+                <div className="absolute z-[500] mt-1 w-64 max-h-64 overflow-auto bg-white text-slate-800 border border-[#e8e1d8] rounded-lg shadow-xl">
                   {districtSearchList.slice(0, 12).map(d => (
-                    <button key={d.district} className="flex w-full items-center justify-between px-3 py-1.5 text-xs hover:bg-slate-700"
+                    <button key={d.district} className="flex w-full items-center justify-between px-3 py-1.5 text-xs hover:bg-[#f7f3ef]"
                       onClick={() => { flyToDistrict(d); setSearch(''); }}>
                       <span>{d.district} <span className="text-slate-400">({d.state})</span></span>
                       <span className="text-[10px] text-slate-400">{d.flood_risk.risk_category}/{d.landslide_risk.risk_category}</span>
@@ -850,24 +850,24 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             </div>
             <label className="sr-only" htmlFor="map-state-select">Focus map on a state</label>
             <select id="map-state-select" value={selectedState} onChange={e => flyToState(e.target.value)}
-              className="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-800 border border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500">
+              className="px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-white border border-[#e8e1d8] text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#b59a82]">
               <option value="ALL">All 8 states</option>
               {stateNames.map(state => <option key={state} value={state}>{state}</option>)}
             </select>
-            <button onClick={resetView} className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700">
+            <button onClick={resetView} className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-white border border-[#e8e1d8] text-slate-700 hover:bg-[#f7f3ef]">
               <MapPin className="w-3.5 h-3.5" /> View all NE India
             </button>
-            <button onClick={goFullscreen} className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700" title="Fullscreen">
+            <button onClick={goFullscreen} className="p-1.5 rounded-lg bg-white border border-[#e8e1d8] text-slate-700 hover:bg-[#f7f3ef]" title="Fullscreen">
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
             <button onClick={toggleScene} aria-pressed={scenePlaying}
-              className={`flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg border transition ${scenePlaying ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+              className={`flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg border transition ${scenePlaying ? 'bg-cyan-100 border-cyan-300 text-cyan-800' : 'bg-white border-[#e8e1d8] text-slate-700 hover:bg-[#f7f3ef]'}`}
               title="Animate rainfall stations and landslide district outlines">
               {scenePlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{scenePlaying ? 'Pause scene' : 'Play scene'}</span>
               <span className="sm:hidden">{scenePlaying ? 'Pause' : 'Play'}</span>
             </button>
-            <button onClick={() => setDistrictTableOpen(open => !open)} className="px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700" aria-expanded={districtTableOpen}>
+            <button onClick={() => setDistrictTableOpen(open => !open)} className="px-2 py-1.5 text-[11px] font-bold whitespace-nowrap rounded-lg bg-white border border-[#e8e1d8] text-slate-700 hover:bg-[#f7f3ef]" aria-expanded={districtTableOpen}>
               {districtTableOpen ? 'Hide table' : 'District table'}
             </button>
           </div>
@@ -878,31 +878,31 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           <div ref={mapContainer} className="absolute inset-0" />
 
           {/* Desktop layer dock: district controls and legend stay alongside the map. */}
-          <aside className="hidden xl:flex absolute inset-y-0 left-0 z-[410] w-[16.5rem] flex-col overflow-y-auto border-r border-slate-700 bg-slate-950/95 text-slate-100 shadow-xl backdrop-blur-sm">
-            <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700">
-              <span className="flex items-center gap-2 text-sm font-bold"><Layers className="w-4 h-4 text-sky-400" /> Layers</span>
-              <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-sky-300 hover:text-white">Reset</button>
+          <aside className="hidden xl:flex absolute inset-y-0 left-0 z-[410] w-[16.5rem] flex-col overflow-y-auto border-r border-[#e8e1d8] bg-white/95 text-slate-800 shadow-xl backdrop-blur-sm">
+            <div className="flex items-center justify-between px-3 py-3 border-b border-[#eee7df]">
+              <span className="flex items-center gap-2 text-sm font-bold"><Layers className="w-4 h-4 text-[#806047]" /> Layers</span>
+              <button onClick={() => setLayers({ ...DEFAULT_LAYERS })} className="text-[10px] font-bold text-[#806047] hover:text-[#503b2d]">Reset</button>
             </div>
-            <div className="px-3 py-3 border-b border-slate-700">
+            <div className="px-3 py-3 border-b border-[#eee7df]">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">Basemap</span>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Basemap</span>
                 <span className="text-[9px] font-semibold text-slate-500">{hasMapTilerKey() ? 'MapTiler' : 'OSM fallback'}</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {(['MAPTILER_STREETS', 'MAPTILER_OUTDOOR', 'MAPTILER_TOPO', 'SATELLITE', 'OSM'] as BaseMapProvider[]).map(provider => (
                   <button key={provider}
                     onClick={() => { setMapTilerNotice(null); setBaseProvider(provider); }}
-                    className={`rounded-md px-2 py-1 text-[9px] font-bold ${baseProvider === provider ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                    className={`rounded-md px-2 py-1 text-[9px] font-bold ${baseProvider === provider ? 'bg-[#6f513e] text-white' : 'bg-[#f4f0eb] text-slate-600 hover:bg-[#ebe3da]'}`}>
                     {baseProviderLabel(provider).replace('MapTiler ', '')}
                   </button>
                 ))}
               </div>
             </div>
             {GROUPS.map(group => (
-              <section key={group.group} className="px-3 py-2 border-b border-slate-800">
+              <section key={group.group} className="px-3 py-2 border-b border-[#eee7df]">
                 <h3 className="mb-1 text-[9px] font-black uppercase tracking-wider text-slate-500">{group.group}</h3>
                 {group.items.map(item => (
-                  <label key={item.key} className="flex cursor-pointer items-center gap-2 py-1.5 text-[11px] font-medium text-slate-200">
+                  <label key={item.key} className="flex cursor-pointer items-center gap-2 py-1.5 text-[11px] font-medium text-slate-700">
                     <input type="checkbox" checked={layers[item.key]} aria-label={item.label}
                       onChange={() => setLayers(current => {
                         const enabled = !current[item.key];
@@ -910,14 +910,14 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                         if (item.key === 'landslideRisk') return { ...current, landslideRisk: enabled, floodRisk: enabled ? false : current.floodRisk };
                         return { ...current, [item.key]: enabled };
                       })} />
-                    <item.icon className={`h-3.5 w-3.5 ${layers[item.key] ? 'text-sky-300' : 'text-slate-600'}`} />
+                    <item.icon className={`h-3.5 w-3.5 ${layers[item.key] ? 'text-[#806047]' : 'text-slate-400'}`} />
                     <span>{item.label}</span>
                   </label>
                 ))}
               </section>
             ))}
-            <div className="px-3 py-2 border-b border-slate-800 text-[10px]">
-              <div className="mb-1 font-bold text-slate-300">Overlay opacity</div>
+            <div className="px-3 py-2 border-b border-[#eee7df] text-[10px]">
+              <div className="mb-1 font-bold text-slate-700">Overlay opacity</div>
               <label className="flex items-center gap-2 py-1"><span className="w-20 text-slate-400">Risk fill</span>
                 <input aria-label="Risk fill opacity" type="range" min={0.15} max={0.85} step={0.05} value={opacity.risk}
                   onChange={e => setOpacity(current => ({ ...current, risk: Number(e.target.value) }))} className="flex-1" />
@@ -927,52 +927,52 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                   onChange={e => setOpacity(current => ({ ...current, warnings: Number(e.target.value) }))} className="flex-1" />
               </label>
             </div>
-            <div className="px-3 py-3 text-[10px] text-slate-400">
-              <div className="mb-2 flex items-center gap-1.5 font-bold text-slate-200"><Info className="h-3.5 w-3.5" /> Legend · {layers.floodRisk ? 'Flood' : 'Landslide'}</div>
+            <div className="px-3 py-3 text-[10px] text-slate-600">
+              <div className="mb-2 flex items-center gap-1.5 font-bold text-slate-800"><Info className="h-3.5 w-3.5" /> Legend · {layers.floodRisk ? 'Flood' : 'Landslide'}</div>
               {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNKNOWN'] as const).map(level => (
                 <div key={level} className="flex items-center gap-2 py-0.5">
                   <span className="h-3 w-3 rounded-sm border border-white/10" style={{ background: level === 'UNKNOWN' ? '#94a3b8' : displayedRiskPalette[level] }} />
                   <span>{level === 'UNKNOWN' ? 'Unknown / no data' : level[0] + level.slice(1).toLowerCase()}</span>
                 </div>
               ))}
-              <p className="mt-2 border-t border-slate-800 pt-2 leading-relaxed">
+              <p className="mt-2 border-t border-[#eee7df] pt-2 leading-relaxed">
                 District polygons: geohacker/india · EPSG:4326 · 78 districts. Unmatched districts stay UNKNOWN. Risk fill is a prototype estimate; official warnings are separate.
               </p>
             </div>
           </aside>
 
           {/* Desktop live-data rail uses only backend district summaries and official warning records. */}
-          <aside className="hidden xl:flex absolute inset-y-0 right-0 z-[410] w-[18rem] flex-col overflow-y-auto border-l border-slate-700 bg-slate-950/95 text-slate-100 shadow-xl backdrop-blur-sm">
-            <div className="border-b border-slate-700 px-4 py-3">
+          <aside className="hidden xl:flex absolute inset-y-0 right-0 z-[410] w-[18rem] flex-col overflow-y-auto border-l border-[#e8e1d8] bg-white/95 text-slate-800 shadow-xl backdrop-blur-sm">
+            <div className="border-b border-[#eee7df] px-4 py-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold">District data</h2>
                 <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${summaries ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
                   {summaries ? 'API CONNECTED' : 'UNAVAILABLE'}
                 </span>
               </div>
-              <p className="mt-1 text-[10px] text-slate-400">Backend snapshot {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : 'not loaded'}</p>
+              <p className="mt-1 text-[10px] text-slate-500">Backend snapshot {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : 'not loaded'}</p>
             </div>
 
-            <section className="border-b border-slate-700 p-3">
+            <section className="border-b border-[#eee7df] p-3">
               <h3 className="mb-2 text-[11px] font-bold">Observed and official data</h3>
               <div className="grid grid-cols-3 gap-1.5">
-                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
-                  <div className="text-lg font-bold text-sky-300">{summaries ? `${matchedDistrictCount}/78` : '—'}</div>
-                  <div className="text-[9px] leading-tight text-slate-400">districts matched</div>
+                <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
+                  <div className="text-lg font-bold text-sky-700">{summaries ? `${matchedDistrictCount}/78` : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-500">districts matched</div>
                 </div>
-                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
-                  <div className="text-lg font-bold text-cyan-300">{summaries ? freshRainfallDistrictCount : '—'}</div>
-                  <div className="text-[9px] leading-tight text-slate-400">fresh rain obs.</div>
+                <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
+                  <div className="text-lg font-bold text-cyan-700">{summaries ? freshRainfallDistrictCount : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-500">fresh rain obs.</div>
                 </div>
-                <div className="rounded-lg border border-slate-700 bg-slate-900 p-2">
-                  <div className="text-lg font-bold text-rose-300">{summaries ? officialWarningRows.length : '—'}</div>
-                  <div className="text-[9px] leading-tight text-slate-400">official warnings</div>
+                <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
+                  <div className="text-lg font-bold text-rose-700">{summaries ? officialWarningRows.length : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-500">official warnings</div>
                 </div>
               </div>
               <p className="mt-2 text-[9px] leading-relaxed text-slate-500">Synthetic demo observations are excluded from the fresh-observation count. Prototype risk is not an official warning.</p>
             </section>
 
-            <section className="border-b border-slate-700 p-3">
+            <section className="border-b border-[#eee7df] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-[11px] font-bold">Official warnings</h3>
                 <span className="text-[9px] text-slate-500">agency records</span>
@@ -980,15 +980,15 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               {officialWarningRows.length ? officialWarningRows.slice(0, 4).map(({ district, state, warning }) => {
                 const districtSummary = summaries?.districts.find(d => d.district === district);
                 return <button key={warning.alert_id} onClick={() => districtSummary && flyToDistrict(districtSummary)}
-                  className="mb-1.5 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-left hover:border-slate-500">
+                  className="mb-1.5 w-full rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2 text-left hover:border-[#b59a82]">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-[10px] font-semibold leading-snug">{district} · {state}</span>
                     <span className="rounded px-1.5 py-0.5 text-[8px] font-bold" style={{ background: `${SEVERITY_COLORS[warning.severity] ?? '#64748b'}33`, color: SEVERITY_COLORS[warning.severity] ?? '#cbd5e1' }}>{warning.severity}</span>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-slate-400">{warning.title}</p>
+                  <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-slate-600">{warning.title}</p>
                   <p className="mt-1 text-[8px] text-slate-500">{warning.source} · {warning.issued_at ? new Date(warning.issued_at).toLocaleString() : 'issue time unavailable'}</p>
                 </button>;
-              }) : <p className="rounded-lg border border-slate-700 bg-slate-900 p-2 text-[10px] leading-relaxed text-slate-400">{summaries ? 'No official warning records were returned. No warning data does not mean there is no hazard.' : 'Waiting for district data from the local API.'}</p>}
+              }) : <p className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2 text-[10px] leading-relaxed text-slate-600">{summaries ? 'No official warning records were returned. No warning data does not mean there is no hazard.' : 'Waiting for district data from the local API.'}</p>}
             </section>
 
             <section className="p-3">
@@ -997,11 +997,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                   <h3 className="text-[11px] font-bold">Prototype risk by state</h3>
                   <p className="text-[9px] text-slate-500">Highest monitored-district {layers.floodRisk ? 'flood' : 'landslide'} estimate</p>
                 </div>
-                <span className="text-[8px] uppercase tracking-wide text-amber-300">Not official</span>
+                <span className="text-[8px] uppercase tracking-wide text-amber-700">Not official</span>
               </div>
               {stateRiskRows.map(row => (
                 <button key={row.state} onClick={() => flyToState(row.state)}
-                  className="flex w-full items-center gap-2 border-b border-slate-800 py-1.5 text-left last:border-0 hover:bg-slate-900">
+                  className="flex w-full items-center gap-2 border-b border-[#eee7df] py-1.5 text-left last:border-0 hover:bg-[#faf8f6]">
                   <span className="h-2 w-2 rounded-full" style={{ background: SEVERITY_COLORS[row.category] ?? SEVERITY_COLORS.UNKNOWN }} />
                   <span className="flex-1 truncate text-[10px]">{row.state}</span>
                   <span className="text-[9px] text-slate-500">{row.districts} monitored</span>

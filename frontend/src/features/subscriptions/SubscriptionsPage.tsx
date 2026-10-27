@@ -96,7 +96,7 @@ export default function SubscriptionsPage() {
           <h2 className="text-base font-bold text-slate-900">Subscribe to District Alert Emails</h2>
         </div>
         <p className="text-xs text-slate-500 mb-4">
-          Choose your district — NE-SAFE AI <strong>never infers your location</strong>.
+          Choose your district — Geo Shield <strong>never infers your location</strong>.
           Email dispatch is currently disabled. If delivery is enabled later, messages will be platform advisories, not government warnings; official ASDMA/SDMA/DDMA instructions take precedence.
         </p>
 

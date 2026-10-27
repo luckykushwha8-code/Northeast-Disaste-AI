@@ -2,7 +2,7 @@ import { Language } from '../types';
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
-    appTitle: "NE-SAFE AI",
+    appTitle: "Geo Shield",
     tagline: "Northeast India Disaster Risk & Early Warning Platform",
     subtagline: "Covering All 8 Northeast States (NER)",
     studyArea: "8 Northeast States (Assam, Arunachal, Meghalaya, Manipur, Mizoram, Nagaland, Tripura, Sikkim)",
@@ -43,7 +43,7 @@ export const translations: Record<Language, Record<string, string>> = {
     replayScenario: "SIH 5-Minute Demo Scenario Replay"
   },
   as: {
-    appTitle: "এন-ই-ছেফ এআই (NE-SAFE AI)",
+    appTitle: "Geo Shield",
     tagline: "উত্তৰ-পূৰ্বাঞ্চল দুৰ্যোগ সংকট আৰু প্ৰাৰম্ভিক সতৰ্কবাণী মঞ্চ",
     subtagline: "উত্তৰ-পূৰ্বাঞ্চলৰ ৮খন ৰাজ্য সামৰি লোৱা হৈছে",
     studyArea: "উত্তৰ-পূৰ্বাঞ্চলৰ ৮খন ৰাজ্য (অসম, অৰুণাচল, মেঘালয়, মণিপুৰ, মিজোৰাম, নাগালেণ্ড, ত্ৰিপুৰা, ছিকিম)",
@@ -84,7 +84,7 @@ export const translations: Record<Language, Record<string, string>> = {
     replayScenario: "এছ-আই-এইচ ৫ মিনিটৰ প্ৰদৰ্শন পৰীক্ষা"
   },
   bn: {
-    appTitle: "এন-ই-সেফ এআই (NE-SAFE AI)",
+    appTitle: "Geo Shield",
     tagline: "উত্তর-পূর্ব ভারত দুর্যোগ ঝুঁকি ও প্রারম্ভিক সতর্কবার্তা প্ল্যাটফর্ম",
     subtagline: "উত্তর-পূর্বের ৮টি রাজ্য সমন্বিত",
     studyArea: "উত্তর-পূর্বের ৮টি রাজ্য (আসাম, অরুণাচল, মেঘালয়, মণিপুর, মিজোরাম, নাগাল্যান্ড, ত্রিপুরা, সিকিম)",
@@ -125,7 +125,7 @@ export const translations: Record<Language, Record<string, string>> = {
     replayScenario: "এসআইএইচ ৫ মিনিটের ডেমো পরিস্থিতি"
   },
   hi: {
-    appTitle: "ने-सेफ एआई (NE-SAFE AI)",
+    appTitle: "Geo Shield",
     tagline: "पूर्वोत्तर भारत आपदा जोखिम निगरानी एवं पूर्व चेतावनी मंच",
     subtagline: "सभी 8 पूर्वोत्तर राज्यों (NER) के लिए",
     studyArea: "पूर्वोत्तर के 8 राज्य (असम, अरुणाचल, मेघालय, मणिपुर, मिजोरम, नागालैंड, त्रिपुरा, सिक्किम)",

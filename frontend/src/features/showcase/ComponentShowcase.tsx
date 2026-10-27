@@ -24,7 +24,7 @@ export default function ComponentShowcase() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
         <h1 className="text-lg font-black text-slate-900 flex items-center gap-2">
           <FlaskConical className="w-5 h-5 text-indigo-600" />
-          NE-SAFE AI — Component Showcase
+          Geo Shield — Component Showcase
         </h1>
         <p className="text-xs text-slate-500 mt-1">All UI components from the design system. Route: /dev/components</p>
       </div>

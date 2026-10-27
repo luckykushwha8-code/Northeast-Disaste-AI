@@ -72,7 +72,7 @@ export default function Dashboard() {
     <section className="mx-auto max-w-[1500px] space-y-5" aria-label="Northeast India district dashboard">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">NE-SAFE AI · Situation monitor</p>
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#806047]">Geo Shield · Situation monitor</p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">District overview</h1>
           <p className="mt-1 text-sm text-slate-500">Live API data and district level rainfall and risk summaries across Northeast India.</p>
         </div>
