@@ -40,8 +40,6 @@ from app.services.map_service import map_service
 from app.services.geographic_service import geographic_service
 from app.services.auto_alert_service import auto_alert_service
 from app.services.report_service import build_report_data, render_csv, render_pdf
-from app.services.imd_api_service import imd_api_service
-from app.services.imd_ingest import imd_ingest_service
 from app.config import settings
 from app.auth import get_principal, require_roles, authenticate_credentials, issue_token, authentication_ready, Principal
 from app.schemas.gemini import DistrictExplanationRequest, PreparednessQuestion
@@ -231,10 +229,10 @@ def get_data_source_status(db: Session = Depends(get_db)):
 
         if s.source_type == "SYNTH_IOT":
             s.status = "SIMULATED"
+        elif s.id == "src_imd_api":
+            s.status = "VIA_TINYFISH"
         elif not s.enabled:
             s.status = "DISABLED"
-        elif s.id == "src_imd_api" and not settings.IMD_API_KEY and (not s.last_success_at or s.status == "AUTH_REQUIRED"):
-            s.status = "AUTH_REQUIRED"
         elif s.last_error_at and (not s.last_success_at or s.last_error_at >= s.last_success_at):
             if s.status not in {"AUTH_REQUIRED", "AUTH_ERROR"}:
                 s.status = "FAILED"
@@ -251,25 +249,25 @@ def get_data_source_status(db: Session = Depends(get_db)):
 
         result.append({
             "id": s.id,
-            "name": s.name,
-            "source_type": s.source_type,
+            "name": "IMD official public web products (via TinyFish)" if s.id == "src_imd_api" else s.name,
+            "source_type": "OFFICIAL_WEBSITE" if s.id == "src_imd_api" else s.source_type,
             "configuration_reference": s.configuration_reference,
             "expected_update_interval_hours": s.expected_update_interval_hours,
             "enabled": s.enabled,
-            "last_success_at": s.last_success_at,
+            "last_success_at": s.last_success_at if s.id != "src_imd_api" else None,
             "last_error_at": s.last_error_at,
             "status": s.status,
             "last_fetch_attempt_at": fetch_attempt,
-            "latest_observation_at": latest_observation.observed_at if latest_observation else None,
-            "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation else None,
-            "latest_variable": latest_observation.variable if latest_observation else None,
-            "latest_value": latest_observation.value if latest_observation else None,
-            "latest_unit": latest_observation.unit if latest_observation else None,
+            "latest_observation_at": latest_observation.observed_at if latest_observation and s.id != "src_imd_api" else None,
+            "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation and s.id != "src_imd_api" else None,
+            "latest_variable": latest_observation.variable if latest_observation and s.id != "src_imd_api" else None,
+            "latest_value": latest_observation.value if latest_observation and s.id != "src_imd_api" else None,
+            "latest_unit": latest_observation.unit if latest_observation and s.id != "src_imd_api" else None,
             "latest_observation_status": (
-                "SIMULATED" if latest_observation and latest_observation.simulation_flag
-                else latest_observation.quality_status if latest_observation else None
+                "SIMULATED" if latest_observation and latest_observation.simulation_flag and s.id != "src_imd_api"
+                else latest_observation.quality_status if latest_observation and s.id != "src_imd_api" else None
             ),
-            "latest_observation_simulated": latest_observation.simulation_flag if latest_observation else None,
+            "latest_observation_simulated": latest_observation.simulation_flag if latest_observation and s.id != "src_imd_api" else None,
             "latest_forecast_24h_mm": forecast_payload.get("forecast_precipitation_24h_mm"),
             "latest_forecast_period_start_at": forecast_payload.get("forecast_period_start_at"),
             "latest_forecast_period_end_at": forecast_payload.get("forecast_period_end_at"),
@@ -1033,90 +1031,14 @@ def trigger_scenario(scenario_name: str, db: Session = Depends(get_db), principa
 
 # ----------------- 9. OFFICIAL GOVERNMENT DATA ADAPTERS (SIH01, LIVE-FIRST) -----------------
 def _baseline_imd_warnings() -> Dict[str, Any]:
-    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-    valid_until = now + datetime.timedelta(hours=24)
     return {
-        "source": "India Meteorological Department (IMD)",
-        "source_catalogue_url": "https://api.imd.gov.in/public/api_reference.html",
-        "documented_endpoint": "https://api.imd.gov.in/api/v1/districtwarning",
-        "retrieved_at": now.isoformat(),
-        "valid_until": valid_until.isoformat(),
-        "attribution": "Government of India — Ministry of Earth Sciences (MoES) / IMD",
-        "data_mode": "BASELINE",
-        "warnings": [
-            {
-                "state": "Assam",
-                "district": "Kamrup Metropolitan",
-                "color_code": "ORANGE",
-                "warning_type": "HEAVY_TO_VERY_HEAVY_RAIN",
-                "rainfall_forecast_24h_mm": "70-110",
-                "action": "Be Prepared. Waterlogging in lowlands and flash runoff expected.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Meghalaya",
-                "district": "East Khasi Hills",
-                "color_code": "RED",
-                "warning_type": "EXTREMELY_HEAVY_RAIN",
-                "rainfall_forecast_24h_mm": ">200",
-                "action": "Take Action. High danger of sudden flash runoff and slope collapse in Sohra/Shillong.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Arunachal Pradesh",
-                "district": "Papum Pare",
-                "color_code": "ORANGE",
-                "warning_type": "HEAVY_RAIN_WITH_THUNDERSTORM",
-                "rainfall_forecast_24h_mm": "65-90",
-                "action": "Be Prepared. Watch hill slopes and valley roads.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Sikkim",
-                "district": "North Sikkim",
-                "color_code": "ORANGE",
-                "warning_type": "HEAVY_SNOW_RAIN",
-                "rainfall_forecast_24h_mm": "50-80",
-                "action": "Be Prepared. Teesta river catchment surge monitoring.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Manipur",
-                "district": "Imphal West",
-                "color_code": "YELLOW",
-                "warning_type": "MODERATE_RAIN",
-                "rainfall_forecast_24h_mm": "35-50",
-                "action": "Be Updated. Low-lying areas along Imphal river may see rising water.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Mizoram",
-                "district": "Aizawl",
-                "color_code": "YELLOW",
-                "warning_type": "MODERATE_TO_HEAVY_RAIN",
-                "rainfall_forecast_24h_mm": "40-60",
-                "action": "Be Updated. Watch hillside drainage channels for blockages.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Nagaland",
-                "district": "Kohima",
-                "color_code": "YELLOW",
-                "warning_type": "MODERATE_RAIN",
-                "rainfall_forecast_24h_mm": "30-50",
-                "action": "Be Updated. Avoid travel on unstable roadside cut slopes.",
-                "validity": valid_until.isoformat()
-            },
-            {
-                "state": "Tripura",
-                "district": "West Tripura",
-                "color_code": "GREEN",
-                "warning_type": "LIGHT_RAIN",
-                "rainfall_forecast_24h_mm": "10-25",
-                "action": "No Warning. Normal monsoonal conditions.",
-                "validity": valid_until.isoformat()
-            }
-        ]
+        "source": "India Meteorological Department (IMD) public website",
+        "source_url": "https://mausam.imd.gov.in/",
+        "attribution": "Government of India — Ministry of Earth Sciences / IMD",
+        "retrieved_at": utcnow().isoformat(),
+        "data_mode": "UNAVAILABLE",
+        "warnings": [],
+        "note": "No verified live bulletin was extracted. No warning values are substituted."
     }
 
 
@@ -1124,8 +1046,7 @@ def _baseline_imd_warnings() -> Dict[str, Any]:
 def get_imd_warnings(db: Session = Depends(get_db)):
     """
     LIVE-first adapter for India Meteorological Department (IMD) District Warnings.
-    Attempts extraction from the official IMD portal via TinyFish; falls back to
-    the last successfully cached bulletin; falls back to documented baseline.
+    Extracts only from the official IMD public website via TinyFish; missing feeds stay unavailable.
     """
     live = live_data_service.fetch_imd_warnings(db)
     if live.get("data_mode") in ("LIVE", "CACHED"):
@@ -1182,222 +1103,17 @@ def GEODATA_reference_meta():
     return GEODATA_META
 
 
-# ----------------- 11. OFFICIAL IMD REST API (api.imd.gov.in) -----------------
-
-@router.get("/imd/status")
-def imd_api_status(db: Session = Depends(get_db)):
-    """Per-endpoint status of the official IMD REST adapter. AUTH_ERROR when the
-    API key is empty/invalid (the documented endpoints return 401 without one)."""
-    summary = []
-    for slug, ep in imd_api_service.ENDPOINTS.items():
-        summary.append({"endpoint": slug, "path": ep["path"]})
-    # live, cheap classification without network: read the cached data_mode
-    out = []
-    for s in summary:
-        slug = s["endpoint"]
-        cache = db.query(LiveDataCache).filter(LiveDataCache.cache_key == f"imd_{slug}").first()
-        if cache:
-            p = json.loads(cache.payload_json)
-            out.append({
-                "endpoint": slug,
-                "path": s["path"],
-                "last_mode": cache.data_mode,
-                "fetched_at": cache.fetched_at.isoformat() if cache.fetched_at else None,
-                "row_count": p.get("row_count", 0)
-            })
-        else:
-            out.append({"endpoint": slug, "path": s["path"], "last_mode": "NEVER_FETCHED",
-                        "fetched_at": None, "row_count": 0})
-    return {
-        "api_key_configured": bool(settings.IMD_API_KEY),
-        "auth_style": settings.IMD_API_AUTH_STYLE if settings.IMD_API_KEY else None,
-        "endpoints": out,
-        "role_note": "Official IMD feeds power warnings/rainfall/QPF; AUTH_ERROR means "
-                     "IMD_API_KEY must be configured before any of these can be LIVE."
-    }
-
-
-@router.get("/imd/rainfall")
-def imd_rainfall(db: Session = Depends(get_db)):
-    return imd_api_service.fetch_endpoint(db, "rainfall")
-
-
-@router.get("/imd/warnings")
-def imd_official_warnings(db: Session = Depends(get_db)):
-    return imd_api_service.fetch_endpoint(db, "warnings")
-
-
-@router.get("/imd/nowcast")
-def imd_nowcast(db: Session = Depends(get_db)):
-    return imd_api_service.fetch_endpoint(db, "nowcast")
-
-
-@router.get("/imd/qpf")
-def imd_qpf(db: Session = Depends(get_db)):
-    return imd_api_service.fetch_endpoint(db, "qpf")
-
-
-@router.get("/imd/aws-mapping")
-def imd_aws_mapping(db: Session = Depends(get_db)):
-    return imd_api_service.fetch_endpoint(db, "aws_map")
-
-
-@router.post("/imd/sync")
-def imd_full_refresh(db: Session = Depends(get_db), principal: Principal = Depends(require_roles("OPERATOR", "ADMIN"))):
-    """One-cycle refresh of all official IMD REST feeds:
-    districtrainfall + basinqpf -> observations (deduped, provenance-stamped),
-    districtwarning -> OFFICIAL lifecycle alerts (verbatim, deduped by source ref).
-    AUTH_ERROR responses are skipped gracefully and reported per feed."""
-    summary: Dict[str, Any] = {}
-    rainfall = imd_api_service.fetch_endpoint(db, "rainfall")
-    summary["rainfall"] = {
-        "data_mode": rainfall.get("data_mode"), "source_status": rainfall.get("source_status"),
-        **imd_ingest_service.ingest_district_rainfall(db, rainfall)
-    }
-    qpf = imd_api_service.fetch_endpoint(db, "qpf")
-    summary["qpf"] = {
-        "data_mode": qpf.get("data_mode"), "source_status": qpf.get("source_status"),
-        **imd_ingest_service.ingest_basin_qpf(db, qpf)
-    }
-    warnings = imd_api_service.fetch_endpoint(db, "warnings")
-    mapped = imd_ingest_service.apply_official_district_warnings(warnings)
-    created = 0
-    official_alerts_sent: list = []
-    if mapped.get("alert_specs"):
-        existing_refs = {a.official_source_reference for a in db.query(Alert).filter(
-            Alert.lifecycle_status.in_(["PROPOSED", "REVIEWED", "APPROVED", "ISSUED", "ACKNOWLEDGED"])
-        ).all()}
-        for spec in mapped["alert_specs"]:
-            if spec["official_source_reference"] in existing_refs:
-                continue  # dedupe: never re-issue an existing official warning
-            now = utcnow()
-            db.add(Alert(
-                location_id=spec["location_id"],
-                hazard_type=spec["hazard_type"],
-                source_type="OFFICIAL_AGENCY",
-                severity=spec["severity"],
-                lifecycle_status="APPROVED",  # official: not AI-proposed, already public
-                issued_at=now,
-                expires_at=now + datetime.timedelta(days=spec["expires_in_days"]),
-                official_source_reference=spec["official_source_reference"],
-                created_by="IMD_REST_API_ADAPTER",
-                title=spec["title"],
-                description=spec["description"],
-                action_instructions=spec["action_instructions"],
-                simulation_flag=False
-            ))
-            created += 1
-            official_alerts_sent.append(spec["official_source_reference"])
-            log_audit(
-                db=db, actor_id="IMD_REST_API_ADAPTER", action="OFFICIAL_WARNING_IMPORTED",
-                resource_type="Alert", resource_id=spec["official_source_reference"],
-                reason=spec["title"]
-            )
-        db.commit()
-        # Verbatim official warnings are already public information — dispatch
-        # resident/authority emails directly (guard chain applies internally).
-        if official_alerts_sent:
-            from app.services.email_alert_service import email_alert_service
-            newest = db.query(Alert).filter(
-                Alert.official_source_reference.in_(official_alerts_sent)
-            ).order_by(Alert.issued_at.desc()).all()
-            for oa in newest:
-                try:
-                    email_alert_service.dispatch_for_alert(db, oa)
-                except Exception as e:
-                    logger.warning("official-warning email dispatch failed: %s", e)
-    summary["official_warnings"] = {
-        "data_mode": warnings.get("data_mode"), "source_status": warnings.get("source_status"),
-        "alerts_created": created,
-        "unmatched_districts": mapped.get("unmatched_districts", []),
-        "note": "Official IMD warnings are stored verbatim; the platform does not "
-                "convert them into model estimates."
-    }
-    return summary
-
+# IMD REST API integration intentionally omitted; official public pages are read via TinyFish.
 
 def _baseline_cwc_stations() -> Dict[str, Any]:
-    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     return {
         "source": "Central Water Commission (CWC) Flood Forecasting Network",
         "portal_url": "https://ffs.india-water.gov.in/",
         "attribution": "Government of India — Ministry of Jal Shakti / CWC",
-        "retrieved_at": now.isoformat(),
-        "data_mode": "BASELINE",
-        "stations": [
-            {
-                "station_code": "022-MBAPU",
-                "station_name": "Pandu (Guwahati)",
-                "river": "Brahmaputra",
-                "state": "Assam",
-                "warning_level_m": 48.68,
-                "danger_level_m": 49.68,
-                "hfl_m": 51.46,
-                "current_level_m": 49.10,
-                "trend": "RISING",
-                "status": "ABOVE_WARNING_BELOW_DANGER"
-            },
-            {
-                "station_code": "014-BRSIL",
-                "station_name": "Annapurna Ghat (Silchar)",
-                "river": "Barak",
-                "state": "Assam",
-                "warning_level_m": 18.87,
-                "danger_level_m": 19.83,
-                "hfl_m": 21.66,
-                "current_level_m": 19.45,
-                "trend": "STEADY",
-                "status": "ABOVE_WARNING_BELOW_DANGER"
-            },
-            {
-                "station_code": "031-SNGPAS",
-                "station_name": "Pasighat",
-                "river": "Siang (Brahmaputra)",
-                "state": "Arunachal Pradesh",
-                "warning_level_m": 152.00,
-                "danger_level_m": 153.96,
-                "hfl_m": 157.54,
-                "current_level_m": 151.20,
-                "trend": "RISING",
-                "status": "NORMAL"
-            },
-            {
-                "station_code": "008-TSTMAN",
-                "station_name": "Mangan",
-                "river": "Teesta",
-                "state": "Sikkim",
-                "warning_level_m": 860.00,
-                "danger_level_m": 865.00,
-                "hfl_m": 872.20,
-                "current_level_m": 862.40,
-                "trend": "RISING",
-                "status": "ABOVE_WARNING_BELOW_DANGER"
-            },
-            {
-                "station_code": "019-IMPSAN",
-                "station_name": "Sanjenthong (Imphal)",
-                "river": "Imphal",
-                "state": "Manipur",
-                "warning_level_m": 788.00,
-                "danger_level_m": 790.30,
-                "hfl_m": 792.80,
-                "current_level_m": 787.20,
-                "trend": "STEADY",
-                "status": "NORMAL"
-            },
-            {
-                "station_code": "025-DHSDIM",
-                "station_name": "Dimapur",
-                "river": "Dhansiri",
-                "state": "Nagaland",
-                "warning_level_m": 146.50,
-                "danger_level_m": 148.00,
-                "hfl_m": 150.20,
-                "current_level_m": 145.80,
-                "trend": "RISING",
-                "status": "NORMAL"
-            }
-        ]
+        "retrieved_at": utcnow().isoformat(),
+        "data_mode": "UNAVAILABLE",
+        "stations": [],
+        "note": "No verified live station readings are available. Current levels are not filled from reference thresholds."
     }
 
 
@@ -1405,9 +1121,7 @@ def _baseline_cwc_stations() -> Dict[str, Any]:
 def get_cwc_stations(db: Session = Depends(get_db)):
     """
     LIVE-first adapter for Central Water Commission (CWC) Flood Forecasting System.
-    Fetches real-time station telemetry from the official CWC FFS API
-    (https://ffs.india-water.gov.in). Falls back to last cached telemetry,
-    then to documented baseline reference levels.
+    Fetches live telemetry from the official CWC public website. Missing readings stay unavailable.
     """
     live = live_data_service.fetch_cwc_stations(db)
     if live.get("data_mode") in ("LIVE", "CACHED"):
@@ -1584,6 +1298,40 @@ def get_tinyfish_history(
     Retrieves past web extractions and published disaster information.
     """
     return db.query(TinyFishRetrievalRecord).order_by(TinyFishRetrievalRecord.retrieval_timestamp.desc()).limit(limit).all()
+
+
+@router.post("/sources/tinyfish/{record_id}/gemini-summary")
+def summarize_tinyfish_retrieval(record_id: str, db: Session = Depends(get_db)):
+    """Summarize one verified, real TinyFish extraction; Gemini cannot alter source data."""
+    record = db.query(TinyFishRetrievalRecord).filter(TinyFishRetrievalRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="TinyFish retrieval record not found")
+    if record.simulation_flag or record.data_quality_status != "VALID" or not record.extracted_text:
+        raise HTTPException(status_code=409, detail="Gemini summaries require a valid, non-simulated extraction")
+    if record.source_agency not in {"IMD", "CWC", "GSI", "NRSC_BHUVAN"}:
+        raise HTTPException(status_code=400, detail="Only approved weather and hazard agency records can be summarized")
+    now = utcnow()
+    published_at = record.publication_timestamp
+    source_freshness = "UNVERIFIED_DATE"
+    if published_at:
+        age_hours = (now.replace(tzinfo=None) - published_at.replace(tzinfo=None)).total_seconds() / 3600
+        source_freshness = "CURRENT" if -12 <= age_hours <= 36 else "STALE"
+    evidence = {
+        "source_agency": record.source_agency,
+        "source_url": record.source_url,
+        "title": record.title,
+        "retrieved_at": record.retrieval_timestamp.isoformat() if record.retrieval_timestamp else None,
+        "publication_timestamp": record.publication_timestamp.isoformat() if record.publication_timestamp else None,
+        "source_freshness": source_freshness,
+        "extracted_content": record.extracted_text[:12000],
+    }
+    summary = _gemini_response(
+        "Summarize this official public weather or hazard source. Preserve only statements present in the source. Include source agency, publication/retrieval time, forecast period and affected places when explicitly stated. Do not invent rainfall amounts, districts, warnings, or current observations. If source_freshness is STALE or UNVERIFIED_DATE, say that the content must not be used as current conditions. State clearly that this is an AI summary of source text, not an official warning.",
+        evidence,
+    )
+    summary["source_freshness"] = source_freshness
+    summary["publication_timestamp"] = record.publication_timestamp.isoformat() if record.publication_timestamp else None
+    return summary
 
 
 # ----------------- 10. LIVE DATA SYNC & REGIONAL NEWS -----------------

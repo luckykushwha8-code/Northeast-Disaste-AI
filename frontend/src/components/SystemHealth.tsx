@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DataSourceItem, AuditLogItem, LiveDataSyncItem, ImdApiStatus, TinyFishStatus } from '../types';
+import { DataSourceItem, AuditLogItem, LiveDataSyncItem, TinyFishStatus } from '../types';
 import { api } from '../api/client';
 import { Database, Globe, History, RefreshCw, Rss } from 'lucide-react';
 import { TinyFishPanel } from './TinyFishPanel';
@@ -20,15 +20,11 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<LiveDataSyncItem | null>(null);
-  const [imdStatus, setImdStatus] = useState<ImdApiStatus | null>(null);
   const [tinyFishStatus, setTinyFishStatus] = useState<TinyFishStatus | null>(null);
-  const [imdSyncing, setImdSyncing] = useState(false);
-  const [imdSyncNote, setImdSyncNote] = useState<string | null>(null);
 
   const refreshFeedStatus = async () => {
-    const [sources, imd, tinyFish] = await Promise.allSettled([api.getDataStatus(), api.getImdApiStatus(), api.getTinyFishStatus()]);
+    const [sources, tinyFish] = await Promise.allSettled([api.getDataStatus(), api.getTinyFishStatus()]);
     if (sources.status === 'fulfilled') setDataSources(sources.value);
-    if (imd.status === 'fulfilled') setImdStatus(imd.value);
     if (tinyFish.status === 'fulfilled') setTinyFishStatus(tinyFish.value);
   };
 
@@ -67,29 +63,6 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
     }
   };
 
-  const runImdRefresh = async () => {
-    setImdSyncing(true);
-    setImdSyncNote(null);
-    try {
-      const result = await api.runImdSync();
-      const sources = await api.getDataStatus();
-      setDataSources(sources);
-      const rf = result?.rainfall ?? {};
-      const of = result?.official_warnings ?? {};
-      setImdSyncNote(
-        `rainfall: ${rf.ingested ?? 0} ingested (${rf.data_mode})` +
-        (rf.unmatched_districts?.length ? `, unmatched: ${rf.unmatched_districts.join(', ')}` : '') +
-        ` · official warnings: ${of.alerts_created ?? 0} imported (${of.data_mode})`
-      );
-      api.getImdApiStatus().then(setImdStatus).catch(() => {});
-      onRefresh();
-    } catch (e) {
-      setImdSyncNote(String(e instanceof Error ? e.message : e));
-    } finally {
-      setImdSyncing(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Live Data Sync Control */}
@@ -99,10 +72,9 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
           <h3 className="text-sm font-bold text-slate-900">Live Government Data Sync</h3>
         </div>
         <p className="text-xs text-slate-500 mb-4">
-          Pulls REAL data from official sources: CWC Flood Forecasting System telemetry
-          (ffs.india-water.gov.in), IMD live bulletins (mausam.imd.gov.in), GSI Bhusanket
-          landslide advisories, and verified Northeast news outlets. Ingested river levels
-          feed the prediction engines.
+          Refreshes CWC station telemetry, IMD and GSI public pages through TinyFish, and
+          regional news. Only dated source data is shown as current; Gemini summaries are
+          labeled as AI summaries and never create official warnings.
         </p>
 
         <button
@@ -155,7 +127,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
               {dataSources.map((ds) => {
                 const statusStyle = ds.status === 'OPERATIONAL' ? 'bg-emerald-100 text-emerald-800'
                   : ds.status === 'SIMULATED' ? 'bg-purple-100 text-purple-800'
-                  : ['STALE', 'DELAYED', 'NOT_CHECKED', 'AUTH_REQUIRED', 'AUTH_ERROR'].includes(ds.status) ? 'bg-amber-100 text-amber-800'
+                  : ['STALE', 'DELAYED', 'NOT_CHECKED', 'AUTH_REQUIRED', 'AUTH_ERROR', 'VIA_TINYFISH'].includes(ds.status) ? 'bg-amber-100 text-amber-800'
                   : 'bg-red-100 text-red-800';
 
                 return (
@@ -210,72 +182,6 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
         <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${tinyFishStatus?.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
           {tinyFishStatus?.configured ? 'LIVE KEY CONFIGURED' : 'LIVE KEY MISSING'}
         </span>
-      </div>
-
-      {/* Official IMD REST feeds (api.imd.gov.in) — distinct from TinyFish bulletin scrape */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <Rss className="w-5 h-5 text-rose-600" />
-            <h3 className="text-sm font-bold text-slate-900">Official IMD REST Feeds (api.imd.gov.in)</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            {imdStatus && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                imdStatus.api_key_configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-              }`}>
-                IMD_API_KEY {imdStatus.api_key_configured ? 'configured' : 'not configured'}
-              </span>
-            )}
-            {canManage && <button
-              onClick={runImdRefresh}
-              disabled={imdSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 disabled:opacity-50 transition"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${imdSyncing ? 'animate-spin' : ''}`} />
-              {imdSyncing ? 'Refreshing…' : 'Refresh IMD feeds'}
-            </button>}
-          </div>
-        </div>
-        <p className="text-xs text-slate-500 mb-3">
-          District rainfall / district warnings (verbatim official) / nowcast / river-basin QPF / AWS
-          stations. Official warnings are imported as source-type OFFICIAL_AGENCY alerts — never
-          converted into model estimates.
-        </p>
-        {imdSyncNote && <div className="text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2 mb-3">{imdSyncNote}</div>}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-xs">
-            <thead className="bg-slate-50 text-slate-700 font-bold">
-              <tr>
-                <th className="py-2 px-3 text-left">Feed</th>
-                <th className="py-2 px-3 text-left">Path</th>
-                <th className="py-2 px-3 text-left">Last mode</th>
-                <th className="py-2 px-3 text-left">Fetched</th>
-                <th className="py-2 px-3 text-left">Rows</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {(imdStatus?.endpoints ?? []).map(ep => (
-                <tr key={ep.endpoint}>
-                  <td className="py-2 px-3 font-semibold text-slate-900">{ep.endpoint}</td>
-                  <td className="py-2 px-3 font-mono text-[10px] text-slate-500">{ep.path}</td>
-                  <td className="py-2 px-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      ep.last_mode === 'LIVE' ? 'bg-emerald-100 text-emerald-800' :
-                      ep.last_mode === 'CACHED' ? 'bg-blue-100 text-blue-800' :
-                      'bg-amber-100 text-amber-800'
-                    }`}>{ep.last_mode}</span>
-                  </td>
-                  <td className="py-2 px-3">{ep.fetched_at ? new Date(ep.fetched_at).toLocaleTimeString() : '—'}</td>
-                  <td className="py-2 px-3">{ep.row_count}</td>
-                </tr>
-              ))}
-              {!imdStatus && (
-                <tr><td colSpan={5} className="py-3 px-3 text-slate-500">IMD status unavailable.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* TinyFish Web Extraction Service & Published Disaster Bulletins */}

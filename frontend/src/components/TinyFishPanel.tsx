@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
-import { TinyFishStatus, TinyFishRetrievalResult } from '../types';
+import { TinyFishStatus, TinyFishRetrievalResult, TinyFishGeminiSummary } from '../types';
 import {
   Globe,
   ShieldCheck,
@@ -23,11 +23,12 @@ export const TinyFishPanel: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
 
   // Form state
-  const [url, setUrl] = useState<string>('https://mausam.imd.gov.in/guwahati/mcdata/warning.pdf');
+  const [url, setUrl] = useState<string>('https://mausam.imd.gov.in/responsive/districtWiseWarningGIS.php');
   const [format, setFormat] = useState<'markdown' | 'html' | 'json'>('markdown');
-  const [simulateFallback, setSimulateFallback] = useState<boolean>(true);
   const [retrieving, setRetrieving] = useState<boolean>(false);
   const [activeResult, setActiveResult] = useState<TinyFishRetrievalResult | null>(null);
+  const [geminiSummary, setGeminiSummary] = useState<TinyFishGeminiSummary | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedContent, setExpandedContent] = useState<boolean>(true);
 
@@ -78,15 +79,29 @@ export const TinyFishPanel: React.FC = () => {
       const result = await api.requestTinyFishRetrieval({
         url: url.trim(),
         format,
-        simulate_if_unavailable: simulateFallback
+        simulate_if_unavailable: false
       });
       setActiveResult(result);
+      setGeminiSummary(null);
       fetchStatus();
       fetchHistory();
     } catch (err: any) {
       setErrorMessage(err.message || 'Retrieval failed. Please verify URL is from an approved government domain.');
     } finally {
       setRetrieving(false);
+    }
+  };
+
+  const summarizeWithGemini = async () => {
+    if (!activeResult || activeResult.simulation_flag || activeResult.data_quality_status !== 'VALID') return;
+    setSummarizing(true);
+    setErrorMessage(null);
+    try {
+      setGeminiSummary(await api.summarizeTinyFishRecord(activeResult.id));
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Gemini could not summarize this source record.');
+    } finally {
+      setSummarizing(false);
     }
   };
 
@@ -234,18 +249,39 @@ export const TinyFishPanel: React.FC = () => {
       {/* Retrieval Action Card */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <h4 className="text-sm font-bold text-slate-900 mb-2">Request Official Data Retrieval</h4>
-        <p className="text-xs text-slate-500 mb-4">
-          Select an official government source or specify a permitted government URL. Content is extracted via TinyFish Web Agent with provenance and validation flags stored with each record.
+          <p className="text-xs text-slate-500 mb-4">
+          Retrieve current warnings, nowcasts, rainfall products, and forecasts from IMD’s public pages. TinyFish stores the original source text and retrieval time; Gemini can summarize only a valid, non-simulated retrieval.
         </p>
 
         {/* Preset buttons */}
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             type="button"
-            onClick={() => selectPreset('https://mausam.imd.gov.in/guwahati/mcdata/warning.pdf')}
+            onClick={() => selectPreset('https://mausam.imd.gov.in/responsive/districtWiseWarningGIS.php')}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
           >
-            IMD Guwahati Warning
+            IMD District Warnings
+          </button>
+          <button
+            type="button"
+            onClick={() => selectPreset('https://mausam.imd.gov.in/responsive/districtWiseNowcastGIS.php')}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
+          >
+            IMD District Nowcast
+          </button>
+          <button
+            type="button"
+            onClick={() => selectPreset('https://mausam.imd.gov.in/responsive/all_india_forcast_bulletin.php')}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
+          >
+            IMD All India Forecast
+          </button>
+          <button
+            type="button"
+            onClick={() => selectPreset('https://mausam.imd.gov.in/responsive/rainfallinformation.php')}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
+          >
+            IMD Rainfall Maps
           </button>
           <button
             type="button"
@@ -290,7 +326,7 @@ export const TinyFishPanel: React.FC = () => {
 
             <button
               type="submit"
-              disabled={retrieving || !validUrl}
+              disabled={retrieving || !validUrl || !status?.configured}
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition shadow-sm"
             >
               {retrieving ? (
@@ -308,16 +344,7 @@ export const TinyFishPanel: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={simulateFallback}
-                onChange={(e) => setSimulateFallback(e.target.checked)}
-                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-              />
-              <span>Fallback to sandbox simulation if upstream key is unconfigured</span>
-            </label>
-
+            {!status?.configured && <span className="text-amber-700">Live extraction disabled until TINYFISH_API_KEY is configured on the backend. Simulation is off.</span>}
             {!validUrl && url.length > 0 && (
               <span className="text-amber-700 font-medium">Domain not in approved government allowlist</span>
             )}
@@ -378,6 +405,30 @@ export const TinyFishPanel: React.FC = () => {
               {activeResult.extracted_text || '(No text extracted)'}
             </div>
           )}
+        </div>
+      )}
+
+      {activeResult && activeResult.data_quality_status === 'VALID' && !activeResult.simulation_flag && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-bold text-slate-900">Gemini source summary</div>
+              <div className="text-[11px] text-slate-500">Uses this retrieved agency text only. It does not create or upgrade warnings.</div>
+            </div>
+            <button type="button" onClick={() => void summarizeWithGemini()} disabled={summarizing} className="inline-flex items-center gap-1.5 rounded-lg bg-[#806047] px-3 py-2 text-xs font-bold text-white hover:bg-[#654a36] disabled:opacity-50">
+              <Sparkles className={`h-3.5 w-3.5 ${summarizing ? 'animate-pulse' : ''}`} />
+              {summarizing ? 'Summarizing…' : 'Summarize with Gemini'}
+            </button>
+          </div>
+          {geminiSummary && <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-700">
+            <div className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${geminiSummary.source_freshness === 'CURRENT' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              Source freshness: {geminiSummary.source_freshness ?? 'UNVERIFIED_DATE'}
+            </div>
+            <div className="font-semibold">{geminiSummary.summary}</div>
+            {geminiSummary.supporting_observations.length > 0 && <ul className="list-disc pl-5">{geminiSummary.supporting_observations.map((item, i) => <li key={i}>{item}</li>)}</ul>}
+            {geminiSummary.uncertainties.length > 0 && <div className="rounded-md bg-amber-50 p-2 text-amber-800"><b>Uncertainties:</b> {geminiSummary.uncertainties.join(' · ')}</div>}
+            <div className="text-[10px] text-slate-500">AI summary · source: {activeResult.source_agency} · published {geminiSummary.publication_timestamp ? new Date(geminiSummary.publication_timestamp).toLocaleString() : 'date not identified'} · retrieved {new Date(activeResult.retrieval_timestamp).toLocaleString()}</div>
+          </div>}
         </div>
       )}
 

@@ -455,7 +455,7 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
                   <span>CWC Flood Forecasting System</span>
                   <ArrowUpRight className="w-3 h-3" />
                 </a>
-                <a href="https://api.imd.gov.in" target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-1">
+                <a href="https://mausam.imd.gov.in/responsive/districtWiseWarningGIS.php" target="_blank" rel="noreferrer" className="hover:underline flex items-center gap-1">
                   <span>IMD Weather Warnings Portal</span>
                   <ArrowUpRight className="w-3 h-3" />
                 </a>

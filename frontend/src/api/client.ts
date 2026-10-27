@@ -3,8 +3,8 @@ import {
   AlertItem, ShelterItem, IncidentReportItem, AuditLogItem, ModelVersionItem,
   LiveNewsFeedItem, LiveDataSyncItem,
   RescueRequestItem, RescueTrackingItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
-  ImdApiStatus, AlertDistrictItem, SubscriptionResult, GeoJSONFeatureCollection, HistoricalEventItem,
-  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, AuthenticatedUser, ModelValidationReport
+  AlertDistrictItem, SubscriptionResult, GeoJSONFeatureCollection, HistoricalEventItem,
+  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, TinyFishGeminiSummary, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
 const configuredApiBase = (import.meta as any).env?.VITE_API_BASE_URL ||
@@ -397,18 +397,6 @@ export const api = {
     return res.json();
   },
 
-  async getImdApiStatus(): Promise<ImdApiStatus> {
-    const res = await apiFetch(`${API_BASE}/imd/status`);
-    if (!res.ok) throw new Error("Failed to fetch IMD REST status");
-    return res.json();
-  },
-
-  async runImdSync(): Promise<any> {
-    const res = await apiFetch(`${API_BASE}/imd/sync`, { method: 'POST' });
-    if (!res.ok) throw new Error("IMD REST refresh failed");
-    return res.json();
-  },
-
   async getAlertDistricts(): Promise<AlertDistrictItem[]> {
     const res = await apiFetch(`${API_BASE}/alerts/districts`);
     if (!res.ok) throw new Error("Failed to fetch alert districts");
@@ -468,5 +456,12 @@ export const api = {
     const res = await apiFetch(`${API_BASE}/sources/tinyfish/history?limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch TinyFish extraction history");
     return res.json();
+  },
+
+  async summarizeTinyFishRecord(recordId: string): Promise<TinyFishGeminiSummary> {
+    const res = await apiFetch(`${API_BASE}/sources/tinyfish/${encodeURIComponent(recordId)}/gemini-summary`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || `Gemini summary unavailable (HTTP ${res.status})`);
+    return data;
   }
 };

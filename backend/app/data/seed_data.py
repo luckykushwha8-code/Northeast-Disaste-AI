@@ -65,9 +65,9 @@ def seed_database(db: Session):
     sources = [
         DataSource(
             id="src_imd_api",
-            name="India Meteorological Department (IMD) - Official API Catalogue",
-            source_type="IMD",
-            configuration_reference="https://api.imd.gov.in/api/v1/districtwarning",
+            name="IMD official public web products (via TinyFish)",
+            source_type="OFFICIAL_WEBSITE",
+            configuration_reference="https://mausam.imd.gov.in/responsive/districtWiseWarningGIS.php",
             expected_update_interval_hours=3.0,
             enabled=True,
             status="NOT_CHECKED"

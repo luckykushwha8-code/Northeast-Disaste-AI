@@ -243,70 +243,57 @@ class LiveDataService:
 
     # ----------------- IMD LIVE BULLETINS -----------------
     def fetch_imd_warnings(self, db: Session) -> Dict[str, Any]:
-        """Live IMD public bulletin extraction via TinyFish (mausam.imd.gov.in)."""
+        """Retrieve the official public all-India forecast bulletin via TinyFish.
+
+        The extracted bulletin is preserved verbatim. Unstructured text is never
+        converted into district alerts or made to look like a structured feed.
+        """
         now = datetime.datetime.utcnow()
-        url = "https://mausam.imd.gov.in/"
+        url = "https://mausam.imd.gov.in/responsive/all_india_forcast_bulletin.php"
         text = self._tinyfish_extract(
             db, url,
-            "Extract current district-level weather warnings, color codes and rainfall advisories for Northeast India"
+            "Read the latest all-India weather forecast bulletin from this official IMD public page. Return the issue date/time and the complete Northeast India forecast and warning text, preserving the source wording and validity period. Do not infer missing districts, warning levels, rainfall amounts, or dates."
         )
-
-        parsed: List[Dict[str, Any]] = []
-        if text:
-            state_names = ["Assam", "Meghalaya", "Arunachal Pradesh", "Sikkim",
-                           "Manipur", "Mizoram", "Nagaland", "Tripura"]
-            color_map = {
-                "red": "RED",
-                "orange": "ORANGE",
-                "yellow": "YELLOW",
-                "green": "GREEN"
-            }
-            action_map = {
-                "RED": "Take Action. Extreme weather hazard imminent per IMD.",
-                "ORANGE": "Be Prepared. Heavy rain / hazard expected; monitor advisories.",
-                "YELLOW": "Be Updated. Watch official IMD bulletins.",
-                "GREEN": "No Warning. Normal conditions."
-            }
-            for ln in (l.strip() for l in text.splitlines()):
-                if len(ln) < 15:
-                    continue
-                low = ln.lower()
-                for state in state_names:
-                    if state.lower() in low:
-                        color = color_map.get(
-                            next((k for k in color_map if k in low), None), None
-                        )
-                        if color:
-                            parsed.append({
-                                "state": state,
-                                "district": "Notices on official IMD portal",
-                                "color_code": color,
-                                "warning_type": "EXTRACTED_FROM_LIVE_IMD_BULLETIN",
-                                "action": f"{action_map.get(color, 'Be Updated.')} [Live bulletin: {ln[:160]}]",
-                                "validity": (now + datetime.timedelta(hours=24)).isoformat(),
-                                "data_mode": "LIVE"
-                            })
-                        break
-            parsed = list({w["state"]: w for w in parsed}.values())
-
-        if parsed:
+        publication_date = self._official_publication_date(text or "")
+        is_northeast_bulletin = bool(text and re.search(
+            r"northeast|north\s*-?\s*eastern|assam|arunachal|manipur|meghalaya|mizoram|nagaland|sikkim|tripura",
+            text,
+            re.IGNORECASE,
+        ))
+        is_recent = bool(publication_date and abs((now.date() - publication_date).days) <= 1)
+        if text and len(text.strip()) > 100 and is_northeast_bulletin and is_recent:
             payload = {
-                "source": "India Meteorological Department (IMD)",
-                "source_catalogue_url": "https://api.imd.gov.in/public/api_reference.html",
-                "documented_endpoint": "https://api.imd.gov.in/api/v1/districtwarning",
-                "extracted_from": url,
+                "source": "India Meteorological Department (IMD) public website",
+                "source_url": url,
                 "retrieved_at": now.isoformat(),
-                "valid_until": (now + datetime.timedelta(hours=24)).isoformat(),
-                "attribution": "Government of India - Ministry of Earth Sciences (MoES) / IMD",
+                "attribution": "Government of India - Ministry of Earth Sciences / IMD",
                 "data_mode": "LIVE",
-                "im_api_key_configured": bool(settings.IMD_API_KEY),
-                "warnings": parsed
+                "bulletin_text": text[:12000],
+                "warnings": [],
+                "note": "Original bulletin text is preserved. No unstructured text is converted into district warning records."
             }
             self._save_cache(db, "imd_warnings", payload, url, "LIVE")
             self._mark_source_health(db, "src_imd_api", True)
             return payload
+        reason = "Official IMD page did not expose a current, dated Northeast forecast; extracted text is withheld from live feeds"
+        self._mark_source_health(db, "src_imd_api", False)
+        return {"data_mode": "UNAVAILABLE", "live_error": reason, "source": "India Meteorological Department (IMD) public website", "source_url": url, "warnings": [], "bulletin_text": None, "note": reason}
 
-        return self._cached_fallback(db, "imd_warnings", "No state warnings parsed from live bulletin")
+    @staticmethod
+    def _official_publication_date(text: str) -> Optional[datetime.date]:
+        """Read a publication date from source text; never substitute retrieval time."""
+        if not text:
+            return None
+        match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[-/]\d{2}[-/]\d{4})", text)
+        if not match:
+            return None
+        raw = match.group(1)
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+            try:
+                return datetime.datetime.strptime(raw, fmt).date()
+            except ValueError:
+                continue
+        return None
 
     # ----------------- NE REGIONAL NEWS -----------------
     def fetch_news(self, db: Session, hazard_only: bool = False) -> Dict[str, Any]:

@@ -12,19 +12,6 @@ class Settings(BaseSettings):
     
     # Origins & Remote Government Services
     FRONTEND_ORIGIN: str = "http://localhost:5173"
-    IMD_BASE_URL: str = "https://api.imd.gov.in"
-    IMD_API_KEY: str = ""
-    # Official docs do not state the auth transport; configurable until the first
-    # live probe confirms it (header style: named header; query style: ?api-key=)
-    IMD_API_AUTH_STYLE: str = "header"          # "header" or "query"
-    IMD_API_HEADER_NAME: str = "key"            # header name used when style is "header"
-    IMD_TIMEOUT_SECONDS: int = 12
-    IMD_RETRY_COUNT: int = 1
-    IMD_RAINFALL_TTL_MINUTES: int = 60          # rainfall dataset cadence ~ daily, cache gently
-    IMD_WARNING_TTL_MINUTES: int = 60           # official district warnings cadence
-    IMD_NOWCAST_TTL_MINUTES: int = 15           # nowcast refreshes ~3-hourly at IMD
-    IMD_QPF_TTL_MINUTES: int = 120              # river-basin QPF cadence
-    IMD_AWS_TTL_MINUTES: int = 15               # AWS/ARG stations report ~ hourly
     CWC_BASE_URL: str = "https://ffs.india-water.gov.in/"
     CWC_FFS_ABOVE_WARNING_API: str = "https://ffs.india-water.gov.in/ffm/api/station-water-level-above-warning/"
     GSI_BASE_URL: str = "https://bhusanket.gsi.gov.in/"
@@ -48,7 +35,6 @@ class Settings(BaseSettings):
     TINYFISH_APPROVED_DOMAINS: List[str] = [
         "imd.gov.in",
         "mausam.imd.gov.in",
-        "api.imd.gov.in",
         "rsmcnewdelhi.imd.gov.in",
         "cwc.gov.in",
         "ffs.india-water.gov.in",

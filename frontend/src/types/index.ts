@@ -294,22 +294,6 @@ export interface ModelValidationReport {
   threshold_provenance: Record<string, string>;
 }
 
-// ---- Official IMD REST API (api.imd.gov.in) ----
-export interface ImdEndpointStatus {
-  endpoint: string;
-  path: string;
-  last_mode: string;
-  fetched_at: string | null;
-  row_count: number;
-}
-
-export interface ImdApiStatus {
-  api_key_configured: boolean;
-  auth_style: string | null;
-  endpoints: ImdEndpointStatus[];
-  role_note: string;
-}
-
 // ---- District alert subscriptions ----
 export interface AlertDistrictItem {
   district: string;
@@ -442,5 +426,16 @@ export interface TinyFishRetrievalResult {
   data_classification: 'OFFICIAL_PUBLISHED_WARNING' | 'EXTRACTED_WEB_INFORMATION' | 'EXPERIMENTAL_AI_ESTIMATE' | 'SYNTHETIC_DEMO_DATA' | string;
   http_status?: number | null;
   error_message?: string | null;
+}
+
+export interface TinyFishGeminiSummary {
+  summary: string;
+  source_freshness?: 'CURRENT' | 'STALE' | 'UNVERIFIED_DATE';
+  publication_timestamp?: string | null;
+  supporting_observations: string[];
+  uncertainties: string[];
+  preparedness_actions: string[];
+  evidence_sufficient: boolean;
+  content_type: 'AI_GENERATED_EXPLANATION';
 }
 
