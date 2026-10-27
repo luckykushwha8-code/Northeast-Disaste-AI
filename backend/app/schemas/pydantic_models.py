@@ -280,6 +280,7 @@ class AnalyticsOverview(BaseModel):
     rescue_by_status: List[Dict[str, Any]]
     historical_rainfall_comparison: List[Dict[str, Any]]
     source_freshness: List[Dict[str, Any]]
+    forecast_rainfall_24h: List[Dict[str, Any]]
 
 # --- Audit Logs ---
 class AuditLogOut(BaseModel):

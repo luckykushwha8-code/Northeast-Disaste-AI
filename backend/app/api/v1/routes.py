@@ -1949,6 +1949,32 @@ def get_analytics_overview(
     rain_daily = [{"time": k, "avg_mm": round(v["avg"] / v["n"], 1), "max_mm": round(v["max"], 1), "samples": v["n"]}
                   for k, v in sorted(daily.items())]
 
+    forecast_rainfall_24h = []
+    for loc in locs.values():
+        cache = db.query(LiveDataCache).filter(
+            LiveDataCache.cache_key == f"open_meteo_{loc.id}"
+        ).first()
+        if not cache or not cache.payload_json:
+            continue
+        try:
+            forecast = json.loads(cache.payload_json)
+            value = forecast.get("forecast_precipitation_24h_mm")
+            cache_age_minutes = ((now - cache.fetched_at).total_seconds() / 60.0) if cache.fetched_at else 10_000
+            if forecast.get("data_mode") == "LIVE" and cache_age_minutes <= 60 and isinstance(value, (int, float)):
+                forecast_rainfall_24h.append({
+                    "location": loc.name, "district": loc.district, "state": loc.state,
+                    "latitude": loc.latitude, "longitude": loc.longitude,
+                    "forecast_mm": round(float(value), 1),
+                    "period_start_at": forecast.get("forecast_period_start_at"),
+                    "period_end_at": forecast.get("forecast_period_end_at"),
+                    "fetched_at": cache.fetched_at.isoformat() if cache.fetched_at else None,
+                    "source": forecast.get("source", "Open-Meteo model"),
+                    "data_mode": "LIVE", "age_minutes": round(cache_age_minutes, 1)
+                })
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+    forecast_rainfall_24h.sort(key=lambda item: item["forecast_mm"], reverse=True)
+
     # 3. River-level trend per station (with official marks for reference lines)
     river_trend = []
     for loc_id, river in [("loc_pandu_ghat", "Brahmaputra"), ("loc_cachar_silchar", "Barak"), ("loc_teesta_mangan", "Teesta")]:
@@ -2005,7 +2031,7 @@ def get_analytics_overview(
     # 6. Incidents by category + verification (aggregated counts for charting)
     incidents_by_category = []
     incident_counts: Dict[str, int] = {}
-    for i in db.query(IncidentReport).all():
+    for i in db.query(IncidentReport).filter(IncidentReport.report_time >= window_cutoff).all():
         if i.verification_status == "REJECTED":
             continue
         incident_counts[i.category] = incident_counts.get(i.category, 0) + 1
@@ -2014,7 +2040,7 @@ def get_analytics_overview(
 
     # 6B. Rescue by status
     rescue_by_status = []
-    rrequests = db.query(RescueRequest).all()
+    rrequests = db.query(RescueRequest).filter(RescueRequest.submitted_at >= window_cutoff).all()
     status_counts: Dict[str, int] = {}
     for r in rrequests:
         status_counts[r.status] = status_counts.get(r.status, 0) + 1
@@ -2061,6 +2087,7 @@ def get_analytics_overview(
         "generated_at": now,
         "rainfall_trend_hourly": rain_hourly,
         "rainfall_trend_daily": rain_daily,
+        "forecast_rainfall_24h": forecast_rainfall_24h,
         "river_trend": river_trend,
         "risk_by_area": risk_by_area,
         "alerts_by_severity": alerts_by_severity,

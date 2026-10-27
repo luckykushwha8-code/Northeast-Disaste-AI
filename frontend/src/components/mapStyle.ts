@@ -131,6 +131,7 @@ export interface DistrictSummary {
   flood_risk: { risk_category: string; probability: number | null; confidence: number | null; uncertainty: string; model: string; engine?: string; reason?: string };
   flood_explanations: string[];
   rainfall_24h_all_locations?: { value: number | null; unit: string; observed_at: string; age_hours: number; location: string; location_id: string; provenance?: string | null; source_id?: string | null; simulation_flag?: boolean; quality_status?: string }[];
+  forecast_rainfall_24h_all_locations?: { value_mm: number; location: string; location_id: string; latitude: number; longitude: number; period_start_at?: string | null; period_end_at?: string | null; fetched_at?: string | null; source: string; data_mode: string; age_minutes?: number }[];
   landslide_risk: { risk_category: string; probability: number | null; confidence: number | null; uncertainty: string; model: string; engine?: string; reason?: string };
   landslide_explanations: string[];
   official_warnings: {

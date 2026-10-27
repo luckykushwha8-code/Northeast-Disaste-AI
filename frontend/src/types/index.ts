@@ -392,6 +392,7 @@ export interface AnalyticsOverview {
   generated_at: string;
   rainfall_trend_hourly: RainTrendPoint[];
   rainfall_trend_daily: RainTrendPoint[];
+  forecast_rainfall_24h: { location: string; district: string; state: string; latitude: number; longitude: number; forecast_mm: number; period_start_at?: string | null; period_end_at?: string | null; fetched_at?: string | null; source: string; data_mode: string }[];
   river_trend: RiverTrendPoint[];
   risk_by_area: RiskByAreaPoint[];
   alerts_by_severity: AlertsSeverityPoint[];

@@ -29,7 +29,7 @@ interface MapBoardProps {
 
 type OverlayKeys =
   | 'boundaries' | 'floodRisk' | 'landslideRisk' | 'officialWarnings'
-  | 'rainfall' | 'terrainSusceptibility' | 'shelters' | 'incidents' | 'history';
+  | 'rainfall' | 'forecastRain' | 'terrainSusceptibility' | 'shelters' | 'incidents' | 'history';
 
 const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   boundaries: true,
@@ -38,6 +38,7 @@ const DEFAULT_LAYERS: Record<OverlayKeys, boolean> = {
   landslideRisk: true,
   officialWarnings: true,
   rainfall: true,
+  forecastRain: true,
   terrainSusceptibility: false,
   shelters: false,
   incidents: true,
@@ -71,7 +72,8 @@ const GROUPS: { group: string; items: { key: OverlayKeys; label: string; icon: a
     group: 'Official & weather',
     items: [
       { key: 'officialWarnings', label: 'Official IMD warnings', icon: ShieldAlert, color: 'bg-red-600' },
-      { key: 'rainfall', label: '24h rainfall (station)', icon: CloudRain, color: 'bg-sky-600' }
+      { key: 'rainfall', label: '24h rainfall observed', icon: CloudRain, color: 'bg-sky-600' },
+      { key: 'forecastRain', label: 'Heavy rain forecast · 24h', icon: CloudRain, color: 'bg-indigo-600' }
     ]
   },
   {
@@ -412,6 +414,39 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           'line-dasharray': [2.4, 1.4]
         }
       });
+      const landslideTriggers = (riskGeo?.features ?? []).filter((feature: any) =>
+        ['MODERATE', 'HIGH', 'CRITICAL'].includes(feature.properties?.landslide_category)
+      );
+      if (landslideTriggers.length) {
+        map.addSource('ov-landslide-triggers', {
+          type: 'geojson', data: { type: 'FeatureCollection', features: landslideTriggers as any }
+        });
+        map.addLayer({
+          id: 'ov-landslide-triggers-core', type: 'circle', source: 'ov-landslide-triggers',
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 9],
+            'circle-color': ['match', ['get', 'landslide_category'], 'CRITICAL', '#991b1b', 'HIGH', '#c2410c', 'MODERATE', '#b45309', '#64748b'],
+            'circle-opacity': 0.94,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+        bindLayerEvent('click', 'ov-landslide-triggers-core', (e: any) => {
+          const p = e.features?.[0]?.properties;
+          if (!p) return;
+          popup.setLngLat(e.lngLat).setHTML(`
+          <div style="font-family:system-ui;min-width:200px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.05em;color:#b45309">LANDSLIDE RISK POINT · PROTOTYPE</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(p.name)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(p.district)}, ${escapeHtml(p.state)}</div>
+            <div style="font-size:12px;margin-top:4px"><b>Assessed category:</b> ${escapeHtml(p.landslide_category)}</div>
+            <div style="font-size:10px;color:#64748b;margin-top:3px">${escapeHtml(p.uncertainty || 'Uncertainty not reported')} · generated ${p.generated_at ? new Date(p.generated_at).toLocaleString() : 'time unavailable'}</div>
+            <div style="font-size:10px;color:#92400e;margin-top:4px">Prototype model assessment, not an official GSI warning.</div>
+          </div>`).addTo(map);
+        });
+        bindLayerEvent('mouseenter', 'ov-landslide-triggers-core', onEnter);
+        bindLayerEvent('mouseleave', 'ov-landslide-triggers-core', onLeave);
+      }
     }
 
     /* -- OFFICIAL IMD warnings polygon highlight (verbatim, distinct styling) -- */
@@ -495,6 +530,39 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
           .setLngLat([s.location!.longitude, s.location!.latitude])
           .addTo(map));
+      });
+    }
+
+    /* -- 24h model forecast triggers: IMD heavy-rain band, clearly advisory -- */
+    const forecastPoints = (summaries?.districts ?? []).flatMap(d =>
+      (d.forecast_rainfall_24h_all_locations ?? []).map(f => ({ ...f, district: d.district }))
+    ).filter(f => f.data_mode === 'LIVE' && f.value_mm >= 64.5 &&
+      Number.isFinite(f.longitude) && Number.isFinite(f.latitude));
+    if (layers.forecastRain) {
+      forecastPoints.forEach(f => {
+        const markerButton = document.createElement('button');
+        markerButton.type = 'button';
+        markerButton.className = 'rain-gauge-marker is-forecast-trigger';
+        markerButton.setAttribute('aria-label', `${f.location}, forecast ${f.value_mm.toFixed(1)} millimetres in the next 24 hours`);
+        markerButton.innerHTML = '<span class="rain-gauge-pin" aria-hidden="true"><svg viewBox="0 0 24 30" focusable="false"><path d="M12 1C5.9 1 1 5.9 1 12c0 7.8 11 17 11 17s11-9.2 11-17C23 5.9 18.1 1 12 1Z"/><circle cx="12" cy="12" r="3.2"/></svg></span>';
+        const amount = document.createElement('span');
+        amount.className = 'rain-gauge-label';
+        amount.textContent = `${f.value_mm.toFixed(0)} mm forecast`;
+        markerButton.append(amount);
+        markerButton.addEventListener('click', event => {
+          event.stopPropagation();
+          popup.setLngLat([f.longitude, f.latitude]).setHTML(`
+          <div style="font-family:system-ui;min-width:210px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.05em;color:#6d28d9">HEAVY RAIN MODEL FORECAST · NEXT 24H</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(f.location)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(f.district)}</div>
+            <div style="font-size:13px;margin-top:5px"><b>${Number(f.value_mm).toFixed(1)} mm</b> forecast</div>
+            <div style="font-size:10px;color:#64748b;margin-top:3px">Open-Meteo model · retrieved ${f.fetched_at ? new Date(f.fetched_at).toLocaleString() : 'time unavailable'}</div>
+            <div style="font-size:10px;color:#92400e;margin-top:4px">Advisory model output, not an official IMD warning. IMD heavy-rain threshold: ≥64.5 mm/24h.</div>
+          </div>`).addTo(map);
+        });
+        rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
+          .setLngLat([f.longitude, f.latitude]).addTo(map));
       });
     }
 
@@ -1270,8 +1338,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.HIGH }} /> High</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.MODERATE }} /> Moderate</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.LOW }} /> Low</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#b45309', border: '2px solid white', boxShadow: '0 0 0 1px #b45309' }} /> Landslide assessment point · prototype</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.UNKNOWN }} /> Unknown / no data (gray)</div>
               <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#087e9b' }} /> Rain gauge label · amber = demo/unverified {layers.rainfall ? '' : '(off)'}</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#6d28d9' }} /> Heavy-rain model forecast ≥64.5 mm/24h {layers.forecastRain ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#16a34a' }} /> Verified shelter {layers.shelters ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#0d9488' }} /> Verified incident · amber = unverified</div>
               <div><span className="inline-block w-3 h-3 my-0.5 align-middle" style={{ height: 3, width: 14, background: '#111827' }} /> Official IMD warning outline</div>

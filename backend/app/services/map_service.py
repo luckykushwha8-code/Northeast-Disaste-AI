@@ -7,6 +7,7 @@ with documented boundary resolution status. Nothing fabricated: every block
 carries its own data_mode (FRESH / STALE / MISSING / PROTOTYPE / OFFICIAL).
 """
 import datetime
+import json
 from app.time_utils import utcnow
 import logging
 from typing import Dict, Any, List, Optional
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.entities import (
-    Location, Observation, Alert, IncidentReport, Shelter, DisasterEvent
+    Location, Observation, Alert, IncidentReport, Shelter, DisasterEvent, LiveDataCache
 )
 from app.services.integrated_risk_engine import IntegratedRiskEngine
 from app.services.geographic_service import geographic_service, PLATFORM_DISTRICT_ALIAS
@@ -164,6 +165,30 @@ class MapService:
                     real_rain_entries.append({**o["rainfall_24h_mm_verified"], "location": l.name, "location_id": l.id})
                 if o.get("river_level_m_verified"):
                     level_entries.append({**o["river_level_m_verified"], "location": l.name, "location_id": l.id})
+            forecast_entries = []
+            for l in dlocs:
+                cache = db.query(LiveDataCache).filter(
+                    LiveDataCache.cache_key == f"open_meteo_{l.id}"
+                ).first()
+                if not cache or not cache.payload_json:
+                    continue
+                try:
+                    forecast = json.loads(cache.payload_json)
+                    amount = forecast.get("forecast_precipitation_24h_mm")
+                    cache_age_minutes = ((utcnow() - cache.fetched_at).total_seconds() / 60.0) if cache.fetched_at else 10_000
+                    if forecast.get("data_mode") == "LIVE" and cache_age_minutes <= 60 and isinstance(amount, (int, float)):
+                        forecast_entries.append({
+                            "location_id": l.id, "location": l.name,
+                            "latitude": l.latitude, "longitude": l.longitude,
+                            "value_mm": amount,
+                            "period_start_at": forecast.get("forecast_period_start_at"),
+                            "period_end_at": forecast.get("forecast_period_end_at"),
+                            "fetched_at": cache.fetched_at.isoformat() if cache.fetched_at else None,
+                            "source": forecast.get("source", "Open-Meteo"),
+                            "data_mode": "LIVE", "age_minutes": round(cache_age_minutes, 1)
+                        })
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    continue
             newest_rain = min(real_rain_entries, key=lambda x: x["age_hours"]) if real_rain_entries else None
             rainfall_status = _freshness(newest_rain["age_hours"] if newest_rain else None, settings.FRESHNESS_WEATHER_HOURS)
 
@@ -215,6 +240,7 @@ class MapService:
                 ],
                 "observed_rainfall_24h": newest_rain,
                 "rainfall_24h_all_locations": rain_entries,
+                "forecast_rainfall_24h_all_locations": forecast_entries,
                 "rainfall_status": rainfall_status,
                 "river_level_all_locations": level_entries,
                 "flood_risk": {

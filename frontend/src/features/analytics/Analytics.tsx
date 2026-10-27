@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, LineChart, Line, ReferenceLine
+  CartesianGrid, Tooltip, Legend, ReferenceLine
 } from 'recharts';
 import { api } from '../../api/client';
 import type { AnalyticsOverview } from '../../types';
@@ -97,7 +97,7 @@ export default function Analytics() {
   );
   if (error || !data) return <ErrorState message={error ?? 'Analytics unavailable'} onRetry={load} />;
 
-  const riverWithMarks = data.river_trend.slice(0, 40);
+  const riverWithMarks = data.river_trend;
 
   return (
     <div className="space-y-4">
@@ -128,8 +128,8 @@ export default function Analytics() {
 
         {/* 1. Rainfall Trend */}
         <AnalyticsCard
-          title="Rainfall Trend (Hourly)"
-          subtitle="Observed precipitation across all locations · mm/hr"
+          title="Observed Rainfall (24h accumulation)"
+          subtitle="Average and peak station readings by report hour · mm/24h"
           icon={CARD_ICONS.rainfall}
           onCSV={() => downloadCSV(data.rainfall_trend_hourly, 'rainfall-trend')}
         >
@@ -137,17 +137,44 @@ export default function Analytics() {
             <div className="text-xs text-slate-400 text-center py-8">No rainfall data in this window</div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={data.rainfall_trend_hourly.slice(-24)} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <AreaChart data={data.rainfall_trend_hourly} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                 <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} tickFormatter={v => v.slice(11,16)} />
                 <YAxis tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v) => [`${v} mm`, 'Avg Rainfall']} />
-                <Area type="monotone" dataKey="avg_mm" stroke="#0EA5E9" fill="#BAE6FD" strokeWidth={2} name="Avg mm" />
-                <Area type="monotone" dataKey="max_mm" stroke="#0F766E" fill="#CCFBF1" strokeWidth={1.5} strokeDasharray="4 2" name="Max mm" />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v, n) => [`${v} mm/24h`, n]} />
+                <Area type="monotone" dataKey="avg_mm" stroke="#0EA5E9" fill="#BAE6FD" strokeWidth={2} name="Average station total" />
+                <Area type="monotone" dataKey="max_mm" stroke="#0F766E" fill="#CCFBF1" strokeWidth={1.5} strokeDasharray="4 2" name="Highest station total" />
               </AreaChart>
             </ResponsiveContainer>
           )}
-          <p className="text-[10px] text-slate-400">Source: IMD AWS telemetry + Open-Meteo gap-fill (hatched). Accumulation window: {hoursWindow}h.</p>
+          <p className="text-[10px] text-slate-400">Stored, non-simulated 24-hour rainfall observations · grouped by observation time. {hoursWindow}h filter. No model gap-fill is included.</p>
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title="Next 24h Rainfall Forecast by Location"
+          subtitle="Open-Meteo model output · forecast trigger at 64.5 mm/24h"
+          icon={CARD_ICONS.rainfall}
+          onCSV={() => downloadCSV(data.forecast_rainfall_24h, 'rainfall-forecast-24h')}
+        >
+          {data.forecast_rainfall_24h.length === 0 ? (
+            <div className="text-xs text-slate-400 text-center py-8">No cached forecast available. Check System Health for feed status.</div>
+          ) : <>
+            <div className="text-[11px] text-slate-500 mb-2">{data.forecast_rainfall_24h.filter(point => point.forecast_mm >= 64.5).length} monitored locations meet the IMD heavy-rain amount band. This model estimate is advisory, not an IMD warning.</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.forecast_rainfall_24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="location" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} interval={0} angle={-20} textAnchor="end" height={48} />
+                <YAxis tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} unit=" mm" />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={v => [`${v} mm`, 'Forecast next 24h']} />
+                <ReferenceLine y={64.5} stroke="#dc2626" strokeDasharray="5 3" label={{ value: 'Heavy rain', fill: '#b91c1c', fontSize: 9 }} />
+                <Bar dataKey="forecast_mm" name="Forecast mm" fill="#7C3AED" radius={[3,3,0,0]} maxBarSize={28} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="max-h-28 overflow-y-auto text-[10px] text-slate-500">
+              {data.forecast_rainfall_24h.map(point => <div key={`${point.location}-${point.district}`} className="flex justify-between border-b border-slate-100 py-1"><span>{point.location} · {point.district}</span><span className="font-semibold">{point.forecast_mm.toFixed(1)} mm</span></div>)}
+            </div>
+          </>}
+          <p className="text-[10px] text-slate-400">Forecast window is the next 24h from retrieval time. Heavy-rain band follows IMD amount classification; model forecast does not mean an official warning.</p>
         </AnalyticsCard>
 
         {/* 2. River Levels vs CWC Marks */}
@@ -160,21 +187,16 @@ export default function Analytics() {
           {riverWithMarks.length === 0 ? (
             <div className="text-xs text-slate-400 text-center py-8">No river level data available</div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={riverWithMarks} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="location" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v, n) => [`${v} m`, n === 'level_m' ? 'Level' : n]} />
-                <Line type="monotone" dataKey="level_m" stroke="#0EA5E9" strokeWidth={2} dot={{ r: 3, fill: '#0EA5E9' }} name="level_m" />
-                {riverWithMarks[0]?.warning_level_m && (
-                  <ReferenceLine y={riverWithMarks[0].warning_level_m} stroke="#F97316" strokeDasharray="6 3" label={{ value: 'Warning', fill: '#F97316', fontSize: 9 }} />
-                )}
-                {riverWithMarks[0]?.danger_level_m && (
-                  <ReferenceLine y={riverWithMarks[0].danger_level_m} stroke="#DC2626" strokeDasharray="6 3" label={{ value: 'Danger', fill: '#DC2626', fontSize: 9 }} />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="max-h-64 overflow-auto">
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 bg-white"><tr className="border-b border-slate-100">
+                  <th className="text-left py-1.5 px-2 text-slate-500">Gauge / river</th><th className="text-right py-1.5 px-2 text-slate-500">Level</th><th className="text-right py-1.5 px-2 text-orange-700">Warning</th><th className="text-right py-1.5 px-2 text-red-700">Danger</th><th className="text-right py-1.5 px-2 text-slate-500">Observed</th>
+                </tr></thead>
+                <tbody>{riverWithMarks.map((r, i) => <tr key={`${r.location}-${r.time}-${i}`} className="border-b border-slate-50">
+                  <td className="py-1.5 px-2"><b>{r.location}</b><span className="ml-1 text-slate-500">{r.river}</span></td><td className="py-1.5 px-2 text-right font-semibold">{r.level_m.toFixed(2)} m</td><td className="py-1.5 px-2 text-right">{r.warning_level_m == null ? '—' : `${r.warning_level_m} m`}</td><td className="py-1.5 px-2 text-right">{r.danger_level_m == null ? '—' : `${r.danger_level_m} m`}</td><td className="py-1.5 px-2 text-right text-slate-500">{new Date(r.time).toLocaleString('en-IN')}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
           )}
           <p className="text-[10px] text-slate-400">⚠ Warning and Danger marks are CWC official thresholds. AI cannot override them.</p>
         </AnalyticsCard>
@@ -200,7 +222,7 @@ export default function Analytics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.risk_by_area.slice(0, 10).map((r, i) => (
+                  {data.risk_by_area.map((r, i) => (
                     <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                       <td className="py-1.5 px-2 font-medium text-slate-800">{r.location}</td>
                       <td className="py-1.5 px-2">
@@ -248,7 +270,7 @@ export default function Analytics() {
         {/* 5. Incidents by Category */}
         <AnalyticsCard
           title="Community Incidents by Category"
-          subtitle="Citizen-reported and operator-verified incidents"
+          subtitle={`Reports submitted in the selected ${hoursWindow}h window · rejected reports excluded`}
           icon={CARD_ICONS.incidents}
           onCSV={() => downloadCSV(data.incidents_by_category, 'incidents')}
         >
@@ -269,7 +291,7 @@ export default function Analytics() {
         {/* 6. Rescue Pipeline */}
         <AnalyticsCard
           title="Rescue Request Pipeline"
-          subtitle="Open requests by status — responder workload"
+          subtitle={`Requests submitted in the selected ${hoursWindow}h window · responder workload`}
           icon={CARD_ICONS.rescue}
           onCSV={() => downloadCSV(data.rescue_by_status, 'rescue-pipeline')}
         >
@@ -324,7 +346,7 @@ export default function Analytics() {
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {data.source_freshness.map((s, i) => {
                 const age = s.age_hours_success;
-                const isStale = age !== null && age > 3;
+                const isStale = ['STALE', 'DELAYED', 'FAILED', 'AUTH_REQUIRED', 'AUTH_ERROR', 'DISABLED'].includes(s.status) || (age !== null && age > 3);
                 return (
                   <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-slate-50 border border-slate-100">
                     <div className="font-medium text-slate-800 truncate max-w-[50%]">{s.source}</div>

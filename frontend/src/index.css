@@ -123,6 +123,8 @@ body {
 .rain-gauge-marker.is-stale .rain-gauge-label { border-color: #cbd5e1; color: #475569; }
 .rain-gauge-marker.is-simulated .rain-gauge-label { border-style: dashed; border-color: #d97706; color: #92400e; }
 .rain-gauge-marker.is-unverified .rain-gauge-label { border-style: dotted; border-color: #d97706; color: #92400e; }
+.rain-gauge-marker.is-forecast-trigger .rain-gauge-pin path { fill: #6d28d9; }
+.rain-gauge-marker.is-forecast-trigger .rain-gauge-label { border-color: #c4b5fd; color: #5b21b6; }
 .rain-gauge-marker:focus-visible { outline: 2px solid #0e7490; outline-offset: 2px; border-radius: 5px; }
 
 /* Map scene: animate only the station symbols and mapped landslide boundaries. */
