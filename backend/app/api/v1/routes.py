@@ -1744,6 +1744,21 @@ def get_weather_now(
     }
 
 
+@router.get("/weather/current")
+def get_current_weather(
+    location_id: str = Query(..., description="Monitored location identifier"),
+    db: Session = Depends(get_db)
+):
+    """Current Open-Meteo model conditions for one monitored location."""
+    location = db.query(Location).filter(
+        Location.id == location_id,
+        Location.active == True
+    ).first()
+    if not location:
+        raise HTTPException(status_code=404, detail=f"Unknown monitored location: {location_id}")
+    return open_meteo_service.fetch_current_weather(db, location)
+
+
 # ----------------- 12B. OBSERVED + FORECAST PRECIPITATION (OPEN-METEO) -----------------
 @router.get("/weather/forecast")
 def get_weather_forecast(

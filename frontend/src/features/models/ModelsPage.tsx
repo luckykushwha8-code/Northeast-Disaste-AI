@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/client';
-import type { ModelVersionItem, ModelValidationReport, UserRole } from '../../types';
+import type { LocationItem, ModelVersionItem, ModelValidationReport, UserRole } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { SimulationRibbon } from '../../components/ui/SimulationRibbon';
@@ -53,14 +53,25 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
   const [runningCase, setRunningCase] = useState<string | null>(null);
   const [scenarioResult, setScenarioResult] = useState<Record<string, unknown> | null>(null);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
+  const [weatherLocation, setWeatherLocation] = useState<LocationItem | null>(null);
   const canRunScenario = userRole === 'ADMIN';
 
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([api.getModels(), api.getModelValidation()])
-      .then(([m, v]) => { setModels(m); setValidation(v); })
-      .catch(e => setError(e.message))
+    Promise.allSettled([api.getModels(), api.getModelValidation(), api.getLocations()])
+      .then(([modelsResult, validationResult, locationsResult]) => {
+        if (modelsResult.status === 'rejected') throw modelsResult.reason;
+        if (validationResult.status === 'rejected') throw validationResult.reason;
+        setModels(modelsResult.value);
+        setValidation(validationResult.value);
+        if (locationsResult.status === 'fulfilled') {
+          const location = locationsResult.value.find(item => item.district === 'Kamrup Metropolitan' && item.location_type === 'URBAN_CATCHMENT')
+            ?? locationsResult.value.find(item => item.district === 'Kamrup Metropolitan');
+          setWeatherLocation(location ?? null);
+        }
+      })
+      .catch(e => setError(e instanceof Error ? e.message : 'Could not load model data'))
       .finally(() => setLoading(false));
   };
 
@@ -100,7 +111,7 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
         </p>
       </div>
 
-      <LiveWeatherCard location="Guwahati" latitude={26.1445} longitude={91.7362} />
+      {weatherLocation && <LiveWeatherCard location="Guwahati" locationId={weatherLocation.id} />}
 
       {/* Validation Summary */}
       {validation && (

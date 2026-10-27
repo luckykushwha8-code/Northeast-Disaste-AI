@@ -6,7 +6,7 @@ import { NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS } from 
 type District = {
   district: string;
   state: string | null;
-  monitored_locations: { latitude: number; longitude: number; name: string }[];
+  monitored_locations: { id: string; latitude: number; longitude: number; name: string }[];
   observed_rainfall_24h: { value: number; unit: string; observed_at: string; age_hours: number; location: string } | null;
   rainfall_status: 'FRESH' | 'STALE' | 'MISSING';
   river_level_all_locations: { value: number; unit: string; observed_at: string; age_hours: number; location: string }[];

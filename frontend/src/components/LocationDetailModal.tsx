@@ -3,7 +3,6 @@ import { X, Waves, Mountain, Info, ArrowUpRight, Database, Sparkles, Loader2 } f
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid, Legend } from 'recharts';
 import { LocationItem, PredictionItem, ObservationItem, Language } from '../types';
 import { api } from '../api/client';
-import { API_BASE } from '../api/client';
 import { RiverStaffGauge } from './ui/RiverStaffGauge';
 
 interface IntegratedRiskFeature {
@@ -63,20 +62,16 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [preds, obs, geoRes] = await Promise.all([
+        const [preds, obs, geo] = await Promise.all([
           api.getPredictions({ location_id: location.id }),
           api.getObservations({ location_id: location.id }),
-          fetch(`${API_BASE}/risk/geo?location_id=${location.id}`)
+          api.getRiskGeo(location.id)
         ]);
         setPredictions(preds);
         setObservations(obs);
-        if (geoRes.ok) {
-          const geo = (await geoRes.json()) as RiskGeoResponse;
-          const feature = geo.features?.[0]?.properties;
-          setIntegratedRisk({ properties: feature ?? null });
-        } else {
-          setIntegratedRisk({ properties: null });
-        }
+        const risk = geo as RiskGeoResponse;
+        const feature = risk.features?.[0]?.properties;
+        setIntegratedRisk({ properties: feature ?? null });
       } catch (err) {
         console.error("Failed to fetch location details", err);
         setIntegratedRisk({ properties: null });
@@ -85,7 +80,7 @@ export const LocationDetailModal: React.FC<LocationDetailModalProps> = ({
       }
     };
     fetchData();
-  }, [location, API_BASE]);
+  }, [location]);
 
   if (!location) return null;
 

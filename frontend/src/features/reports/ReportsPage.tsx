@@ -26,18 +26,15 @@ export default function ReportsPage({ userRole, onRequestLogin }: { userRole: Us
     setError(null);
     setSuccess(null);
     try {
-      const url = api.getReportUrl(format);
-      const res = await fetch(url);
-      if (!res.ok) {
-        if (format === 'pdf') {
-          // Fallback to CSV
-          setError('PDF generation failed. Falling back to CSV download.');
-          setDownloading('csv');
-          return download('csv');
-        }
-        throw new Error(`Download failed: HTTP ${res.status}`);
+      let blob: Blob;
+      try {
+        blob = await api.downloadSituationReport(format);
+      } catch (e) {
+        if (format !== 'pdf') throw e;
+        setError('PDF generation failed. Falling back to CSV download.');
+        setDownloading('csv');
+        return await download('csv');
       }
-      const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;

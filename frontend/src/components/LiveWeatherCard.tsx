@@ -1,68 +1,58 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CloudRain, RefreshCw } from 'lucide-react';
-import { api } from '../api/client';
+import { api, type CurrentWeatherItem } from '../api/client';
 import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 
-type LiveWeather = {
-  current?: {
-    time?: string;
-    temperature_2m?: number;
-    precipitation?: number;
-    wind_speed_10m?: number;
-  };
-  current_units?: {
-    temperature_2m?: string;
-    precipitation?: string;
-    wind_speed_10m?: string;
-  };
-};
-
-export function LiveWeatherCard({ location, latitude, longitude }: {
+export function LiveWeatherCard({ location, locationId }: {
   location: string;
-  latitude: number;
-  longitude: number;
+  locationId: string;
 }) {
-  const [weather, setWeather] = useState<LiveWeather | null>(null);
+  const [weather, setWeather] = useState<CurrentWeatherItem | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const result = await api.getPublicWeather(latitude, longitude) as LiveWeather;
+      const result = await api.getCurrentWeather(locationId);
       setWeather(result);
       setUpdatedAt(new Date().toISOString());
       setError(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Weather is unavailable');
+      const message = reason instanceof Error ? reason.message : 'Weather is unavailable';
+      setError(message);
+      setWeather(current => current ? { ...current, data_mode: 'CACHED', cache_hit: true, live_error: message } : null);
     }
-  }, [latitude, longitude]);
+  }, [locationId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
   useVisibleRefresh(refresh, 5 * 60_000);
 
   const current = weather?.current;
+  const isLive = !!current && weather?.data_mode === 'LIVE';
+  const isCached = !!current && weather?.data_mode === 'CACHED';
+  const stateLabel = !weather && !error ? 'Loading' : isLive ? (weather?.cache_hit ? 'Live · recent cache' : 'Live model') : isCached ? 'Cached' : 'Unavailable';
   return (
-    <section className="rounded-xl border border-sky-200 bg-sky-50/70 p-4" aria-label={`Live weather for ${location}`}>
+    <section className="rounded-xl border border-sky-200 bg-sky-50/70 p-4" aria-label={`Weather for ${location}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="rounded-lg bg-white p-2 text-sky-700"><CloudRain className="h-4 w-4" /></span>
           <div>
             <h3 className="text-sm font-semibold text-slate-900">Live weather · {location}</h3>
-            <p className="text-[11px] text-slate-500">Open-Meteo current model · not an official gauge</p>
+            <p className="text-[11px] text-slate-500">Open-Meteo via Geo Shield API · not an official gauge</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[10px] font-semibold ${current ? 'text-emerald-700' : 'text-slate-600'}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${current ? 'bg-emerald-500' : 'bg-slate-400'}`} /> {current ? 'Live' : 'Waiting'}
+        <span className={`inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[10px] font-semibold ${isLive ? 'text-emerald-700' : isCached ? 'text-amber-800' : 'text-slate-600'}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${isLive ? 'bg-emerald-500' : isCached ? 'bg-amber-500' : 'bg-slate-400'}`} /> {stateLabel}
         </span>
       </div>
       {current ? <div className="mt-4 grid grid-cols-3 gap-3">
         <WeatherValue label="Temperature" value={format(current.temperature_2m, weather?.current_units?.temperature_2m)} />
         <WeatherValue label="Precipitation" value={format(current.precipitation, weather?.current_units?.precipitation)} />
         <WeatherValue label="Wind" value={format(current.wind_speed_10m, weather?.current_units?.wind_speed_10m)} />
-      </div> : <p className="mt-4 text-xs text-slate-600">{error ? `Live weather unavailable: ${error}` : 'Loading the latest weather…'}</p>}
+      </div> : <p className="mt-4 text-xs text-slate-600">{error ? `Weather unavailable: ${error}` : weather?.live_error ? `Weather currently unavailable: ${weather.live_error}` : 'Loading current weather…'}</p>}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-sky-100 pt-2 text-[10px] text-slate-500">
         <span>{current?.time ? `Model time: ${new Date(current.time).toLocaleString()}` : 'Weather timestamp unavailable'}</span>
-        <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Checked {updatedAt ? new Date(updatedAt).toLocaleTimeString() : '—'} · refreshes every 5 min</span>
+        <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Checked {updatedAt ? new Date(updatedAt).toLocaleTimeString() : '—'} · API checks every 5 min</span>
       </div>
     </section>
   );

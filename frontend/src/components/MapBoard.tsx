@@ -13,7 +13,7 @@ import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, RISK_PALETTES, severityRank,
   MapDistrictsResponse, DistrictSummary, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
-import { API_BASE } from '../api/client';
+import { api } from '../api/client';
 import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 import {
   LocationItem, AlertItem, ShelterItem, IncidentReportItem, HistoricalEventItem,
@@ -126,13 +126,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   // ---- data loading ----
   const refreshMapData = useCallback(async () => {
     const [summaryResult, riskResult, historyResult] = await Promise.allSettled([
-      fetch(`${API_BASE}/map/districts`),
-      fetch(`${API_BASE}/risk/geo`),
-      fetch(`${API_BASE}/data/historical-events`)
+      api.getMapDistricts(), api.getRiskGeo(), api.getHistoricalEvents()
     ]);
-    if (summaryResult.status === 'fulfilled' && summaryResult.value.ok) setSummaries(await summaryResult.value.json());
-    if (riskResult.status === 'fulfilled' && riskResult.value.ok) setRiskGeo(await riskResult.value.json());
-    if (historyResult.status === 'fulfilled' && historyResult.value.ok) setHistory(await historyResult.value.json());
+    if (summaryResult.status === 'fulfilled') setSummaries(summaryResult.value);
+    if (riskResult.status === 'fulfilled') setRiskGeo(riskResult.value);
+    if (historyResult.status === 'fulfilled') setHistory(historyResult.value);
   }, []);
 
   useEffect(() => {

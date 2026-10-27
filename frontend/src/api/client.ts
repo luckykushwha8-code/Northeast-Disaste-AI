@@ -3,19 +3,49 @@ import {
   AlertItem, ShelterItem, IncidentReportItem, AuditLogItem, ModelVersionItem,
   LiveNewsFeedItem, LiveDataSyncItem,
   RescueRequestItem, RescueTrackingItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
-  ImdApiStatus, AlertDistrictItem, SubscriptionResult,
+  ImdApiStatus, AlertDistrictItem, SubscriptionResult, GeoJSONFeatureCollection, HistoricalEventItem,
   TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
-export const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ||
+const configuredApiBase = (import.meta as any).env?.VITE_API_BASE_URL ||
   (import.meta.env.PROD ? '/api/v1' : 'http://127.0.0.1:8000/api/v1');
+export const API_BASE = configuredApiBase.replace(/\/+$/, '');
 const AUTH_TOKEN_KEY = 'nesafe.session-token';
+
+export interface CurrentWeatherItem {
+  location_id: string;
+  location_name: string;
+  source: string;
+  current: {
+    time?: string;
+    temperature_2m?: number;
+    precipitation?: number;
+    wind_speed_10m?: number;
+  } | null;
+  current_units: {
+    temperature_2m?: string;
+    precipitation?: string;
+    wind_speed_10m?: string;
+  };
+  retrieved_at: string;
+  data_mode: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
+  cache_hit: boolean;
+  live_error?: string | null;
+  provenance_policy: string;
+}
 
 async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
   const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch(url, { ...init, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, cache: init.cache ?? 'no-store', headers });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Network request failed';
+    throw new Error(`Cannot reach the Geo Shield API (${API_BASE}). ${message}`);
+  }
   if (response.status === 401 && token) {
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
     window.dispatchEvent(new Event('nesafe:auth-expired'));
@@ -97,19 +127,36 @@ export const api = {
     return res.json();
   },
 
-  async getPublicWeather(latitude: number, longitude: number) {
-    const query = new URLSearchParams({
-      latitude: latitude.toFixed(4),
-      longitude: longitude.toFixed(4),
-      current: 'temperature_2m,precipitation,wind_speed_10m',
-      hourly: 'precipitation',
-      past_days: '1',
-      forecast_days: '1',
-      timezone: 'Asia/Kolkata',
-    });
-    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${query}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
-    return response.json();
+  async getCurrentWeather(locationId: string): Promise<CurrentWeatherItem> {
+    const query = new URLSearchParams({ location_id: locationId });
+    const res = await apiFetch(`${API_BASE}/weather/current?${query}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.detail || `Could not fetch current weather (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async getRiskGeo(locationId?: string): Promise<GeoJSONFeatureCollection> {
+    const query = locationId ? `?${new URLSearchParams({ location_id: locationId })}` : '';
+    const res = await apiFetch(`${API_BASE}/risk/geo${query}`);
+    if (!res.ok) throw new Error(`Failed to fetch risk map layer (HTTP ${res.status})`);
+    return res.json();
+  },
+
+  async getHistoricalEvents(): Promise<HistoricalEventItem[]> {
+    const res = await apiFetch(`${API_BASE}/data/historical-events`);
+    if (!res.ok) throw new Error(`Failed to fetch historical events (HTTP ${res.status})`);
+    return res.json();
+  },
+
+  async downloadSituationReport(format: 'pdf' | 'csv'): Promise<Blob> {
+    const res = await apiFetch(`${API_BASE}/reports/situation?format=${format}`, { headers: { Accept: format === 'pdf' ? 'application/pdf' : 'text/csv' } });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.detail || `Report download failed (HTTP ${res.status})`);
+    }
+    return res.blob();
   },
 
   async getObservations(params?: { location_id?: string; variable?: string }): Promise<ObservationItem[]> {
@@ -348,10 +395,6 @@ export const api = {
       throw new Error(detail || "Failed to update rescue status");
     }
     return res.json();
-  },
-
-  getReportUrl(format: 'pdf' | 'csv'): string {
-    return `${API_BASE}/reports/situation?format=${format}`;
   },
 
   async getImdApiStatus(): Promise<ImdApiStatus> {

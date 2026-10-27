@@ -144,8 +144,7 @@ export default function Dashboard() {
           </section>
           {selected?.monitored_locations?.[0] && <LiveWeatherCard
             location={`${selected.district}, ${selected.state}`}
-            latitude={selected.monitored_locations[0].latitude}
-            longitude={selected.monitored_locations[0].longitude}
+            locationId={selected.monitored_locations[0].id}
           />}
 
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

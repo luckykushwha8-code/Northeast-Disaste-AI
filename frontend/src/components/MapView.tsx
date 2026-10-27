@@ -8,7 +8,7 @@ import { Mountain, Info, MapPin, Radio, ShieldCheck, Megaphone, Layers, CheckCir
 import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
-import { API_BASE } from '../api/client';
+import { api } from '../api/client';
 
 interface MapViewProps {
   locations: LocationItem[];
@@ -65,16 +65,11 @@ export const MapView: React.FC<MapViewProps> = ({
       // Static validated district boundaries (public India boundary data, NE subset)
       const bd = await fetch('/geo/ne_districts.geojson');
       if (bd.ok) setBoundaryData(await bd.json());
-      const asi = await fetch(`${API_BASE}/risk/geo`);
-      if (asi.ok) {
-        const geo = await asi.json();
-        setRiskData(geo as GeoJSONFeatureCollection);
-      }
-      const he = await fetch(`${API_BASE}/data/historical-events`);
-      if (he.ok) {
-        const events = await he.json();
-        setHistory(events);
-      }
+      const [geoResult, eventsResult] = await Promise.allSettled([
+        api.getRiskGeo(), api.getHistoricalEvents()
+      ]);
+      if (geoResult.status === 'fulfilled') setRiskData(geoResult.value as GeoJSONFeatureCollection);
+      if (eventsResult.status === 'fulfilled') setHistory(eventsResult.value);
     } catch (e) {
       console.error('Risk layer fetch failed', e);
     }

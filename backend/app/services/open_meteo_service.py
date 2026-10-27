@@ -42,6 +42,9 @@ class OpenMeteoService:
     FAILURE_KEY_FMT = "open_meteo_failure_{loc_id}"
     TTL_MINUTES = 30
     FAILURE_COOLDOWN_MINUTES = 15
+    CURRENT_CACHE_KEY_FMT = "open_meteo_current_{loc_id}"
+    CURRENT_TTL_MINUTES = 10
+    CURRENT_STALE_MAX_MINUTES = 180
 
     def __init__(self):
         # Concurrent map requests share one upstream batch request.
@@ -152,6 +155,78 @@ class OpenMeteoService:
         return self.fetch_forecasts(db, [SimpleNamespace(
             id=location_id, latitude=latitude, longitude=longitude
         )])[location_id]
+
+    def fetch_current_weather(self, db: Session, location: Any) -> Dict[str, Any]:
+        """Fetch current model conditions for one monitored location with a short cache."""
+        key = self.CURRENT_CACHE_KEY_FMT.format(loc_id=location.id)
+        cached = self._get_cache(db, key)
+        age = self._age_minutes(cached)
+        if cached and cached.data_mode == "LIVE" and age is not None and age < self.CURRENT_TTL_MINUTES:
+            payload = json.loads(cached.payload_json)
+            payload["cache_hit"] = True
+            return payload
+
+        request_url = (
+            f"{settings.OPEN_METEO_API_URL}?latitude={location.latitude:.4f}"
+            f"&longitude={location.longitude:.4f}"
+            "&current=temperature_2m,precipitation,wind_speed_10m"
+            "&timezone=UTC"
+        )
+        now = _now()
+        try:
+            with httpx.Client(timeout=settings.OPEN_METEO_TIMEOUT_SECONDS) as client:
+                response = client.get(request_url, headers={"User-Agent": "NESAFE-AI/1.0"})
+                response.raise_for_status()
+                data = response.json()
+            current = data.get("current") or {}
+            if not current.get("time"):
+                raise ValueError("Open-Meteo returned no current observation time")
+            observed_at = _parse_iso(current["time"])
+            payload = {
+                "location_id": location.id,
+                "location_name": location.name,
+                "source": "Open-Meteo public weather model",
+                "current": {
+                    "time": observed_at.isoformat() + "Z" if observed_at else current["time"],
+                    "temperature_2m": current.get("temperature_2m"),
+                    "precipitation": current.get("precipitation"),
+                    "wind_speed_10m": current.get("wind_speed_10m"),
+                },
+                "current_units": data.get("current_units") or {},
+                "retrieved_at": now.isoformat() + "Z",
+                "data_mode": "LIVE",
+                "cache_hit": False,
+                "live_error": None,
+                "provenance_policy": (
+                    "Current conditions are Open-Meteo model data, not an official IMD forecast "
+                    "or a local rain-gauge observation."
+                ),
+            }
+            self._save_cache(db, key, payload, request_url)
+            self._mark_health(db, True)
+            return payload
+        except Exception as e:
+            logger.warning("Open-Meteo current fetch failed for %s: %s", location.id, e)
+            if cached and age is not None and age <= self.CURRENT_STALE_MAX_MINUTES:
+                payload = json.loads(cached.payload_json)
+                payload.update({"data_mode": "CACHED", "cache_hit": True, "live_error": str(e)[:300]})
+                return payload
+            self._mark_health(db, False)
+            return {
+                "location_id": location.id,
+                "location_name": location.name,
+                "source": "Open-Meteo public weather model",
+                "current": None,
+                "current_units": {},
+                "retrieved_at": now.isoformat() + "Z",
+                "data_mode": "UNAVAILABLE",
+                "cache_hit": False,
+                "live_error": str(e)[:300],
+                "provenance_policy": (
+                    "Current conditions are Open-Meteo model data, not an official IMD forecast "
+                    "or a local rain-gauge observation."
+                ),
+            }
 
     def fetch_forecasts(self, db: Session, locations: Iterable[Any]) -> Dict[str, Dict[str, Any]]:
         """Fetch multiple points in one request and cache both success and failures."""
