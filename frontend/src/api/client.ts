@@ -91,6 +91,27 @@ export const api = {
     return res.json();
   },
 
+  async getMapDistricts() {
+    const res = await apiFetch(`${API_BASE}/map/districts`);
+    if (!res.ok) throw new Error('Failed to fetch district summaries');
+    return res.json();
+  },
+
+  async getPublicWeather(latitude: number, longitude: number) {
+    const query = new URLSearchParams({
+      latitude: latitude.toFixed(4),
+      longitude: longitude.toFixed(4),
+      current: 'temperature_2m,precipitation,wind_speed_10m',
+      hourly: 'precipitation',
+      past_days: '1',
+      forecast_days: '1',
+      timezone: 'Asia/Kolkata',
+    });
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
+    return response.json();
+  },
+
   async getObservations(params?: { location_id?: string; variable?: string }): Promise<ObservationItem[]> {
     const query = new URLSearchParams(params as any).toString();
     const res = await apiFetch(`${API_BASE}/observations?${query}`);

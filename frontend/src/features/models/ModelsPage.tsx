@@ -4,6 +4,7 @@ import type { ModelVersionItem, ModelValidationReport, UserRole } from '../../ty
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { SimulationRibbon } from '../../components/ui/SimulationRibbon';
+import { LiveWeatherCard } from '../../components/LiveWeatherCard';
 import { FlaskConical, Activity, AlertCircle, Award, Play, CheckCircle2, XCircle, Shield } from 'lucide-react';
 
 type DemoCase = {
@@ -98,6 +99,8 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
           <strong className="text-amber-700 ml-1">AI cannot override CWC/IMD official thresholds.</strong>
         </p>
       </div>
+
+      <LiveWeatherCard location="Guwahati" latitude={26.1445} longitude={91.7362} />
 
       {/* Validation Summary */}
       {validation && (

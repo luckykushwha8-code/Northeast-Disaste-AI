@@ -244,7 +244,7 @@ function AppShell() {
         <main className={`flex-1 min-h-0 p-4 md:p-6 ${location.pathname === '/map' ? 'overflow-hidden pb-16 md:pb-6' : 'overflow-y-auto'}`}>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              <Route path="/" element={<Dashboard userRole={userRole} lang={lang} />} />
+              <Route path="/" element={<Dashboard />} />
               <Route path="/map" element={<MapBoardPage locations={locations} alerts={alerts} shelters={shelters} reports={reports} />} />
               <Route path="/layers" element={<LayersGuidePage />} />
               <Route
