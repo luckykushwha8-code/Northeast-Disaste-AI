@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, CloudRain, History, Layers, Map, Mountain, ShieldAlert, Tent } from 'lucide-react';
-import { RISK_PALETTES, SEVERITY_COLORS } from '../../components/mapStyle';
+import { SEVERITY_COLORS } from '../../components/mapStyle';
 
 const layerGroups = [
   {
@@ -82,28 +82,22 @@ export default function LayersGuidePage() {
             <ShieldAlert className="h-4 w-4 text-slate-500" />
             <h2 className="text-sm font-bold text-slate-900">Risk colors</h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {([
-              ['Flood risk fill', RISK_PALETTES.flood],
-              ['Landslide risk fill', RISK_PALETTES.landslide],
-            ] as const).map(([title, palette]) => (
-              <div key={title}>
-                <h3 className="mb-2 text-xs font-semibold text-slate-700">{title}</h3>
-                <ul className="space-y-1.5 text-xs text-slate-600">
-                  {riskLevels.map(level => (
-                    <li key={level} className="flex items-center gap-2">
-                      <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm border border-black/10" style={{ backgroundColor: palette[level] }} />
-                      {level[0] + level.slice(1).toLowerCase()}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="max-w-sm">
+            <h3 className="mb-2 text-xs font-semibold text-slate-700">Same scale for flood and landslide estimates</h3>
+            <ul className="space-y-1.5 text-xs text-slate-600">
+              {riskLevels.map(level => (
+                <li key={level} className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm border border-black/10" style={{ backgroundColor: SEVERITY_COLORS[level] }} />
+                  {level[0] + level.slice(1).toLowerCase()}
+                </li>
+              ))}
+            </ul>
           </div>
           <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
             <span aria-hidden="true" className="h-3 w-3 rounded-sm border border-black/10" style={{ backgroundColor: SEVERITY_COLORS.UNKNOWN }} />
             Unknown or no data — gray, not a low-risk assessment
           </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">Colored map dots mark monitored locations. Their color is the highest prototype risk estimate for that district; click a dot to see the location and its data freshness.</p>
           <div className="mt-4 space-y-2 text-xs leading-5 text-slate-500">
             <p><span className="font-semibold text-slate-700">Rain gauges:</span> blue marks observations; amber marks demo or unverified records.</p>
             <p><span className="font-semibold text-slate-700">Warnings:</span> dark outlines indicate received official warning records.</p>

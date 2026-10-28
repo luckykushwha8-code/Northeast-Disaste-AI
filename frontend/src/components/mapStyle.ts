@@ -185,10 +185,5 @@ export const SEVERITY_COLORS: Record<string, string> = {
   UNAVAILABLE: '#64748b'
 };
 
-export const RISK_PALETTES = {
-  flood: { LOW: '#c6e2e7', MODERATE: '#83bdc7', HIGH: '#438f9f', CRITICAL: '#245c73' },
-  landslide: { LOW: '#efe2c3', MODERATE: '#e6bb72', HIGH: '#cf8049', CRITICAL: '#a94f49' },
-} as const;
-
 export const severityRank = (cat: string): number =>
   ({ UNKNOWN: 0, LOW: 1, MODERATE: 2, HIGH: 3, CRITICAL: 4 } as Record<string, number>)[cat] ?? 0;

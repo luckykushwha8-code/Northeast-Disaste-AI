@@ -105,7 +105,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">District risk map</h2>
-              <p className="mt-0.5 text-xs text-slate-500">Select a district on the map or from the list.</p>
+              <p className="mt-0.5 text-xs text-slate-500">District color shows the highest prototype risk; colored dots mark monitored locations. Select a district or dot for details.</p>
             </div>
             <div className="flex gap-2">
               <label className="sr-only" htmlFor="district-state">State</label>
@@ -120,8 +120,9 @@ export default function Dashboard() {
           </div>
           <DistrictRiskMap districts={overview?.districts ?? []} state={state} selected={selected} onSelect={item => { setDistrictId(`${item.state}:${item.district}`); setState('ALL'); }} />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3 text-[11px] text-slate-600">
-            <span className="font-semibold text-slate-700">Risk level</span>
+            <span className="font-semibold text-slate-700">Prototype risk</span>
             <Legend color="#10b981" label="Low" /><Legend color="#f59e0b" label="Moderate" /><Legend color="#f97316" label="High" /><Legend color="#dc2626" label="Critical" /><Legend color="#94a3b8" label="No district assessment" />
+            <Legend color="#64748b" label="Monitored location dot" rounded />
           </div>
         </section>
 
@@ -139,11 +140,15 @@ export default function Dashboard() {
               <Detail label="Rainfall freshness" value={selected.rainfall_status ?? 'UNKNOWN'} />
               <Detail label="River readings" value={String(selected.river_level_all_locations?.length ?? 0)} />
               <Detail label="Official warnings" value={String(selected.official_warning_count ?? 0)} />
+              <Detail label="Monitored locations" value={String(selected.monitored_locations?.length ?? 0)} />
+              {selected.monitored_locations?.length > 0 && <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs text-slate-600">
+                {selected.monitored_locations.map(location => <li key={location.id} className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: selectedRisk(selected) === 'UNKNOWN' || selectedRisk(selected) === 'UNAVAILABLE' ? '#94a3b8' : ({ LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#f97316', CRITICAL: '#dc2626' } as Record<string, string>)[selectedRisk(selected)] }} /><span>{location.name}</span></li>)}
+              </ul>}
               {selected.data_quality?.missing_inputs?.length > 0 && <p className="mt-3 text-xs leading-relaxed text-slate-500">Missing: {selected.data_quality.missing_inputs.join(', ')}</p>}
             </> : <p className="mt-3 text-sm text-slate-500">{loading ? 'Loading district data…' : 'No district data available.'}</p>}
           </section>
           {selected?.monitored_locations?.[0] && <LiveWeatherCard
-            location={`${selected.district}, ${selected.state}`}
+            location={selected.monitored_locations[0].name}
             locationId={selected.monitored_locations[0].id}
           />}
 
@@ -180,8 +185,8 @@ function Detail({ label, value }: { label: string; value: string }) {
   return <div className="flex items-center justify-between gap-3 border-b border-slate-100 py-2.5 text-xs"><span className="text-slate-500">{label}</span><span className="text-right font-medium text-slate-800">{value}</span></div>;
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />{label}</span>;
+function Legend({ color, label, rounded = false }: { color: string; label: string; rounded?: boolean }) {
+  return <span className="inline-flex items-center gap-1.5"><i className={`h-2.5 w-2.5 ${rounded ? 'rounded-full ring-1 ring-white' : 'rounded-sm'}`} style={{ backgroundColor: color }} />{label}</span>;
 }
 
 function riskTone(risk: string) {

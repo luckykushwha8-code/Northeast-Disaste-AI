@@ -10,7 +10,7 @@ import {
   ChevronRight, ShieldAlert, AlertTriangle, Compass, CheckCircle2, Play, Pause
 } from 'lucide-react';
 import {
-  buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, RISK_PALETTES, severityRank,
+  buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, boundaryNameFor, SEVERITY_COLORS, severityRank,
   MapDistrictsResponse, DistrictSummary, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
 import { api } from '../api/client';
@@ -364,11 +364,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'flood'],
-            'CRITICAL', RISK_PALETTES.flood.CRITICAL,
-            'HIGH', RISK_PALETTES.flood.HIGH,
-            'MODERATE', RISK_PALETTES.flood.MODERATE,
-            'LOW', RISK_PALETTES.flood.LOW,
-            '#94a3b8'
+            'CRITICAL', SEVERITY_COLORS.CRITICAL,
+            'HIGH', SEVERITY_COLORS.HIGH,
+            'MODERATE', SEVERITY_COLORS.MODERATE,
+            'LOW', SEVERITY_COLORS.LOW,
+            SEVERITY_COLORS.UNKNOWN
           ],
           'fill-opacity': ['match', ['get', 'flood'], 'UNKNOWN', 0.46, 'UNAVAILABLE', 0.46, opacity.risk]
         }
@@ -389,11 +389,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         paint: {
           'fill-color': [
             'match', ['get', 'landslide'],
-            'CRITICAL', RISK_PALETTES.landslide.CRITICAL,
-            'HIGH', RISK_PALETTES.landslide.HIGH,
-            'MODERATE', RISK_PALETTES.landslide.MODERATE,
-            'LOW', RISK_PALETTES.landslide.LOW,
-            '#94a3b8'
+            'CRITICAL', SEVERITY_COLORS.CRITICAL,
+            'HIGH', SEVERITY_COLORS.HIGH,
+            'MODERATE', SEVERITY_COLORS.MODERATE,
+            'LOW', SEVERITY_COLORS.LOW,
+            SEVERITY_COLORS.UNKNOWN
           ],
           'fill-opacity': ['match', ['get', 'landslide'], 'UNKNOWN', 0.46, 'UNAVAILABLE', 0.46, opacity.risk]
         }
@@ -425,7 +425,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           id: 'ov-landslide-triggers-core', type: 'circle', source: 'ov-landslide-triggers',
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 9],
-            'circle-color': ['match', ['get', 'landslide_category'], 'CRITICAL', '#991b1b', 'HIGH', '#c2410c', 'MODERATE', '#b45309', '#64748b'],
+            'circle-color': ['match', ['get', 'landslide_category'], 'CRITICAL', SEVERITY_COLORS.CRITICAL, 'HIGH', SEVERITY_COLORS.HIGH, 'MODERATE', SEVERITY_COLORS.MODERATE, SEVERITY_COLORS.UNKNOWN],
             'circle-opacity': 0.94,
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'
@@ -558,7 +558,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             <div style="font-size:11px;color:#64748b">${escapeHtml(f.district)}</div>
             <div style="font-size:13px;margin-top:5px"><b>${Number(f.value_mm).toFixed(1)} mm</b> forecast</div>
             <div style="font-size:10px;color:#64748b;margin-top:3px">Open-Meteo model · retrieved ${f.fetched_at ? new Date(f.fetched_at).toLocaleString() : 'time unavailable'}</div>
-            <div style="font-size:10px;color:#92400e;margin-top:4px">Advisory model output, not an official IMD warning. IMD heavy-rain threshold: ≥64.5 mm/24h.</div>
+            <div style="font-size:10px;color:#92400e;margin-top:4px">Open-Meteo forecast model output; this dashboard trigger is advisory and is not an official IMD warning.</div>
           </div>`).addTo(map);
         });
         rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
@@ -688,6 +688,66 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       bindLayerEvent('mouseenter', 'ov-history-ring', onEnter);
       bindLayerEvent('mouseleave', 'ov-history-ring', onLeave);
     }
+
+    /* -- Monitored site markers (always visible, colored by district prototype risk) -- */
+    const monitoredSiteFeatures = locations.filter(location => location.active && Number.isFinite(location.longitude) && Number.isFinite(location.latitude)).map(location => {
+      const district = summaries?.districts.find(item => item.monitored_locations.some(site => site.id === location.id));
+      const flood = district?.flood_risk?.risk_category ?? 'UNKNOWN';
+      const landslide = district?.landslide_risk?.risk_category ?? 'UNKNOWN';
+      const riskCategory = severityRank(flood) >= severityRank(landslide) ? flood : landslide;
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
+        properties: {
+          id: location.id, name: location.name, state: location.state, district: location.district,
+          location_type: location.location_type, risk_category: riskCategory,
+          flood_category: flood, landslide_category: landslide,
+          rainfall_status: district?.data_quality.rainfall ?? 'MISSING',
+          official_warning_count: district?.official_warning_count ?? 0
+        }
+      };
+    });
+    if (monitoredSiteFeatures.length) {
+      map.addSource('ov-monitoring-sites', {
+        type: 'geojson', data: { type: 'FeatureCollection', features: monitoredSiteFeatures as any }
+      });
+      map.addLayer({
+        id: 'ov-monitoring-site-circles', type: 'circle', source: 'ov-monitoring-sites',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 9],
+          'circle-color': ['match', ['get', 'risk_category'], 'CRITICAL', SEVERITY_COLORS.CRITICAL, 'HIGH', SEVERITY_COLORS.HIGH, 'MODERATE', SEVERITY_COLORS.MODERATE, 'LOW', SEVERITY_COLORS.LOW, SEVERITY_COLORS.UNKNOWN],
+          'circle-opacity': 0.98,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
+      map.addLayer({
+        id: 'ov-monitoring-site-labels', type: 'symbol', source: 'ov-monitoring-sites', minzoom: 7,
+        layout: { 'text-field': ['get', 'name'], 'text-size': 10, 'text-offset': [0, 1.25], 'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-allow-overlap': false },
+        paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
+      });
+      bindLayerEvent('click', 'ov-monitoring-site-circles', (event: any) => {
+        const point = event.features?.[0]?.properties;
+        if (!point) return;
+        const district = summaries?.districts.find(item => item.monitored_locations.some(site => site.id === point.id));
+        if (district) {
+          setSelectedDistrict(district.district);
+          setSelectedState(district.state ?? 'ALL');
+        }
+        map.flyTo({ center: event.lngLat.toArray(), zoom: Math.max(map.getZoom(), 8), padding: mapViewportPadding(), duration: 650 });
+        popup.setLngLat(event.lngLat).setHTML(`
+          <div style="font-family:system-ui;min-width:220px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.04em;color:#475569">MONITORED LOCATION · ${escapeHtml(point.location_type)}</div>
+            <div style="font-weight:800;font-size:13px">${escapeHtml(point.name)}</div>
+            <div style="font-size:11px;color:#64748b">${escapeHtml(point.district)}, ${escapeHtml(point.state)}</div>
+            <div style="font-size:11px;margin-top:5px"><b>Prototype risk:</b> ${escapeHtml(point.risk_category)}<br/><b>Flood:</b> ${escapeHtml(point.flood_category)} · <b>Landslide:</b> ${escapeHtml(point.landslide_category)}</div>
+            <div style="font-size:10px;color:#64748b;margin-top:4px">Rainfall observations: ${escapeHtml(point.rainfall_status)} · Official warnings: ${escapeHtml(point.official_warning_count)}</div>
+            <div style="font-size:10px;color:#64748b;margin-top:4px">Risk is an estimate, not an official warning. Missing data does not mean safe conditions.</div>
+          </div>`).addTo(map);
+      });
+      bindLayerEvent('mouseenter', 'ov-monitoring-site-circles', onEnter);
+      bindLayerEvent('mouseleave', 'ov-monitoring-site-circles', onLeave);
+    }
     setOverlayError(null);
     } catch (err: any) {
       console.error('MapBoard overlay error:', err);
@@ -792,8 +852,6 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: mapViewportPadding(40), maxZoom: 8, duration: 700 });
     }
   };
-
-  const displayedRiskPalette = layers.landslideRisk ? RISK_PALETTES.landslide : RISK_PALETTES.flood;
 
   const goFullscreen = () => {
     if (!document.fullscreenElement) mapContainer.current?.closest('.mapboard-shell')?.requestFullscreen?.();
@@ -997,7 +1055,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               <div className="mb-2 flex items-center gap-1.5 font-bold text-slate-800"><Info className="h-3.5 w-3.5" /> Legend · {layers.floodRisk ? 'Flood' : 'Landslide'}</div>
               {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNKNOWN'] as const).map(level => (
                 <div key={level} className="flex items-center gap-2 py-0.5">
-                  <span className="h-3 w-3 rounded-sm border border-white/10" style={{ background: level === 'UNKNOWN' ? '#94a3b8' : displayedRiskPalette[level] }} />
+                  <span className="h-3 w-3 rounded-sm border border-white/10" style={{ background: SEVERITY_COLORS[level] }} />
                   <span>{level === 'UNKNOWN' ? 'Unknown / no data' : level[0] + level.slice(1).toLowerCase()}</span>
                 </div>
               ))}
@@ -1334,21 +1392,22 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           {compactMap && mobileMapPanel === 'legend' && <div className="absolute z-[400] bottom-3 left-3 right-3 max-h-[48%] overflow-auto bg-white/95 backdrop-blur-sm p-2.5 rounded-lg shadow-md border border-slate-200 text-[11px] text-slate-700">
             <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5"><Info className="w-3.5 h-3.5" /> Legend</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.CRITICAL }} /> Critical</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.HIGH }} /> High</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.MODERATE }} /> Moderate</div>
-              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: displayedRiskPalette.LOW }} /> Low</div>
-              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#b45309', border: '2px solid white', boxShadow: '0 0 0 1px #b45309' }} /> Landslide assessment point · prototype</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.CRITICAL }} /> Critical</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.HIGH }} /> High</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.MODERATE }} /> Moderate</div>
+              <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.LOW }} /> Low</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: SEVERITY_COLORS.MODERATE, border: '2px solid white', boxShadow: `0 0 0 1px ${SEVERITY_COLORS.MODERATE}` }} /> Landslide assessment point · prototype</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.UNKNOWN }} /> Unknown / no data (gray)</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#64748b', border: '2px solid white', boxShadow: '0 0 0 1px #64748b' }} /> Monitored locations · dot color = district risk</div>
               <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#087e9b' }} /> Rain gauge label · amber = demo/unverified {layers.rainfall ? '' : '(off)'}</div>
-              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#6d28d9' }} /> Heavy-rain model forecast ≥64.5 mm/24h {layers.forecastRain ? '' : '(off)'}</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#6d28d9' }} /> Advisory rain forecast trigger ≥64.5 mm/24h {layers.forecastRain ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#16a34a' }} /> Verified shelter {layers.shelters ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#0d9488' }} /> Verified incident · amber = unverified</div>
               <div><span className="inline-block w-3 h-3 my-0.5 align-middle" style={{ height: 3, width: 14, background: '#111827' }} /> Official IMD warning outline</div>
               <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: 'transparent', border: '2px solid #1d4ed8' }} /> Historical flood · purple = landslide</div>
             </div>
             <div className="text-[10px] text-slate-400 mt-1 border-t border-slate-100 pt-1">
-              Risk polygons = PROTOTYPE model {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : ''} · official layers = verbatim IMD station data · NOT certified warnings.
+              Green → yellow → orange → red shows Low → Moderate → High → Critical for either hazard. Risk polygons = PROTOTYPE model {summaries ? new Date(summaries.generated_at).toLocaleTimeString() : ''} · grey = no assessment · official layers = verbatim IMD station data, not model output.
             </div>
           </div>}
 
