@@ -130,7 +130,7 @@ class LiveDataService:
         now = datetime.datetime.utcnow()
         url = settings.CWC_FFS_ABOVE_WARNING_API
         try:
-            with httpx.Client(timeout=settings.REQUEST_TIMEOUT_SECONDS) as client:
+            with httpx.Client(timeout=settings.CWC_REQUEST_TIMEOUT_SECONDS) as client:
                 resp = client.get(url, headers={"User-Agent": "Mozilla/5.0 NESAFE/1.0"})
                 resp.raise_for_status()
                 live_rows = resp.json()

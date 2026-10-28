@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     FRONTEND_ORIGIN: str = "http://localhost:5173"
     CWC_BASE_URL: str = "https://ffs.india-water.gov.in/"
     CWC_FFS_ABOVE_WARNING_API: str = "https://ffs.india-water.gov.in/ffm/api/station-water-level-above-warning/"
+    CWC_REQUEST_TIMEOUT_SECONDS: int = 30
     GSI_BASE_URL: str = "https://bhusanket.gsi.gov.in/"
     REQUEST_TIMEOUT_SECONDS: int = 10
 
