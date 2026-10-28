@@ -17,7 +17,7 @@ from app.models.entities import (
     NotificationDelivery, Shelter, IncidentReport, AuditLog, ModelVersion, User,
     TinyFishRetrievalRecord, DisasterEvent, RescueRequest, LiveDataCache, Subscriber
 )
-from app.services.email_alert_service import EMAIL_RE
+from app.services.email_alert_service import EMAIL_RE, email_alert_service
 from app.schemas.pydantic_models import (
     LocationOut, DataSourceOut, ObservationOut, ObservationCreate,
     PredictionOut, AlertOut, AlertCreate, AlertAction,
@@ -694,6 +694,11 @@ def list_subscribable_districts(db: Session = Depends(get_db)):
         for (d, s), n in sorted(agg.items())
     ]
 
+@router.get("/alerts/email-status", response_model=Dict[str, Any])
+def get_public_alert_email_status():
+    """Expose delivery readiness without revealing SMTP secrets or recipient addresses."""
+    return email_alert_service.public_status()
+
 @router.post("/alerts/subscribe", response_model=Dict[str, Any])
 def subscribe_to_alerts(payload: AlertSubscribeRequest, db: Session = Depends(get_db)):
     """
@@ -746,11 +751,8 @@ def subscribe_to_alerts(payload: AlertSubscribeRequest, db: Session = Depends(ge
         "email": email,
         "district": district,
         "updated": updated,
-        "note": (
-            "Consent saved for this district. Saving a subscription does not send email. "
-            "Automatic email delivery requires administrator enablement and configured SMTP; "
-            "provider acceptance does not guarantee inbox delivery."
-        )
+        "email_delivery": email_alert_service.public_status(),
+        "note": "Consent saved for this district. This does not send an email. Public alert messages are attempted only for eligible operator-issued alerts; SMTP acceptance does not confirm inbox delivery."
     }
 
 @router.post("/alerts/unsubscribe")

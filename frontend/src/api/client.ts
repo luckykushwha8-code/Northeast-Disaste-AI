@@ -3,7 +3,7 @@ import {
   AlertItem, ShelterItem, IncidentReportItem, AuditLogItem, ModelVersionItem,
   LiveNewsFeedItem, LiveDataSyncItem,
   RescueRequestItem, RescueTrackingItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
-  AlertDistrictItem, SubscriptionResult, GeoJSONFeatureCollection, HistoricalEventItem,
+  AlertDistrictItem, SubscriptionResult, PublicAlertEmailStatus, GeoJSONFeatureCollection, HistoricalEventItem,
   TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, TinyFishAISummary, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
@@ -528,6 +528,12 @@ export const api = {
   async getAlertDistricts(): Promise<AlertDistrictItem[]> {
     const res = await apiFetch(`${API_BASE}/alerts/districts`);
     if (!res.ok) throw new Error("Failed to fetch alert districts");
+    return res.json();
+  },
+
+  async getPublicAlertEmailStatus(): Promise<PublicAlertEmailStatus> {
+    const res = await apiFetch(`${API_BASE}/alerts/email-status`);
+    if (!res.ok) throw new Error('Could not check public email delivery status');
     return res.json();
   },
 

@@ -307,6 +307,16 @@ export interface SubscriptionResult {
   district?: string;
   updated?: boolean;
   note?: string;
+  email_delivery?: PublicAlertEmailStatus;
+}
+
+export interface PublicAlertEmailStatus {
+  status: 'ON' | 'OFF' | 'NEEDS_SMTP' | 'UNKNOWN';
+  enabled: boolean;
+  smtp_configured: boolean;
+  missing_smtp_settings: string[];
+  reason: string;
+  provider_acceptance_is_not_inbox_delivery: boolean;
 }
 
 // ---- Rescue requests (citizen assistance) ----

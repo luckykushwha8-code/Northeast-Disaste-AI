@@ -114,8 +114,65 @@ class EmailAlertService:
 
     # ---------------- SMTP ----------------
     @staticmethod
+    def _valid_sender(sender: str) -> bool:
+        normalized = (sender or "").strip().lower()
+        domain = normalized.rsplit("@", 1)[-1] if "@" in normalized else ""
+        return bool(
+            EMAIL_RE.match(normalized)
+            and domain != "example.org"
+            and not domain.endswith(".example.org")
+            and not domain.endswith(".example")
+        )
+
+    @staticmethod
     def _configured() -> bool:
-        return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASS and settings.FROM_EMAIL)
+        sender = (settings.FROM_EMAIL or "").strip()
+        return bool(
+            settings.SMTP_HOST.strip()
+            and settings.SMTP_USER.strip()
+            and settings.SMTP_PASS
+            and EmailAlertService._valid_sender(sender)
+        )
+
+    @staticmethod
+    def _missing_smtp_settings() -> List[str]:
+        missing = []
+        if not (settings.SMTP_HOST or "").strip():
+            missing.append("SMTP_HOST")
+        if not (settings.SMTP_USER or "").strip():
+            missing.append("SMTP_USER")
+        if not settings.SMTP_PASS:
+            missing.append("SMTP_PASS")
+        sender = (settings.FROM_EMAIL or "").strip()
+        if not EmailAlertService._valid_sender(sender):
+            missing.append("FROM_EMAIL")
+        return missing
+
+    @classmethod
+    def public_status(cls) -> Dict[str, Any]:
+        """Safe public readiness summary; never expose SMTP credentials or recipients."""
+        missing_settings = cls._missing_smtp_settings()
+        smtp_configured = not missing_settings
+        enabled = bool(settings.PUBLIC_ALERTS_ENABLED)
+        if not enabled:
+            status = "OFF"
+            reason = "Public email dispatch is disabled by the backend master switch."
+            if missing_settings:
+                reason += f" SMTP configuration also needs: {', '.join(missing_settings)}."
+        elif not smtp_configured:
+            status = "NEEDS_SMTP"
+            reason = f"The backend master switch is on, but SMTP configuration needs: {', '.join(missing_settings)}."
+        else:
+            status = "ON"
+            reason = "Email attempts are enabled for operator-issued HIGH or CRITICAL alerts that pass freshness and consent checks."
+        return {
+            "status": status,
+            "enabled": enabled,
+            "smtp_configured": smtp_configured,
+            "missing_smtp_settings": missing_settings,
+            "reason": reason,
+            "provider_acceptance_is_not_inbox_delivery": True,
+        }
 
     @staticmethod
     def _send_email(to: str, subject: str, body: str) -> Dict[str, Any]:

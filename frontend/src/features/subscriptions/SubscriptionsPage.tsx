@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, BellRing, ShieldCheck, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import { api } from '../../api/client';
-import type { AlertDistrictItem, SubscriptionResult } from '../../types';
+import type { AlertDistrictItem, PublicAlertEmailStatus, SubscriptionResult } from '../../types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SubscriptionsPage() {
   const [districts, setDistricts] = useState<AlertDistrictItem[]>([]);
+  const [emailStatus, setEmailStatus] = useState<PublicAlertEmailStatus | null>(null);
   const [email, setEmail] = useState('');
   const [district, setDistrict] = useState('');
   const [consent, setConsent] = useState(false);
@@ -29,6 +30,14 @@ export default function SubscriptionsPage() {
         }
       })
       .catch(() => setError('Could not load district list. Please try again.'));
+    api.getPublicAlertEmailStatus()
+      .then(setEmailStatus)
+      .catch(() => setEmailStatus({
+        status: 'UNKNOWN', enabled: false, smtp_configured: false,
+        missing_smtp_settings: [],
+        reason: 'Delivery readiness could not be verified from the backend.',
+        provider_acceptance_is_not_inbox_delivery: true,
+      }));
   }, []);
 
   const subscribe = async (e: React.FormEvent) => {
@@ -78,13 +87,17 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Emails OFF banner — always shown because PUBLIC_ALERTS_ENABLED=false */}
-      <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+      {/* Delivery state is read from the backend; never infer readiness in the browser. */}
+      <div className={`rounded-xl border p-4 flex items-start gap-3 ${emailStatus?.status === 'ON' ? 'bg-emerald-50 border-emerald-300' : 'bg-amber-50 border-amber-300'}`}>
+        {emailStatus?.status === 'ON'
+          ? <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0 mt-0.5" />
+          : <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />}
         <div>
-          <div className="text-sm font-bold text-amber-800">Public alert emails are currently OFF</div>
-          <p className="text-xs text-amber-700 mt-1">
-            Automatic email delivery is not configured on this installation. Saving consent records your subscription only; it does not send email or guarantee future delivery.
+          <div className={`text-sm font-bold ${emailStatus?.status === 'ON' ? 'text-emerald-800' : 'text-amber-800'}`}>
+            {!emailStatus ? 'Checking public alert email status…' : emailStatus.status === 'ON' ? 'Public alert email dispatch is ON' : emailStatus.status === 'NEEDS_SMTP' ? 'Public alert emails need SMTP configuration' : emailStatus.status === 'UNKNOWN' ? 'Public alert email status could not be checked' : 'Public alert emails are currently OFF'}
+          </div>
+          <p className={`text-xs mt-1 ${emailStatus?.status === 'ON' ? 'text-emerald-800' : 'text-amber-700'}`}>
+            {emailStatus?.reason || 'Checking backend configuration.'} Subscribing records consent; email is only attempted for an eligible operator-issued alert, and SMTP acceptance does not guarantee inbox delivery.
           </p>
         </div>
       </div>
@@ -97,7 +110,7 @@ export default function SubscriptionsPage() {
         </div>
         <p className="text-xs text-slate-500 mb-4">
           Choose your district — Geo Shield <strong>never infers your location</strong>.
-          Email dispatch is currently disabled. If delivery is enabled later, messages will be platform advisories, not government warnings; official ASDMA/SDMA/DDMA instructions take precedence.
+          Messages are platform advisories, not government warnings; official ASDMA/SDMA/DDMA instructions take precedence.
         </p>
 
         {result ? (
@@ -106,7 +119,7 @@ export default function SubscriptionsPage() {
             <div>
               <div className="text-sm font-bold text-emerald-800">Subscription saved!</div>
               <p className="text-xs text-emerald-700 mt-1">
-                Consent for {result.email} is saved for <strong>{result.district}</strong>. No email is sent while dispatch is disabled.
+                Consent for {result.email} is saved for <strong>{result.district}</strong>. {result.email_delivery?.reason || result.note || 'The current email delivery state is unavailable.'}
                 {result.updated && ' (Existing subscription updated.)'}
               </p>
               <button onClick={() => setResult(null)} className="mt-2 text-xs text-emerald-600 font-semibold hover:underline">Subscribe another district</button>
