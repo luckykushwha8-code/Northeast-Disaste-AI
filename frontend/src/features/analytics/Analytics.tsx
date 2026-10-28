@@ -79,7 +79,7 @@ export default function Analytics() {
   const [hoursWindow, setHoursWindow] = useState(48);
   const [weatherLocations, setWeatherLocations] = useState<WeatherLocationItem[]>([]);
   const [weatherLocationId, setWeatherLocationId] = useState('wx_guwahati');
-  const [weatherForecast, setWeatherForecast] = useState<WeatherForecastResponse | null>(null);
+  const [weatherForecast, setWeatherForecast] = useState<{ locationId: string; data: WeatherForecastResponse } | null>(null);
   const [forecastError, setForecastError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -95,7 +95,7 @@ export default function Analytics() {
     if (!weatherLocationId) return;
     setForecastError(null);
     api.getWeatherForecast(weatherLocationId)
-      .then(setWeatherForecast)
+      .then(result => setWeatherForecast({ locationId: weatherLocationId, data: result }))
       .catch(reason => setForecastError(reason instanceof Error ? reason.message : 'Forecast unavailable'));
   }, [weatherLocationId]);
 
@@ -127,8 +127,9 @@ export default function Analytics() {
 
   const riverWithMarks = data.river_trend;
   const totalAlerts = data.alerts_by_severity.reduce((sum, item) => sum + item.official + item.ai_generated, 0);
+  const selectedForecast = weatherForecast?.locationId === weatherLocationId ? weatherForecast.data : null;
   const forecastCutoff = Date.now() + 24 * 60 * 60 * 1000;
-  const liveForecast24h = (weatherForecast?.forecast ?? [])
+  const liveForecast24h = (selectedForecast?.forecast ?? [])
     .filter(point => {
       const time = Date.parse(point.forecast_at);
       return Number.isFinite(time) && time >= Date.now() && time <= forecastCutoff;
@@ -140,6 +141,12 @@ export default function Analytics() {
       temperature_c: point.temperature_c ?? null,
       condition: point.weather_description ?? point.weather_condition ?? 'Not reported',
     }));
+  const riskDistribution = ['CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNKNOWN', 'UNAVAILABLE'].map(severity => ({
+    severity,
+    flood: data.risk_by_area.filter(location => location.flood_category === severity).length,
+    landslide: data.risk_by_area.filter(location => location.landslide_category === severity).length,
+    overall: data.risk_by_area.filter(location => location.risk_category === severity).length,
+  }));
 
   return (
     <div className="space-y-4">
@@ -209,15 +216,15 @@ export default function Analytics() {
 
         <AnalyticsCard
           title="Next 24h Rainfall Forecast"
-          subtitle={`OpenWeather · ${weatherForecast?.city || 'selected monitored point'} · 3-hour steps`}
+          subtitle={`OpenWeather · ${selectedForecast?.city || 'selected monitored point'} · 3-hour steps`}
           icon={CARD_ICONS.rainfall}
-          dataLabel={`${weatherForecast?.data_mode ?? 'Loading'} · ${weatherForecast?.source ?? 'weather provider'}`}
+          dataLabel={`${selectedForecast?.data_mode ?? 'Loading'} · ${selectedForecast?.source ?? 'weather provider'}`}
           onCSV={() => downloadCSV(liveForecast24h, 'rainfall-forecast-24h')}
         >
           {liveForecast24h.length === 0 ? (
-            <div className="text-xs text-slate-500 text-center py-8">{forecastError ?? weatherForecast?.live_error ?? 'No verified forecast periods are available for this location.'}</div>
+            <div className="text-xs text-slate-500 text-center py-8">{forecastError ?? selectedForecast?.live_error ?? 'No verified forecast periods are available for this location.'}</div>
           ) : <>
-            <div className="text-[11px] text-slate-500 mb-2">Point forecast for {weatherForecast?.location_name}. Blank rainfall amounts mean the provider reported no amount for that step; they are not filled as zero.</div>
+            <div className="text-[11px] text-slate-500 mb-2">Point forecast for {selectedForecast?.location_name}. Blank rainfall amounts mean the provider reported no amount for that step; they are not filled as zero.</div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={liveForecast24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -231,7 +238,7 @@ export default function Analytics() {
               {liveForecast24h.map(point => <div key={point.time} className="flex justify-between border-b border-slate-100 py-1"><span>{new Date(point.time).toLocaleString('en-IN', { weekday: 'short', hour: '2-digit' })} · {point.condition}{point.probability == null ? '' : ` · ${point.probability}% rain`}</span><span className="font-semibold">{point.rain_mm == null ? 'Not reported' : `${point.rain_mm.toFixed(2)} mm / 3h`}</span></div>)}
             </div>
           </>}
-          <p className="text-[10px] text-slate-400">Forecast, not an observation or official IMD warning. Retrieved {weatherForecast?.retrieved_at ? new Date(weatherForecast.retrieved_at).toLocaleString('en-IN') : '—'}.</p>
+          <p className="text-[10px] text-slate-400">Forecast, not an observation or official IMD warning. Retrieved {selectedForecast?.retrieved_at ? new Date(selectedForecast.retrieved_at).toLocaleString('en-IN') : '—'}.</p>
         </AnalyticsCard>
 
         {/* 2. River Levels vs CWC Marks */}
@@ -264,12 +271,26 @@ export default function Analytics() {
           title="Current Risk Assessment by Location"
           subtitle="Integrated flood + landslide risk score (AI-assessed, PROPOSED)"
           icon={CARD_ICONS.risk}
+          dataLabel="PROPOSED backend assessment"
           onCSV={() => downloadCSV(data.risk_by_area, 'risk-by-area')}
         >
           {data.risk_by_area.length === 0 ? (
             <div className="text-xs text-slate-400 text-center py-8">No risk data</div>
           ) : (
             <div className="overflow-x-auto">
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={riskDistribution} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="severity" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Bar dataKey="flood" name="Flood locations" fill="#0E7490" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="landslide" name="Landslide locations" fill="#7C3AED" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="overall" name="Overall locations" fill="#D97706" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="mb-2 text-[10px] text-slate-500">Counts by backend assessment label. UNKNOWN and UNAVAILABLE are shown as such; they do not mean low risk.</p>
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="border-b border-slate-100">
@@ -308,9 +329,10 @@ export default function Analytics() {
           dataLabel="Current active alert records"
           onCSV={() => downloadCSV(data.alerts_by_severity, 'alerts-by-severity')}
         >
-          {data.alerts_by_severity.length === 0 || totalAlerts === 0 ? (
-            <div className="py-8 text-center"><div className="text-2xl font-semibold text-slate-800">0 active alerts</div><div className="mt-1 text-xs text-slate-500">No official alerts or AI proposals are recorded in the active queue.</div></div>
-          ) : (
+          {data.alerts_by_severity.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-500">No alert count data returned by the backend.</div>
+          ) : <>
+            <div className="mb-1 text-center"><span className="text-xl font-semibold text-slate-800">{totalAlerts} active alerts</span><div className="text-[11px] text-slate-500">Counted from the backend active alert queue</div></div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data.alerts_by_severity} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -322,7 +344,7 @@ export default function Analytics() {
                 <Bar dataKey="ai_generated" name="AI PROPOSED" fill="#7C3AED" radius={[2,2,0,0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
-          )}
+          </>}
           <p className="text-[10px] text-slate-400">AI-PROPOSED alerts are advisory only. Official alerts carry agency name and verbatim text.</p>
         </AnalyticsCard>
 
@@ -376,10 +398,11 @@ export default function Analytics() {
           title="Historical Rainfall Extremes Reference"
           subtitle="Documented ARI events — model calibration baseline"
           icon={CARD_ICONS.historical}
+          dataLabel="Verified rainfall baseline"
           onCSV={() => downloadCSV(data.historical_rainfall_comparison, 'historical-rainfall')}
         >
           {data.historical_rainfall_comparison.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No historical data</div>
+            <div className="py-8 text-center text-xs text-slate-500">No independently verified historical rainfall extremes are connected, so this chart has no rainfall values to plot.</div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data.historical_rainfall_comparison} margin={{ top: 4, right: 8, left: 0, bottom: 24 }}>
