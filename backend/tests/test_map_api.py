@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
+from app.services.live_data_service import LiveDataService
 from app.models.entities import Location, Observation, Alert, IncidentReport, DataSource
 from app.services.geographic_service import geographic_service
 from app.services.map_service import map_service
@@ -58,15 +59,22 @@ def test_source_freshness_never_promotes_seeded_or_missing_data(client):
     # Synthetic IoT is excluded from the public source list entirely.
     assert "src_smart_city_iot" not in sources
 
-    imd = sources["src_imd_api"]
-    assert imd["status"] == "AUTH_REQUIRED"
-    assert imd["last_success_at"] is None
+    # This public endpoint is the active-feed list, so it contains only
+    # successfully synced operational sources. Static WMS catalogs and failed,
+    # stale, or unchecked feeds stay available through their dedicated routes.
+    assert "src_imd_api" not in sources
+    assert "src_isro_bhuvan" not in sources
+    assert all(source["status"] == "OPERATIONAL" for source in sources.values()), sources
 
     assert all(
         source["status"] != "OPERATIONAL"
         for source in sources.values()
         if source["last_success_at"] is None
     )
+
+
+def test_imd_source_date_parser_accepts_current_english_page_date():
+    assert LiveDataService._official_publication_date("Districtwise Warnings · Oct 28, 2026") == datetime.date(2026, 10, 28)
 
 
 def test_alias_resolution_kamrup_metropolitan_is_documented_approximation():

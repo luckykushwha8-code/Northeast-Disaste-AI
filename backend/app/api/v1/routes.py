@@ -281,8 +281,6 @@ def get_data_source_status(db: Session = Depends(get_db)):
         status = s.status
         if s.source_type == "SYNTH_IOT":
             status = "SIMULATED"
-        elif s.id == "src_imd_api":
-            status = "AUTH_REQUIRED" if not settings.TINYFISH_API_KEY else "NOT_CHECKED"
         elif not s.enabled:
             status = "DISABLED"
         elif s.last_error_at and (not s.last_success_at or s.last_error_at >= s.last_success_at):
@@ -299,27 +297,35 @@ def get_data_source_status(db: Session = Depends(get_db)):
         else:
             status = "NOT_CHECKED"
 
+        # This endpoint powers the live-feed list. Keep it limited to sources
+        # with a recent successful sync; failed, stale, unchecked, and simulated
+        # connectors are omitted instead of being presented as active feeds.
+        # Bhuvan is a static WMS layer catalog, not a scheduled data feed, and
+        # remains available through /sources/bhuvan/layers.
+        if s.id == "src_isro_bhuvan" or status != "OPERATIONAL":
+            continue
+
         result.append({
             "id": s.id,
-            "name": "IMD official public web products (via TinyFish)" if s.id == "src_imd_api" else s.name,
-            "source_type": "OFFICIAL_WEBSITE" if s.id == "src_imd_api" else s.source_type,
+            "name": s.name,
+            "source_type": s.source_type,
             "configuration_reference": s.configuration_reference,
             "expected_update_interval_hours": s.expected_update_interval_hours,
             "enabled": s.enabled,
-            "last_success_at": s.last_success_at if s.id != "src_imd_api" else None,
+            "last_success_at": s.last_success_at,
             "last_error_at": s.last_error_at,
             "status": status,
             "last_fetch_attempt_at": fetch_attempt,
-            "latest_observation_at": latest_observation.observed_at if latest_observation and s.id != "src_imd_api" else None,
-            "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation and s.id != "src_imd_api" else None,
-            "latest_variable": latest_observation.variable if latest_observation and s.id != "src_imd_api" else None,
-            "latest_value": latest_observation.value if latest_observation and s.id != "src_imd_api" else None,
-            "latest_unit": latest_observation.unit if latest_observation and s.id != "src_imd_api" else None,
+            "latest_observation_at": latest_observation.observed_at if latest_observation else None,
+            "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation else None,
+            "latest_variable": latest_observation.variable if latest_observation else None,
+            "latest_value": latest_observation.value if latest_observation else None,
+            "latest_unit": latest_observation.unit if latest_observation else None,
             "latest_observation_status": (
-                "SIMULATED" if latest_observation and latest_observation.simulation_flag and s.id != "src_imd_api"
-                else latest_observation.quality_status if latest_observation and s.id != "src_imd_api" else None
+                "SIMULATED" if latest_observation and latest_observation.simulation_flag
+                else latest_observation.quality_status if latest_observation else None
             ),
-            "latest_observation_simulated": latest_observation.simulation_flag if latest_observation and s.id != "src_imd_api" else None,
+            "latest_observation_simulated": latest_observation.simulation_flag if latest_observation else None,
             "latest_forecast_24h_mm": forecast_payload.get("forecast_precipitation_24h_mm"),
             "latest_forecast_period_start_at": forecast_payload.get("forecast_period_start_at"),
             "latest_forecast_period_end_at": forecast_payload.get("forecast_period_end_at"),
@@ -357,6 +363,8 @@ def get_data_source_status(db: Session = Depends(get_db)):
         "latest_forecast_fetched_at": None,
         "latest_forecast_status": None,
     })
+    if ow["status"] != "OPERATIONAL":
+        result = [source for source in result if source["id"] != "src_openweather_current"]
     return result
 
 @router.get("/system/audit-logs", response_model=List[AuditLogOut])
@@ -1890,15 +1898,37 @@ def get_analytics_overview(
     # 8. Source availability & freshness
     source_freshness = []
     for s in src_map.values():
+        if (
+            not s.enabled
+            or s.source_type == "SYNTH_IOT"
+            or s.id == "src_isro_bhuvan"
+            or not s.last_success_at
+            or (s.last_error_at and s.last_error_at >= s.last_success_at)
+        ):
+            continue
         age = None
-        if s.last_success_at:
-            age = round((now - s.last_success_at).total_seconds() / 3600.0, 1)
+        age = round((now - s.last_success_at).total_seconds() / 3600.0, 1)
+        if age > (s.expected_update_interval_hours * 2):
+            continue
         source_freshness.append({
             "source": s.name,
             "type": s.source_type,
-            "status": s.status,
+            "status": "OPERATIONAL",
             "age_hours_success": age,
             "last_success": s.last_success_at.isoformat() if s.last_success_at else None
+        })
+    openweather_status = openweather_service.status()
+    if openweather_status["status"] == "OPERATIONAL" and openweather_status["last_success_at"]:
+        last_success = datetime.datetime.fromisoformat(openweather_status["last_success_at"].replace("Z", "+00:00"))
+        if last_success.tzinfo is not None:
+            last_success = last_success.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        age = round(max(0.0, (now - last_success).total_seconds() / 3600.0), 1)
+        source_freshness.append({
+            "source": "OpenWeather current conditions",
+            "type": "WEATHER_API",
+            "status": "OPERATIONAL",
+            "age_hours_success": age,
+            "last_success": openweather_status["last_success_at"],
         })
 
     return {

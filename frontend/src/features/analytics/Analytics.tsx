@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ReferenceLine
@@ -8,7 +8,9 @@ import type { AnalyticsOverview } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { useVisibleRefresh } from '../../hooks/useVisibleRefresh';
-import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity } from 'lucide-react';
+import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity, RefreshCw } from 'lucide-react';
+import { LiveWeatherCard } from '../../components/LiveWeatherCard';
+import type { WeatherLocationItem } from '../../api/client';
 
 const CARD_ICONS: Record<string, React.ElementType> = {
   rainfall: Droplets,
@@ -75,39 +77,53 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoursWindow, setHoursWindow] = useState(48);
+  const [weatherLocations, setWeatherLocations] = useState<WeatherLocationItem[]>([]);
+  const [weatherLocationId, setWeatherLocationId] = useState('wx_guwahati');
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     api.getAnalyticsOverview(hoursWindow)
       .then(setData)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  };
+  }, [hoursWindow]);
 
-  useEffect(load, [hoursWindow]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    api.getWeatherLocations().then(result => {
+      if (!active) return;
+      setWeatherLocations(result.locations);
+      setWeatherLocationId(current => result.locations.some(location => location.id === current)
+        ? current
+        : result.locations[0]?.id ?? '');
+    }).catch(() => { if (active) setWeatherLocations([]); });
+    return () => { active = false; };
+  }, []);
   useVisibleRefresh(load, 5 * 60 * 1000);
 
-  if (loading) return (
+  if (loading && !data) return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
       </div>
     </div>
   );
-  if (error || !data) return <ErrorState message={error ?? 'Analytics unavailable'} onRetry={load} />;
+  if (error && !data) return <ErrorState message={error ?? 'Analytics unavailable'} onRetry={load} />;
+  if (!data) return <ErrorState message="Analytics unavailable" onRetry={load} />;
 
   const riverWithMarks = data.river_trend;
 
   return (
     <div className="space-y-4">
       {/* Global filters */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-3">
         <div className="flex items-center gap-2">
           <BarChart2 className="w-4 h-4 text-teal-700" />
           <span className="text-sm font-bold text-slate-900">Analytics Dashboard</span>
         </div>
-        <p className="mt-1 text-[11px] text-slate-500">Aggregates saved by the backend; see System Health for current feed status.</p>
+        <p className="mt-1 text-[11px] text-slate-500">Live weather refreshes every 5 minutes. Stored charts use verified backend observations only.</p>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-500 font-medium">Window:</label>
           <select
@@ -121,8 +137,22 @@ export default function Analytics() {
             <option value={168}>7 days</option>
           </select>
           <span className="text-[10px] text-slate-400">Generated {new Date(data.generated_at).toLocaleTimeString('en-IN')} IST</span>
+          <button onClick={load} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50" aria-label="Refresh analytics"><RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
         </div>
       </div>
+
+      {weatherLocationId && <section className="space-y-3" aria-label="Live weather analytics">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><h2 className="text-sm font-semibold text-slate-900">Live conditions and forecast</h2><p className="text-xs text-slate-500">Direct from the weather API for one monitored point; source and observation time are shown below.</p></div>
+          <label className="flex items-center gap-2 text-xs text-slate-600">Location
+            <select value={weatherLocationId} onChange={event => setWeatherLocationId(event.target.value)} className="max-w-64 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs">
+              {weatherLocations.map(location => <option key={location.id} value={location.id}>{location.city} · {location.district}, {location.state}</option>)}
+            </select>
+          </label>
+        </div>
+        <LiveWeatherCard key={weatherLocationId} location={weatherLocations.find(location => location.id === weatherLocationId)?.city ?? 'Guwahati'} locationId={weatherLocationId} />
+      </section>}
+      {error && <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">Analytics refresh failed; showing the last loaded report. {error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

@@ -249,33 +249,35 @@ class LiveDataService:
         converted into district alerts or made to look like a structured feed.
         """
         now = datetime.datetime.utcnow()
-        url = "https://mausam.imd.gov.in/responsive/all_india_forcast_bulletin.php"
+        url = "https://mausam.imd.gov.in/responsive/districtWiseWarningGIS.php?day=1"
         text = self._tinyfish_extract(
             db, url,
-            "Read the latest all-India weather forecast bulletin from this official IMD public page. Return the issue date/time and the complete Northeast India forecast and warning text, preserving the source wording and validity period. Do not infer missing districts, warning levels, rainfall amounts, or dates."
+            "Read the official IMD district-wise warning page for day 1. Return the page heading, displayed forecast dates, and text explicitly present. Do not infer district warning levels from map colors or images, and do not invent rainfall amounts or validity periods."
         )
         publication_date = self._official_publication_date(text or "")
+        is_warning_page = bool(text and re.search(r"district\s*wise\s+warnings", text, re.IGNORECASE))
         is_northeast_bulletin = bool(text and re.search(
             r"northeast|north\s*-?\s*eastern|assam|arunachal|manipur|meghalaya|mizoram|nagaland|sikkim|tripura",
             text,
             re.IGNORECASE,
         ))
         is_recent = bool(publication_date and abs((now.date() - publication_date).days) <= 1)
-        if text and len(text.strip()) > 100 and is_northeast_bulletin and is_recent:
+        if text and len(text.strip()) > 100 and is_warning_page and is_recent:
             payload = {
                 "source": "India Meteorological Department (IMD) public website",
                 "source_url": url,
                 "retrieved_at": now.isoformat(),
+                "source_issue_date": publication_date.isoformat(),
                 "attribution": "Government of India - Ministry of Earth Sciences / IMD",
                 "data_mode": "LIVE",
                 "bulletin_text": text[:12000],
                 "warnings": [],
-                "note": "Original bulletin text is preserved. No unstructured text is converted into district warning records."
+                "note": "Current official district-warning map page retrieved. Warning colors and map symbols are not converted into district alerts; use the linked IMD page for the official map."
             }
             self._save_cache(db, "imd_warnings", payload, url, "LIVE")
             self._mark_source_health(db, "src_imd_api", True)
             return payload
-        reason = "Official IMD page did not expose a current, dated Northeast forecast; extracted text is withheld from live feeds"
+        reason = "IMD district-warning page did not expose a current dated warning map; extracted text is withheld from live feeds"
         self._mark_source_health(db, "src_imd_api", False)
         return {"data_mode": "UNAVAILABLE", "live_error": reason, "source": "India Meteorological Department (IMD) public website", "source_url": url, "warnings": [], "bulletin_text": None, "note": reason}
 
@@ -284,11 +286,16 @@ class LiveDataService:
         """Read a publication date from source text; never substitute retrieval time."""
         if not text:
             return None
-        match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[-/]\d{2}[-/]\d{4})", text)
+        match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[-/]\d{2}[-/]\d{4}|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4})", text, re.IGNORECASE)
         if not match:
             return None
         raw = match.group(1)
         for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+            try:
+                return datetime.datetime.strptime(raw, fmt).date()
+            except ValueError:
+                continue
+        for fmt in ("%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"):
             try:
                 return datetime.datetime.strptime(raw, fmt).date()
             except ValueError:

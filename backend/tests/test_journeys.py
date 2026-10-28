@@ -38,7 +38,8 @@ def test_journey_a_dashboard_to_region_risk():
     # A1. dashboard load: data freshness + observations available
     status = client.get("/api/v1/system/data-status")
     assert status.status_code == 200
-    assert isinstance(status.json(), list) and status.json()
+    assert isinstance(status.json(), list)
+    assert all(item["status"] == "OPERATIONAL" for item in status.json())
 
     obs = client.get("/api/v1/observations", params={"limit": 5})
     assert obs.status_code == 200
