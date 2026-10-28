@@ -62,24 +62,26 @@ class ImdApiService:
         ep = self.ENDPOINTS.get(slug)
         if not ep:
             raise ValueError(f"Unknown IMD endpoint slug: {slug}")
-        return settings.IMD_BASE_URL.rstrip("/") + ep["path"]
+        return getattr(settings, "IMD_BASE_URL", "https://api.imd.gov.in").rstrip("/") + ep["path"]
 
     def _auth_request(self, path: str, id_param: Optional[str]) -> str:
-        url = f"{settings.IMD_BASE_URL.rstrip('/')}{path}"
+        url = f"{getattr(settings, 'IMD_BASE_URL', 'https://api.imd.gov.in').rstrip('/')}{path}"
         params: List[str] = []
         if id_param:
             params.append(f"id={id_param}")
-        if settings.IMD_API_KEY:
-            if settings.IMD_API_AUTH_STYLE == "query":
-                params.append(f"api-key={settings.IMD_API_KEY}")
+        api_key = getattr(settings, "IMD_API_KEY", None)
+        auth_style = getattr(settings, "IMD_API_AUTH_STYLE", "")
+        if api_key and auth_style == "query":
+            params.append(f"api-key={api_key}")
         if params:
             url += "?" + "&".join(params)
         return url
 
     def _headers(self) -> Dict[str, str]:
         headers = {"User-Agent": "NESAFE-AI/1.0 (assessment prototype)"}
-        if settings.IMD_API_KEY and settings.IMD_API_AUTH_STYLE == "header":
-            headers[settings.IMD_API_HEADER_NAME] = settings.IMD_API_KEY
+        api_key = getattr(settings, "IMD_API_KEY", None)
+        if api_key and getattr(settings, "IMD_API_AUTH_STYLE", "") == "header":
+            headers[getattr(settings, "IMD_API_HEADER_NAME", "X-API-Key")] = api_key
         return headers
 
     def _get_cache(self, db, key):
@@ -133,7 +135,7 @@ class ImdApiService:
                 payload["cache_hit"] = True
                 return payload
 
-        if not settings.IMD_API_KEY:
+        if not getattr(settings, "IMD_API_KEY", None):
             self._mark_health(db, False, status="AUTH_REQUIRED")
             return self._cached_fallback(db, slug, "IMD_API_KEY is not configured", status="AUTH_REQUIRED")
 
@@ -141,9 +143,9 @@ class ImdApiService:
         headerless_url = self._endpoint_base(slug) + (f"?id={id_param}" if id_param else "")
 
         last_error = None
-        for attempt in range(max(1, settings.IMD_RETRY_COUNT + 1)):
+        for attempt in range(max(1, getattr(settings, "IMD_RETRY_COUNT", 0) + 1)):
             try:
-                with httpx.Client(timeout=settings.IMD_TIMEOUT_SECONDS) as client:
+                with httpx.Client(timeout=getattr(settings, "IMD_TIMEOUT_SECONDS", 8)) as client:
                     resp = client.get(request_url, headers=self._headers())
                 status_code = resp.status_code
                 if status_code in (401, 403):
@@ -164,10 +166,10 @@ class ImdApiService:
                     "data_mode": "LIVE",
                     "source_status": "FRESH",
                     "endpoint": ep_def["path"],
-                    "endpoint_base": settings.IMD_BASE_URL.rstrip("/") + ep_def["path"],
+                    "endpoint_base": getattr(settings, "IMD_BASE_URL", "https://api.imd.gov.in").rstrip("/") + ep_def["path"],
                     "role": self.ROLE[slug],
-                    "api_key_configured": bool(settings.IMD_API_KEY),
-                    "auth_style": settings.IMD_API_AUTH_STYLE if settings.IMD_API_KEY else None,
+                    "api_key_configured": bool(getattr(settings, "IMD_API_KEY", None)),
+                    "auth_style": getattr(settings, "IMD_API_AUTH_STYLE", None) if getattr(settings, "IMD_API_KEY", None) else None,
                     "retrieved_at": now.isoformat(),
                     "row_count": len(rows),
                     "rows": rows,

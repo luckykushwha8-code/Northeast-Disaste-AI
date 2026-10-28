@@ -110,8 +110,10 @@ def test_heavy_rainfall_and_landslide_rules_fire():
         provenance = " ".join(a.created_by or "" for a in lands)
         assert "AUTO-R3-heavy-rain" in provenance or "AUTO-R4-landslide-ari" in provenance
         assert any(a.lifecycle_status == "PROPOSED" for a in lands)
-        # For Cherrapunji (slope 42deg, susceptibility ~0.9): 165mm must reach CRITICAL now
-        assert "CRITICAL" in severities
+        # This seeded location has no verified terrain row. Rainfall alone must
+        # not be promoted to a critical slope assessment.
+        assert "HIGH" in severities
+        assert "CRITICAL" not in severities
     finally:
         db.close()
 

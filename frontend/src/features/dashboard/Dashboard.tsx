@@ -143,7 +143,7 @@ export default function Dashboard() {
             </> : <p className="mt-3 text-sm text-slate-500">{loading ? 'Loading district data…' : 'No district data available.'}</p>}
           </section>
           {selected?.monitored_locations?.[0] && <LiveWeatherCard
-            location={`${selected.district}, ${selected.state}`}
+            location={selected.monitored_locations[0].name}
             locationId={selected.monitored_locations[0].id}
           />}
 

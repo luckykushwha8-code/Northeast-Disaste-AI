@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"secondary-fixed-dim":"#9ed1bd","primary-fixed":"#d6e3ff","surface-variant":"#d3e4fe","inverse-on-surface":"#eaf1ff","surface-container-high":"#dce9ff","on-secondary-fixed":"#002117","surface-dim":"#cbdbf5","primary":"#000000","surface-container":"#e5eeff","on-tertiary-container":"#497cff","outline-variant":"#c5c6cd","on-tertiary":"#ffffff","on-primary-fixed-variant":"#39475f","on-surface":"#0b1c30","secondary-container":"#baeed9","tertiary-fixed":"#dbe1ff","tertiary-container":"#00174b","inverse-surface":"#213145","on-error":"#ffffff","primary-fixed-dim":"#b9c7e4","surface-bright":"#f8f9ff","on-primary-container":"#76849f","on-primary":"#ffffff","surface-tint":"#515f78","on-primary-fixed":"#0d1c32","on-surface-variant":"#44474d","on-background":"#0b1c30","outline":"#75777e","surface":"#f8f9ff","error":"#ba1a1a","primary-container":"#0d1c32","on-secondary":"#ffffff","error-container":"#ffdad6","secondary-fixed":"#baeed9","on-secondary-container":"#3d6d5d","surface-container-low":"#eff4ff","secondary":"#376757","background":"#f8f9ff","surface-container-lowest":"#ffffff","inverse-primary":"#b9c7e4","on-secondary-fixed-variant":"#1d4f40","on-error-container":"#93000a","on-tertiary-fixed":"#00174b","tertiary-fixed-dim":"#b4c5ff","tertiary":"#000000","on-tertiary-fixed-variant":"#003ea8","surface-container-highest":"#d3e4fe"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1rem","space-lg":"1.25rem","margin-desktop":"2.5rem","space-xl":"2rem","space-sm":"0.5rem","margin-tablet":"1.5rem","gutter":"1.25rem","space-md":"0.875rem","space-xs":"0.25rem","gutter-desktop":"1.5rem"},fontFamily:{"body-lg":["Inter"],"headline-xl":["Geist"],"headline-md":["Geist"],"label-lg":["Geist"],"label-md":["Geist"],"headline-xl-mobile":["Geist"],"label-sm":["Geist"],"body-sm":["Inter"],"headline-lg-mobile":["Geist"],"body-md":["Inter"],"headline-lg":["Geist"],"headline-sm":["Geist"]},fontSize:{"body-lg":["1.125rem",{"lineHeight":"1.6","letterSpacing":"-0.005em","fontWeight":"400"}],"headline-xl":["3rem",{"lineHeight":"1.15","letterSpacing":"-0.03em","fontWeight":"700"}],"headline-md":["1.5rem",{"lineHeight":"1.3","letterSpacing":"-0.015em","fontWeight":"600"}],"label-lg":["0.875rem",{"lineHeight":"1.25","letterSpacing":"0.02em","fontWeight":"600"}],"label-md":["0.75rem",{"lineHeight":"1.2","letterSpacing":"0.04em","fontWeight":"500"}],"headline-xl-mobile":["2rem",{"lineHeight":"1.2","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["0.6875rem",{"lineHeight":"1.15","letterSpacing":"0.06em","fontWeight":"600"}],"body-sm":["0.8125rem",{"lineHeight":"1.45","letterSpacing":"0.005em","fontWeight":"400"}],"headline-lg-mobile":["1.5rem",{"lineHeight":"1.25","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["0.9375rem",{"lineHeight":"1.5","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["2.25rem",{"lineHeight":"1.2","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-sm":["1.125rem",{"lineHeight":"1.35","letterSpacing":"-0.01em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.06)]"><div class="h-16 w-full px-margin-desktop flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md min-w-[280px]"><img alt="NE-SAFE Sentinel Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XVm5Detu-Ge3iPYr-0B9bPJEg4rEMJU_yzI_8-Z48RHhlN01qWQn8lSUW2dWTpj3fpW1j6mrvX0RPbVvTqaWg8YrBMreapaFmGxvdpdfpMQlLAnR7n9nh0MqeH1d-ME_gfyvT2gLVbXin1o6FCB4q1OsOnXGc8rafCtsh3cMbRSE2mPiR9Hv87jNcM0QGTrckCXEmNn8txz1k5mxfaJq6kfeeRrjBV9lIuW5_5YZdaNNfeOOiq-sOqV1Kd"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm uppercase tracking-tight text-on-surface">NE-SAFE</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Northeast Sentinel GIS</span></div></div><div class="hidden xl:flex items-center flex-1 max-w-xl bg-surface-container-low px-space-md py-space-xs rounded-lg gap-space-sm"><span class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm uppercase font-bold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>IMD / CWC</span><div class="overflow-hidden whitespace-nowrap text-ellipsis font-body-sm text-body-sm text-on-surface-variant"><span class="font-semibold text-on-surface">Orange Warning:</span> Heavy precipitation &amp; flash flood alert in lower Brahmaputra valley and Barak basin. NH-27 transit restricted.</div></div><div class="flex items-center gap-space-md shrink-0"><div class="hidden md:flex items-center bg-surface-container px-space-sm py-1 rounded-lg gap-space-xs"><span class="material-symbols-outlined text-[18px] text-on-surface-variant">public</span><select aria-label="Select State or Region" class="bg-transparent font-label-md text-label-md text-on-surface outline-none cursor-pointer pr-space-xs"><option>All 8 States (NER Region)</option><option>Assam</option><option>Meghalaya</option><option>Sikkim</option><option>Arunachal Pradesh</option><option>Nagaland</option><option>Manipur</option><option>Mizoram</option><option>Tripura</option></select></div><div class="hidden sm:flex items-center gap-1.5 px-space-sm py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-md text-label-md"><span class="w-2 h-2 rounded-full bg-secondary"></span><span>Live • Sync: 42s ago</span></div><div class="hidden lg:flex items-center gap-2 bg-error text-on-error px-space-sm py-1.5 rounded-lg font-label-sm text-label-sm tracking-wide"><span class="material-symbols-outlined text-[16px]">sos</span><span>NDRF 1078 • ERSS 112</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><aside class="fixed left-0 top-16 bottom-10 w-64 bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex flex-col justify-between pt-space-md pb-space-md"><div class="flex flex-col gap-space-xs px-space-sm"><div class="px-space-sm py-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Mission Command</span></div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-semibold rounded-lg"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="situation-overview" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-lg text-label-lg">Situation Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="interactive-gis-map" href="#"><span class="material-symbols-outlined text-[20px]">map</span><span class="font-label-lg text-label-lg">Interactive GIS Map</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="weather-and-rainfall" href="#"><span class="material-symbols-outlined text-[20px]">rainy</span><span class="font-label-lg text-label-lg">Weather &amp; Rainfall</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="roads-and-travel" href="#"><span class="material-symbols-outlined text-[20px]">traffic</span><span class="font-label-lg text-label-lg">Roads &amp; Travel</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="flood-monitoring" href="#"><span class="material-symbols-outlined text-[20px]">flood</span><span class="font-label-lg text-label-lg">Flood Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="landslide-monitoring" href="#"><span class="material-symbols-outlined text-[20px]">landslide</span><span class="font-label-lg text-label-lg">Landslide Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="official-alerts" href="#"><span class="material-symbols-outlined text-[20px]">warning</span><span class="font-label-lg text-label-lg">Official Alerts</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="emergency-help-and-contacts" href="#"><span class="material-symbols-outlined text-[20px]">call</span><span class="font-label-lg text-label-lg">Emergency Help</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="incident-reports" href="#"><span class="material-symbols-outlined text-[20px]">assignment_late</span><span class="font-label-lg text-label-lg">Incident Reports</span></a></nav></div><div class="px-space-md py-space-sm bg-surface-container mx-space-sm rounded-lg flex flex-col gap-1"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm uppercase text-on-surface-variant">Satellite Feed</span><span class="font-label-sm text-label-sm text-secondary font-bold">INSAT-3DR</span></div><div class="font-body-sm text-body-sm text-on-surface">NER Cloud Radar: Clear Coverage</div></div></aside><div class="pl-64"><main class="relative pt-16 pb-10 w-full min-h-screen bg-surface px-margin-desktop"><div class="flex flex-col w-full pb-16">
+<!-- Top Mission Telemetry Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md py-space-sm mb-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-1 rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm uppercase tracking-wider font-semibold">Corridor Sentinel</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Active Monitor: 8 States • 4,890 KM Monitored Trunk Roads</span>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-1.5 px-space-sm py-1 bg-surface-container rounded font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
+<span>BRO Setuk • Dantak • Pushpak Feeds Online</span>
+</div>
+<div class="flex items-center gap-1.5 px-space-sm py-1 bg-surface-container rounded font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">satellite_alt</span>
+<span>ISRO Bhuvan Real-Time Radar Sync: 14:04 IST</span>
+</div>
+</div>
+</div>
+<!-- Route Inspector & Master Status Alert (Bento Top) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter-desktop mb-space-lg">
+<!-- Corridor Route Safety Inspector Form -->
+<div class="xl:col-span-7 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">alt_route</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Corridor Route Safety Inspector</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Real-time mountain pass and riverine highway clearance vector</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold uppercase tracking-wider">Tactical Routing</span>
+</div>
+<!-- Quick Preset Corridor Buttons -->
+<div class="flex flex-wrap gap-space-xs mb-space-md">
+<button class="px-space-sm py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors text-left flex items-center gap-1" onclick="setRoute('Guwahati, Assam', 'Silchar, Assam via Meghalaya NH-6')">
+<span class="material-symbols-outlined text-[14px] text-error">warning</span>
+            Guwahati → Silchar (NH-6)
+          </button>
+<button class="px-space-sm py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors text-left flex items-center gap-1" onclick="setRoute('Siliguri, West Bengal', 'Gangtok, Sikkim via NH-10')">
+<span class="material-symbols-outlined text-[14px] text-outline">terrain</span>
+            Siliguri → Gangtok (NH-10)
+          </button>
+<button class="px-space-sm py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors text-left flex items-center gap-1" onclick="setRoute('Dimapur, Nagaland', 'Kohima, Nagaland via NH-29')">
+<span class="material-symbols-outlined text-[14px] text-secondary">check_circle</span>
+            Dimapur → Kohima (NH-29)
+          </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-md">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Origin Terminal / City</label>
+<div class="flex items-center gap-2 px-space-md py-2.5 bg-surface-container-low rounded-lg focus-within:bg-surface-container-lowest focus-within:shadow-sm transition-all">
+<span class="material-symbols-outlined text-[20px] text-secondary">my_location</span>
+<input class="w-full bg-transparent font-body-md text-body-md text-on-surface outline-none placeholder-outline" id="inputOrigin" placeholder="Enter starting point..." type="text" value="Guwahati, Assam (Paltan Bazar Inter-State Hub)"/>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Destination Corridor</label>
+<div class="flex items-center gap-2 px-space-md py-2.5 bg-surface-container-low rounded-lg focus-within:bg-surface-container-lowest focus-within:shadow-sm transition-all">
+<span class="material-symbols-outlined text-[20px] text-error">pin_drop</span>
+<input class="w-full bg-transparent font-body-md text-body-md text-on-surface outline-none placeholder-outline" id="inputDest" placeholder="Enter destination highway..." type="text" value="Silchar, Assam via Meghalaya NH-6"/>
+</div>
+</div>
+</div>
+<!-- Vehicle Type Filter -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Class:</span>
+<div class="inline-flex rounded-lg bg-surface-container p-0.5">
+<button class="px-space-sm py-1 rounded bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow-sm font-semibold">Heavy / Freight (&gt;16T)</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">Passenger Light (LMV)</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">Emergency Convoy</button>
+</div>
+</div>
+<button class="px-space-md py-2 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center gap-2 hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined text-[18px]">search_insights</span>
+<span>Compute Corridor Safety</span>
+</button>
+</div>
+</div>
+<!-- Honest Fallback Disclosure Note -->
+<div class="mt-space-md p-space-sm bg-surface-container-low rounded-lg flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-outline shrink-0 mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<span class="font-semibold text-on-surface">Honest Fallback Disclosure:</span> Route status synthesizes Border Roads Organisation (BRO), Assam/Meghalaya State Highway Police, and local district disaster bulletins. Always confirm with traffic control before night travel across montane segments.
+        </p>
+</div>
+</div>
+<!-- Active Assessment Banner Card -->
+<div class="xl:col-span-5 flex flex-col justify-between bg-error-container text-on-error-container rounded-xl p-space-lg shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-error animate-ping"></span>
+<span class="font-label-md text-label-md tracking-wider font-bold uppercase text-error">High Urgency Advisory</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-error text-on-error font-semibold">Code Amber-Red</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-error-container tracking-tight mt-space-xs">
+          CAUTION: NH-6 Sonapur Debris Clearance Active
+        </h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          Substantial debris slip reported at Km 141.2 near Sonapur Tunnel (East Jaintia Hills boundary). Expect <strong class="text-on-surface font-semibold">3–4 hr sustained delays</strong>. Unregulated convoy halting in effect. Light vehicles advised to utilize the Umrangso–Haflong diversion corridor.
+        </p>
+<!-- Metric Spark -->
+<div class="grid grid-cols-3 gap-space-sm mt-space-sm pt-space-sm bg-surface-container-lowest/80 rounded-lg p-space-md text-on-surface shadow-sm">
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase">Clearance</div>
+<div class="font-headline-md text-headline-md font-bold text-secondary">65%</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">2 excavators active</div>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase">Queue Depth</div>
+<div class="font-headline-md text-headline-md font-bold text-error">4.2 KM</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Tailback at Ratacherra</div>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase">Night Transit</div>
+<div class="font-headline-md text-headline-md font-bold text-on-surface">SUSPENDED</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">19:00 - 05:00 IST</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between gap-space-sm mt-space-md pt-space-sm">
+<div class="flex items-center gap-2 text-on-error-container font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Verified by BRO Project Setuk Control Room</span>
+</div>
+<button class="px-space-md py-1.5 bg-error text-on-error rounded font-label-md text-label-md font-semibold hover:opacity-95 transition-opacity flex items-center gap-1 shrink-0" onclick="document.getElementById('diversions-section').scrollIntoView({behavior: 'smooth'})">
+<span>View Diversion Plan</span>
+<span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Interactive Elevation Profile Strip & Corridor Map -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm mb-space-lg">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-md">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm uppercase font-bold text-secondary tracking-wider">Strip-Map Telemetry</span>
+<span class="text-on-surface-variant">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Guwahati → Shillong → Jowai → Sonapur → Silchar (318 km)</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Highway Elevation Profile &amp; Active Hazard Nodes</h3>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2.5 h-2.5 rounded-full bg-error"></span> Active Block
+        </span>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2.5 h-2.5 rounded-full bg-surface-tint"></span> Heavy Mud Flow
+        </span>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span> Free Pass
+        </span>
+</div>
+</div>
+<!-- Visual Strip SVG with Elevation Gradient and Points -->
+<div class="w-full bg-surface-container-low rounded-lg p-space-md mb-space-md overflow-x-auto">
+<div class="min-w-[760px]">
+<svg class="w-full h-32 select-none overflow-visible" viewbox="0 0 800 130">
+<defs>
+<lineargradient id="elevationGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#376757" stop-opacity="0.35"></stop>
+<stop offset="100%" stop-color="#376757" stop-opacity="0.02"></stop>
+</lineargradient>
+<lineargradient id="lineGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#376757"></stop>
+<stop offset="40%" stop-color="#515f78"></stop>
+<stop offset="65%" stop-color="#ba1a1a"></stop>
+<stop offset="100%" stop-color="#376757"></stop>
+</lineargradient>
+</defs>
+<!-- Elevation Grid Lines -->
+<line stroke="#d3e4fe" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="760" y1="20" y2="20"></line>
+<line stroke="#d3e4fe" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="760" y1="60" y2="60"></line>
+<line stroke="#d3e4fe" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="760" y1="100" y2="100"></line>
+<!-- Altitude Markers -->
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="35" y="24">1,500m</text>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="35" y="64">800m</text>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="35" y="104">120m</text>
+<!-- Filled Mountain Profile Curve -->
+<path d="M 50 102 Q 130 95 190 35 T 320 28 T 430 48 T 520 70 T 630 88 L 750 106 L 750 115 L 50 115 Z" fill="url(#elevationGrad)"></path>
+<!-- Path Stroke -->
+<path d="M 50 102 Q 130 95 190 35 T 320 28 T 430 48 T 520 70 T 630 88 L 750 106" fill="none" stroke="url(#lineGrad)" stroke-linecap="round" stroke-width="3"></path>
+<!-- Key Checkpoint Nodes -->
+<!-- Guwahati -->
+<circle cx="50" cy="102" fill="#376757" r="4.5" stroke="#ffffff" stroke-width="2"></circle>
+<text fill="#0b1c30" font-family="Geist" font-size="10" font-weight="600" text-anchor="middle" x="50" y="125">Guwahati (55m)</text>
+<!-- Nongpoh -->
+<circle cx="150" cy="65" fill="#376757" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<text fill="#44474d" font-family="Geist" font-size="9.5" text-anchor="middle" x="150" y="125">Nongpoh (520m)</text>
+<!-- Shillong / Barapani -->
+<circle cx="250" cy="30" fill="#376757" r="4" stroke="#ffffff" stroke-width="1.5"></circle>
+<text fill="#0b1c30" font-family="Geist" font-size="10" font-weight="600" text-anchor="middle" x="250" y="18">Shillong Peak (1,496m)</text>
+<!-- Jowai -->
+<circle cx="380" cy="38" fill="#515f78" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<text fill="#44474d" font-family="Geist" font-size="9.5" text-anchor="middle" x="380" y="125">Jowai Bypass</text>
+<!-- Sonapur Tunnel Block (Critical) -->
+<circle cx="520" cy="70" fill="#ba1a1a" r="6" stroke="#ffffff" stroke-width="2"></circle>
+<circle cx="520" cy="70" fill="none" opacity="0.6" r="10" stroke="#ba1a1a" stroke-width="1.5">
+<animate attributename="r" dur="2s" repeatcount="indefinite" values="6;16;6"></animate>
+<animate attributename="opacity" dur="2s" repeatcount="indefinite" values="0.8;0;0.8"></animate>
+</circle>
+<text fill="#ba1a1a" font-family="Geist" font-size="10" font-weight="700" text-anchor="middle" x="520" y="52">KM 141 Sonapur Block</text>
+<!-- Ratacherra -->
+<circle cx="630" cy="88" fill="#515f78" r="4" stroke="#ffffff" stroke-width="1.5"></circle>
+<text fill="#44474d" font-family="Geist" font-size="9.5" text-anchor="middle" x="630" y="125">Ratacherra Border</text>
+<!-- Silchar -->
+<circle cx="750" cy="106" fill="#376757" r="4.5" stroke="#ffffff" stroke-width="2"></circle>
+<text fill="#0b1c30" font-family="Geist" font-size="10" font-weight="600" text-anchor="middle" x="750" y="125">Silchar (35m)</text>
+</svg>
+</div>
+</div>
+<!-- Mini Visual Strip Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<div class="p-space-sm bg-surface-container rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-secondary">cloud_done</span>
+<div>
+<div class="font-label-sm text-label-sm uppercase text-on-surface-variant">Shillong-Jowai Leg</div>
+<div class="font-label-md text-label-md font-semibold text-on-surface">Dense Fog • Low Vis (60m)</div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">32 km/h avg</span>
+</div>
+<div class="p-space-sm bg-error-container text-on-error-container rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-error">landslide</span>
+<div>
+<div class="font-label-sm text-label-sm uppercase font-bold text-error">Sonapur Slip Zone</div>
+<div class="font-label-md text-label-md font-bold">Single-Lane Convoy Controlled</div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-error">4 km/h bottleneck</span>
+</div>
+<div class="p-space-sm bg-surface-container rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-secondary">water_drop</span>
+<div>
+<div class="font-label-sm text-label-sm uppercase text-on-surface-variant">Barak Valley Entry</div>
+<div class="font-label-md text-label-md font-semibold text-on-surface">Surface Wet • High Traction</div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-secondary">Optimal Speed</span>
+</div>
+</div>
+</div>
+<!-- Northeast Highway Status Matrix (Filterable) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm mb-space-lg">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-md">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Major Northeast Highway Status Matrix</h2>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-bold">Live Stream</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Real-time status compiled from BRO GREF units, State Highway Patrols, and NHIDCL</p>
+</div>
+<!-- State Filter Pills -->
+<div class="flex flex-wrap items-center gap-1.5" id="state-filters">
+<button class="state-filter-btn px-space-sm py-1 rounded bg-primary text-on-primary font-label-sm text-label-sm font-semibold transition-all" onclick="filterCorridors('all')">All 8 States</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Assam')">Assam</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Meghalaya')">Meghalaya</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Sikkim')">Sikkim</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Arunachal')">Arunachal</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Nagaland')">Nagaland</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Manipur')">Manipur</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Mizoram')">Mizoram</button>
+<button class="state-filter-btn px-space-sm py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm transition-all" onclick="filterCorridors('Tripura')">Tripura</button>
+</div>
+</div>
+<!-- Highway List / Table View -->
+<div class="flex flex-col gap-space-sm" id="corridor-matrix-container">
+<!-- Row 1: NH-6 -->
+<div class="corridor-row p-space-md bg-surface-container-low rounded-xl hover:bg-surface-container transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-space-md" data-state="Assam Meghalaya">
+<div class="flex items-start gap-space-md min-w-[280px]">
+<div class="px-space-sm py-2 rounded bg-error text-on-error font-headline-sm text-headline-sm font-bold flex flex-col items-center justify-center shrink-0 w-20">
+<span>NH</span>
+<span class="text-headline-md leading-none">6</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Guwahati – Shillong – Silchar</span>
+<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-bold uppercase">Restricted / Slow</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-error">warning</span>
+<span><strong>Issue:</strong> Landslide near Sonapur Tunnel. Single-lane controlled passage.</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant mt-1">
+<span>States: Assam, Meghalaya</span>
+<span>•</span>
+<span>Authority: BRO Project Setuk</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex flex-col min-w-[140px]">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Clearance Progress</span>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-24 h-2 rounded bg-surface-container-high overflow-hidden">
+<div class="h-full bg-error rounded" style="width: 65%;"></div>
+</div>
+<span class="font-label-md text-label-md font-bold text-on-surface">65%</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Est. open: 18:30 IST</span>
+</div>
+<div class="flex flex-col text-left xl:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last Verified Telemetry</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">22 mins ago</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">BRO Field Dispatch</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold hover:bg-surface-tint hover:text-on-primary transition-all flex items-center gap-1 shadow-sm" onclick="inspectCorridor('NH-6')">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Details</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 2: NH-10 -->
+<div class="corridor-row p-space-md bg-surface-container-low rounded-xl hover:bg-surface-container transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-space-md" data-state="Sikkim">
+<div class="flex items-start gap-space-md min-w-[280px]">
+<div class="px-space-sm py-2 rounded bg-surface-tint text-on-primary font-headline-sm text-headline-sm font-bold flex flex-col items-center justify-center shrink-0 w-20">
+<span>NH</span>
+<span class="text-headline-md leading-none">10</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Sevoke – Kalimpong – Gangtok</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm font-bold uppercase">Passable with Caution</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-surface-tint">terrain</span>
+<span><strong>Issue:</strong> Intermittent mudslides near 29th Mile &amp; Likhu Bhir. Single-lane active.</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant mt-1">
+<span>State: Sikkim (WB Corridor)</span>
+<span>•</span>
+<span>Authority: Sikkim Police &amp; BRO Swastik</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex flex-col min-w-[140px]">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Transit Mode</span>
+<span class="font-label-md text-label-md font-bold text-on-surface mt-1">Light Vehicles Only</span>
+<span class="font-label-sm text-label-sm text-error">Heavy trucks halted at Teesta</span>
+</div>
+<div class="flex flex-col text-left xl:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last Verified Telemetry</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">45 mins ago</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Sikkim Police Control</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold hover:bg-surface-tint hover:text-on-primary transition-all flex items-center gap-1 shadow-sm" onclick="inspectCorridor('NH-10')">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Details</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 3: NH-29 -->
+<div class="corridor-row p-space-md bg-surface-container-low rounded-xl hover:bg-surface-container transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-space-md" data-state="Nagaland">
+<div class="flex items-start gap-space-md min-w-[280px]">
+<div class="px-space-sm py-2 rounded bg-secondary text-on-secondary font-headline-sm text-headline-sm font-bold flex flex-col items-center justify-center shrink-0 w-20">
+<span>NH</span>
+<span class="text-headline-md leading-none">29</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Dimapur – Chumukedima – Kohima</span>
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold uppercase">Open &amp; Normal</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-secondary">check_circle</span>
+<span><strong>Issue:</strong> Nil. Rockfall hazard fences secure along Pagla Pahar bypass. Normal vehicular flow.</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant mt-1">
+<span>State: Nagaland</span>
+<span>•</span>
+<span>Authority: Nagaland Police Traffic Unit</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex flex-col min-w-[140px]">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Flow Velocity</span>
+<span class="font-label-md text-label-md font-bold text-secondary mt-1">Normal (45-55 km/h)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">All vehicular classes</span>
+</div>
+<div class="flex flex-col text-left xl:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last Verified Telemetry</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">1 hr ago</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">Automated NHIDCL Toll</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold hover:bg-surface-tint hover:text-on-primary transition-all flex items-center gap-1 shadow-sm" onclick="inspectCorridor('NH-29')">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Details</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 4: NH-15 -->
+<div class="corridor-row p-space-md bg-surface-container-low rounded-xl hover:bg-surface-container transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-space-md" data-state="Assam Arunachal">
+<div class="flex items-start gap-space-md min-w-[280px]">
+<div class="px-space-sm py-2 rounded bg-surface-container-highest text-on-surface font-headline-sm text-headline-sm font-bold flex flex-col items-center justify-center shrink-0 w-20">
+<span>NH</span>
+<span class="text-headline-md leading-none">15</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">North Bank Highway (Tezpur – North Lakhimpur)</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-label-sm text-label-sm font-bold uppercase">Flood Vulnerable</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-on-tertiary-container">water</span>
+<span><strong>Issue:</strong> Waterlogging over culvert km 118 near Bihpuria. Heavy vehicles permitted; light cars advised detour.</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant mt-1">
+<span>States: Assam, Arunachal Border</span>
+<span>•</span>
+<span>Authority: Assam PWD &amp; DDM Lakhimpur</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex flex-col min-w-[140px]">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Water Depth</span>
+<span class="font-label-md text-label-md font-bold text-on-surface mt-1">0.35m over tarmac</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Subsides if rain abates</span>
+</div>
+<div class="flex flex-col text-left xl:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last Verified Telemetry</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">1 hr 15 mins ago</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">ASDMA Patrol Unit</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold hover:bg-surface-tint hover:text-on-primary transition-all flex items-center gap-1 shadow-sm" onclick="inspectCorridor('NH-15')">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Details</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 5: NH-27 -->
+<div class="corridor-row p-space-md bg-surface-container-low rounded-xl hover:bg-surface-container transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-space-md" data-state="Assam">
+<div class="flex items-start gap-space-md min-w-[280px]">
+<div class="px-space-sm py-2 rounded bg-secondary text-on-secondary font-headline-sm text-headline-sm font-bold flex flex-col items-center justify-center shrink-0 w-20">
+<span>NH</span>
+<span class="text-headline-md leading-none">27</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">East-West Corridor (Nagaon – Lumding – Dabaka)</span>
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold uppercase">Open &amp; Clear</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[15px] text-secondary">check_circle</span>
+<span><strong>Issue:</strong> Nil. 4-lane expressway optimal. Bridge over Kopili River inspected and verified stable.</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant mt-1">
+<span>State: Assam</span>
+<span>•</span>
+<span>Authority: NHAI Project Unit Nagaon</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-lg">
+<div class="flex flex-col min-w-[140px]">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Flow Velocity</span>
+<span class="font-label-md text-label-md font-bold text-secondary mt-1">High Speed (70-80 km/h)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Recommended for heavy freight</span>
+</div>
+<div class="flex flex-col text-left xl:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Last Verified Telemetry</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">15 mins ago</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">Fastag CCTV Network</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold hover:bg-surface-tint hover:text-on-primary transition-all flex items-center gap-1 shadow-sm" onclick="inspectCorridor('NH-27')">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Details</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Verified Alternate Diversions & Advisory Panel -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter-desktop mb-space-lg" id="diversions-section">
+<!-- Left Column: Step-by-Step Diversion Plan -->
+<div class="xl:col-span-8 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">fork_right</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Verified Alternate Diversions</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Active rerouting advisories endorsed by Meghalaya Highway Patrol &amp; Assam PWD</p>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded bg-secondary text-on-secondary font-label-sm text-label-sm font-bold uppercase">Plan Active: Sonapur Bypass</span>
+</div>
+<!-- Sequential Steps Component -->
+<div class="relative pl-6 space-y-space-md before:absolute before:left-2 before:top-3 before:bottom-3 before:w-0.5 before:bg-surface-container-high">
+<!-- Step 1 -->
+<div class="relative">
+<div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-secondary text-on-secondary text-[10px] font-bold flex items-center justify-center">1</div>
+<div class="p-space-md bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Diverge at Jowai (Lad Rymbai Junction)</span>
+<span class="font-label-sm text-label-sm font-semibold text-secondary">Distance: +48 km</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+                Southbound vehicles originating from Guwahati must divert off NH-6 at Lad Rymbai onto State Highway 7 heading towards Khliehriat East bypass to avoid the initial 3 km queue tail.
+              </p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="relative">
+<div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-surface-tint text-on-primary text-[10px] font-bold flex items-center justify-center">2</div>
+<div class="p-space-md bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Take Umrangso – Haflong Mountain Link</span>
+<span class="font-label-sm text-label-sm font-semibold text-outline">Surface: All-weather blacktop</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+                Traverse through Umrangso dam reservoir road connecting to Haflong (Dima Hasao district). Road is clear of landslides and fully manned by 4 Assam Rifles patrol posts.
+              </p>
+<div class="flex items-center gap-space-sm mt-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">local_gas_station</span>
+<span>Fuel Refill available at Umrangso Town Hub (IOCL 24/7)</span>
+</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="relative">
+<div class="absolute -left-6 top-1 w-4 h-4 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center">3</div>
+<div class="p-space-md bg-surface-container-low rounded-lg">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Re-enter Valley via Mahur – Silchar Highway (NH-27 / NH-54)</span>
+<span class="font-label-sm text-label-sm font-semibold text-secondary">Est. Total Delay: +1 hr 45 min vs. blocked NH-6</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+                Descend into Cachar plains through Harangajao. Single-lane bridges strictly enforced with alternating right-of-way. Obey volunteer traffic guides at Jatinga point.
+              </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Action Print / Share Instructions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-md mt-space-md bg-surface-container-low px-space-md py-space-sm rounded-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary">offline_bolt</span>
+<span class="font-body-sm text-body-sm text-on-surface">Offline GPS KML / GPX route file available for low-network zones</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm font-semibold transition-colors flex items-center gap-1 shadow-sm" onclick="alert('Downloading Offline Diversion GPX Package...')">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Download GPX</span>
+</button>
+<button class="px-space-sm py-1.5 rounded bg-primary text-on-primary font-label-sm text-label-sm font-semibold hover:bg-surface-tint transition-colors flex items-center gap-1" onclick="navigator.clipboard ? navigator.clipboard.writeText(window.location.href) : null; alert('Route advisory link copied to clipboard!');">
+<span class="material-symbols-outlined text-[16px]">share</span>
+<span>Share Reroute Link</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Emergency Patrol Contacts & Quick Dispatch Info -->
+<div class="xl:col-span-4 flex flex-col gap-space-md">
+<!-- Emergency Hotline Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+<div class="flex items-center gap-space-sm mb-space-md">
+<div class="w-8 h-8 rounded bg-error text-on-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">phone_in_talk</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Highway Patrol Dispatches</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Immediate roadside rescue &amp; convoy escort</p>
+</div>
+</div>
+<div class="flex flex-col gap-space-sm">
+<!-- Contact 1 -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex items-center justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase text-on-surface-variant">Assam Highway Police Emergency</div>
+<div class="font-headline-sm text-headline-sm font-bold text-on-surface">1033 • ERSS 112</div>
+<div class="font-label-sm text-label-sm text-secondary">Toll-free 24/7 Patrol Rescue</div>
+</div>
+<a class="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-surface-tint transition-colors" href="tel:1033">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</a>
+</div>
+<!-- Contact 2 -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex items-center justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase text-on-surface-variant">BRO Project Setuk HQ</div>
+<div class="font-headline-sm text-headline-sm font-bold text-on-surface">+91-364-2534500</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Shillong Corridor Operation Center</div>
+</div>
+<a class="w-9 h-9 rounded-lg bg-surface-container text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors" href="tel:+913642534500">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</a>
+</div>
+<!-- Contact 3 -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex items-center justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase text-on-surface-variant">Sikkim Police Highway Control (Sevoke)</div>
+<div class="font-headline-sm text-headline-sm font-bold text-on-surface">+91-3592-202022</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">NH-10 Landslide &amp; Teesta Desk</div>
+</div>
+<a class="w-9 h-9 rounded-lg bg-surface-container text-on-surface flex items-center justify-center hover:bg-surface-container-high transition-colors" href="tel:+913592202022">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Live Terrain Observation Snapshot -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between flex-1">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm uppercase font-bold text-on-surface-variant">Ground Satellite Feed</span>
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold">Slope Stability: 84%</span>
+</div>
+<div class="relative rounded-lg overflow-hidden h-40 mb-space-sm">
+<img class="w-full h-full object-cover" data-alt="High-resolution aerial satellite surveillance capture of the lush green mist-shrouded montane pass in Meghalaya Northeast India showing winding National Highway 6 cut into steep mountain slopes with an active earth excavation machine clearing a muddy red soil landslide obstruction near a concrete tunnel portal under dramatic diffused cloudy daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrSZBfg-NdzzPCox4mfWsm2KHN2Y66vlT5w0fO6E1lgqQ8ZsjcT0kKrVbkCs7bGJO6M9GvZzx0L65-HT7hHzoDUbuZgx62cqZyID7LFQs7y6_dlkkhozuJpUX0wdLj5bVcJfZdwBGI8C0yK28h3-eRx47jASD9NhuXOXSEOPE2b8xjOuymJgsqYIrABGIBS6pKW8hnwqC54CSEJ8OLOz8iGrxkRuHlP5ei6QSj2_DFoF86sXBaPhQLMQ"/>
+<div class="absolute bottom-2 left-2 px-2 py-1 bg-surface-container-lowest/90 backdrop-blur rounded font-label-sm text-label-sm text-on-surface font-mono">
+              GPS: 25.1842° N, 92.3814° E • Sonapur
+            </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Visual inspection confirms rockfall catch-nets held 300 cubic meters of limestone debris, preventing total breach of the southern portal. Heavy tippers actively hauling to quarry dumping grounds.
+          </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Citizen & Driver Incident Reporting Module -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-primary text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px]">add_alert</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Citizen &amp; Driver Road Incident Reporting Module</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Submit geo-tagged obstruction reports directly to the nearest ASDMA / BRO field unit</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">security</span>
+<span>Verified Citizen Reporter Node</span>
+</span>
+</div>
+</div>
+<!-- Form Grid -->
+<form class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg" id="incidentForm" onsubmit="event.preventDefault(); submitIncidentReport();">
+<!-- Left Inputs -->
+<div class="lg:col-span-8 space-y-space-md">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Incident Type -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">Hazard Category</label>
+<div class="relative">
+<select class="w-full px-space-md py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none cursor-pointer" id="reportHazardType">
+<option value="Active Landslide / Debris Fall">Active Landslide / Debris Fall</option>
+<option value="Road Waterlogging / Flash Submersion">Road Waterlogging / Flash Submersion</option>
+<option value="Fallen Tree / Electric Pole Obstruction">Fallen Tree / Electric Pole Obstruction</option>
+<option value="Bridge / Culvert Structural Damage">Bridge / Culvert Structural Damage</option>
+<option value="Severe Mud Silt / Skidding Danger">Severe Mud Silt / Skidding Danger</option>
+<option value="Stranded Convoy / Traffic Impasse">Stranded Convoy / Traffic Impasse</option>
+</select>
+</div>
+</div>
+<!-- Highway / Route Name -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">Highway Corridor / Kilometre Post</label>
+<input class="w-full px-space-md py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none placeholder-outline focus:bg-surface-container-lowest focus:shadow-sm transition-all" id="reportCorridor" placeholder="e.g. NH-6 near Km 129, Umkiang" required="" type="text"/>
+</div>
+</div>
+<!-- Precise Location and Landmark -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">Nearest Landmark / Village</label>
+<input class="w-full px-space-md py-2.5 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none placeholder-outline focus:bg-surface-container-lowest focus:shadow-sm transition-all" id="reportLandmark" placeholder="e.g. 500m before Sonapur Toll Plaza" required="" type="text"/>
+</div>
+<!-- GPS Coordinate Verification -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">GPS Coordinates</label>
+<div class="flex items-center gap-2">
+<input class="w-full px-space-md py-2.5 bg-surface-container rounded-lg font-body-md text-body-md text-on-surface-variant outline-none font-mono" id="reportGps" readonly="" type="text" value="25.1841° N, 92.3812° E (Auto-Acquired)"/>
+<button class="px-space-md py-2.5 bg-surface-container-high hover:bg-surface-container text-on-surface rounded-lg font-label-sm text-label-sm font-semibold shrink-0 flex items-center gap-1 transition-colors" onclick="acquireGps()" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">gps_fixed</span>
+<span>Refresh GPS</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Incident Description -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">Description of Hazard &amp; Road Condition</label>
+<textarea class="w-full p-space-md bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface outline-none placeholder-outline focus:bg-surface-container-lowest focus:shadow-sm transition-all resize-none" id="reportDesc" placeholder="Specify if single lane is passable, depth of water or mud, presence of heavy vehicles stuck, or fallen power cables..." required="" rows="3"></textarea>
+</div>
+</div>
+<!-- Right Column: Evidence Photo Upload & Dispatch Submit -->
+<div class="lg:col-span-4 flex flex-col justify-between gap-space-md">
+<!-- Photo Upload Box with Detailed Image Placeholder -->
+<div class="flex flex-col gap-1.5 flex-1">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold uppercase tracking-wider">Visual Evidence / Photo</label>
+<div class="relative flex-1 min-h-[160px] bg-surface-container-low rounded-lg overflow-hidden flex flex-col items-center justify-center p-space-md text-center group cursor-pointer hover:bg-surface-container transition-all">
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" data-alt="Field photograph taken from driver dashboard view showing wet asphalt highway blocked by fallen pine tree branches and brown mud slush along mountainous Northeast India cliffside under overcast monsoon rain sky." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUDU-Im_xLRfg8bLp0au17BS4roidLfdzAibFTTjbQ1MzeqbOzAcAQKUW-FS7xIcHmiiNe61qNlwMF3WP1jGao5znSID_oFHwafqsHqFyouBDHd6l3rWLLKmEFaFxP5zNpR7XZ3r0winynvK_kaU2hw7lAJHOBNlWvSYhgpvDDIW7xK5REI_D0HgMWzSjw1744bOytHMzU2fEucR6c6j4wH7sYe0DtDZccouZtq0hVluwf9e1P_R-z6A"/>
+<div class="relative z-10 flex flex-col items-center gap-1 bg-surface-container-lowest/80 p-space-sm rounded-lg backdrop-blur">
+<span class="material-symbols-outlined text-[28px] text-on-surface">add_a_photo</span>
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Click to Upload / Capture Geo-Tag Photo</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">Supports JPG, PNG up to 15MB (EXIF Metadata retained)</span>
+</div>
+</div>
+</div>
+<!-- Severity Selector & Action -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Immediate Traffic Impact:</span>
+<div class="flex items-center gap-1.5">
+<label class="inline-flex items-center gap-1 cursor-pointer">
+<input checked="" class="text-error" name="severity" type="radio" value="Total Block"/>
+<span class="font-label-sm text-label-sm text-error font-bold">Total Block</span>
+</label>
+<label class="inline-flex items-center gap-1 cursor-pointer ml-2">
+<input name="severity" type="radio" value="Partial Pass"/>
+<span class="font-label-sm text-label-sm text-on-surface">Partial Pass</span>
+</label>
+</div>
+</div>
+<button class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg font-bold hover:bg-surface-tint transition-all flex items-center justify-center gap-2 shadow-sm" type="submit">
+<span class="material-symbols-outlined text-[20px]">send</span>
+<span>Broadcast Incident to Control Desk</span>
+</button>
+<div class="hidden p-space-sm bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm flex items-center gap-2" id="reportSuccessAlert">
+<span class="material-symbols-outlined text-[18px] text-secondary">check_circle</span>
+<span>Report dispatched! Assigned Ticket: #NER-HWY-9481 • Alerted BRO Setuk.</span>
+</div>
+</div>
+</div>
+</form>
+</div>
+</div>
+<script>
+  // Simple state filter for highway corridor matrix
+  function filterCorridors(state) {
+    const rows = document.querySelectorAll('.corridor-row');
+    const buttons = document.querySelectorAll('.state-filter-btn');
+
+    // Update active button styling
+    buttons.forEach(btn => {
+      btn.classList.remove('bg-primary', 'text-on-primary');
+      btn.classList.add('bg-surface-container', 'text-on-surface');
+      if (
+        (state === 'all' && btn.innerText.includes('All')) ||
+        btn.innerText.trim() === state
+      ) {
+        btn.classList.remove('bg-surface-container', 'text-on-surface');
+        btn.classList.add('bg-primary', 'text-on-primary');
+      }
+    });
+
+    // Filter rows
+    rows.forEach(row => {
+      const rowStates = row.getAttribute('data-state') || '';
+      if (state === 'all' || rowStates.includes(state)) {
+        row.style.display = 'flex';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Preset setter for corridor route inspector
+  function setRoute(origin, dest) {
+    document.getElementById('inputOrigin').value = origin;
+    document.getElementById('inputDest').value = dest;
+    const inspectorCard = document.getElementById('inputOrigin').closest('.bg-surface-container-lowest');
+    inspectorCard.classList.add('ring-2', 'ring-primary');
+    setTimeout(() => {
+      inspectorCard.classList.remove('ring-2', 'ring-primary');
+    }, 600);
+  }
+
+  // Quick corridor inspector detail trigger
+  function inspectCorridor(nhName) {
+    alert('Corridor Telemetry Focus: ' + nhName + '\nConnecting live telemetry feed with State Highway Patrol and Regional BRO control desks...');
+  }
+
+  // GPS Acquire Simulation
+  function acquireGps() {
+    const gpsInput = document.getElementById('reportGps');
+    gpsInput.value = "Acquiring live satellite triangulation...";
+    setTimeout(() => {
+      const lat = (25.1840 + (Math.random() * 0.005)).toFixed(4);
+      const lng = (92.3810 + (Math.random() * 0.005)).toFixed(4);
+      gpsInput.value = `${lat}° N, ${lng}° E (Lock: &plusmn;3m Accuracy)`;
+    }, 600);
+  }
+
+  // Incident submission simulation
+  function submitIncidentReport() {
+    const successAlert = document.getElementById('reportSuccessAlert');
+    successAlert.classList.remove('hidden');
+    document.getElementById('reportCorridor').value = '';
+    document.getElementById('reportLandmark').value = '';
+    document.getElementById('reportDesc').value = '';
+    setTimeout(() => {
+      successAlert.classList.add('hidden');
+    }, 7000);
+  }
+</script></main></div><footer class="fixed bottom-0 left-0 right-0 h-10 z-40 bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.04)]"><div class="h-full w-full px-margin-desktop flex items-center justify-between"><div class="flex items-center gap-space-md overflow-hidden whitespace-nowrap"><span class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">Authorized Nodes:</span><div class="flex items-center gap-space-sm font-label-md text-label-md text-on-surface"><span class="hover:text-primary cursor-pointer">IMD</span>•<span class="hover:text-primary cursor-pointer">CWC</span>•<span class="hover:text-primary cursor-pointer">BRO</span>•<span class="hover:text-primary cursor-pointer">NESAC</span>•<span class="hover:text-primary cursor-pointer">ASDMA</span></div></div><div class="flex items-center gap-space-md shrink-0 font-label-sm text-label-sm text-on-surface-variant"><span class="hidden sm:inline">Telemetry Source: National Data Sharing Platform (NDSP)</span><span>Verified Sync: 14:02:18 IST</span></div></div></footer></body></html>

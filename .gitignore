@@ -23,6 +23,7 @@ htmlcov/
 .env.*
 *.env
 *.env.*
+backend/.env
 **/.env
 **/.env.*
 !.env.example

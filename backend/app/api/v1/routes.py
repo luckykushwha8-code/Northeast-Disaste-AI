@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional, Dict, Any
+from types import SimpleNamespace
 import datetime
 from app.time_utils import utcnow
 import json
@@ -33,6 +35,8 @@ from app.services.audit_service import log_audit
 from app.services.tinyfish_service import tinyfish_service
 from app.services.live_data_service import live_data_service
 from app.services.open_meteo_service import open_meteo_service
+from app.services.openweather_service import openweather_service
+from app.data.weather_locations import get_weather_location, list_weather_locations
 from app.services.integrated_risk_engine import IntegratedRiskEngine
 from app.services.validation_service import run_historical_validation
 from app.services.demo_service import run_documented_demo, DEMO_CASE_IDS
@@ -44,6 +48,9 @@ from app.config import settings
 from app.auth import get_principal, require_roles, authenticate_credentials, issue_token, authentication_ready, Principal
 from app.schemas.gemini import DistrictExplanationRequest, PreparednessQuestion
 from app.services.gemini_service import gemini_service, GeminiUnavailable, GeminiRequestFailed
+from app.services.openrouter_service import (
+    openrouter_service, OpenRouterUnavailable, OpenRouterRequestFailed,
+)
 
 
 def _prefetch_open_meteo(db: Session, locations=None):
@@ -57,7 +64,16 @@ def _prefetch_open_meteo(db: Session, locations=None):
 router = APIRouter()
 
 
-def _gemini_response(task: str, evidence: Dict[str, Any], question: str = ""):
+def _ai_response(task: str, evidence: Dict[str, Any], question: str = ""):
+    # OpenRouter is the selected provider when explicitly enabled. Do not silently
+    # switch providers after a failed request: that would hide provider/key errors.
+    if settings.OPENROUTER_ENABLED:
+        try:
+            return openrouter_service.generate(task, evidence, question).model_dump()
+        except OpenRouterUnavailable:
+            raise HTTPException(status_code=503, detail="AI assistance is unavailable. Configure the backend OpenRouter key and model.")
+        except OpenRouterRequestFailed:
+            raise HTTPException(status_code=502, detail="OpenRouter analysis could not complete the request. Please retry later.")
     try:
         return gemini_service.generate(task, evidence, question).model_dump()
     except GeminiUnavailable:
@@ -68,7 +84,19 @@ def _gemini_response(task: str, evidence: Dict[str, Any], question: str = ""):
 
 @router.get("/ai/status")
 def get_ai_status():
-    return {"available": gemini_service.available(), "content_type": "AI_GENERATED_EXPLANATION"}
+    if settings.OPENROUTER_ENABLED:
+        status = openrouter_service.status()
+        return {
+            "available": status["configured"],
+            "provider": "OpenRouter",
+            "content_type": "AI_GENERATED_EXPLANATION",
+            **status,
+        }
+    return {
+        "available": gemini_service.available(),
+        "provider": "Gemini",
+        "content_type": "AI_GENERATED_EXPLANATION",
+    }
 
 
 @router.post("/ai/district-explanation")
@@ -96,7 +124,7 @@ def explain_district_risk(payload: DistrictExplanationRequest, db: Session = Dep
         "data_quality": row["data_quality"],
         "boundary": row["boundary"],
     }
-    return _gemini_response("Explain the existing district risk results without changing them.", evidence)
+    return _ai_response("Explain the existing district risk results without changing them.", evidence)
 
 
 @router.post("/ai/report-summary")
@@ -137,7 +165,7 @@ def summarize_situation_report(db: Session = Depends(get_db), principal: Princip
         "data_warnings": report["data_warnings"][:30],
         "sources": report["sources"][:30],
     }
-    result = _gemini_response("Summarize this situation report using only the supplied records.", evidence)
+    result = _ai_response("Summarize this situation report using only the supplied records.", evidence)
     log_audit(db, actor_id=principal.username, action="AI_REPORT_SUMMARIZED", resource_type="SituationReport",
               resource_id=report["generated_at"], reason="Grounded AI summary generated; no report data stored in audit record")
     return result
@@ -145,7 +173,7 @@ def summarize_situation_report(db: Session = Depends(get_db), principal: Princip
 
 @router.post("/ai/preparedness")
 def ask_preparedness_assistant(payload: PreparednessQuestion):
-    result = _gemini_response(
+    result = _ai_response(
         "Answer a public preparedness question. Restrict to general flood/landslide preparedness, safe actions during heavy rain, following official orders, emergency kits, or understanding dashboard labels. Do not claim live conditions, evacuation orders, routes, shelter availability, or contacts. If out of scope, say so.",
         {"official_emergency_number_india": "112", "current_conditions": "not supplied; do not infer"}, payload.question.strip(),
     )
@@ -197,7 +225,28 @@ def get_health(db: Session = Depends(get_db)):
         "monitored_district": settings.DEFAULT_DISTRICT,
         "database_connected": True,
         "locations_count": loc_count,
-        "simulation_mode_permitted": settings.ALLOW_SIMULATION
+        "simulation_mode_permitted": settings.ALLOW_SIMULATION,
+        "weather_integration": openweather_service.status(),
+        "ai_analysis_integration": openrouter_service.status(),
+    }
+
+
+@router.get("/health/ready")
+def get_readiness(db: Session = Depends(get_db)):
+    """Report whether the service can reach its required database."""
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        logger.warning("Readiness check failed: database query unavailable (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail={
+            "status": "NOT_READY",
+            "database_connected": False,
+            "timestamp": utcnow().isoformat(),
+        }) from exc
+    return {
+        "status": "READY",
+        "database_connected": True,
+        "timestamp": utcnow().isoformat(),
     }
 
 @router.get("/system/data-status", response_model=List[DataSourceOut])
@@ -280,6 +329,34 @@ def get_data_source_status(db: Session = Depends(get_db)):
                 else "STALE" if forecast_cache else None
             )
         })
+    ow = openweather_service.status()
+    result.append({
+        "id": "src_openweather_current",
+        "name": "OpenWeather current conditions",
+        "source_type": "WEATHER_API",
+        "configuration_reference": settings.OPENWEATHER_API_URL,
+        "expected_update_interval_hours": 1.0,
+        "enabled": ow["configured"],
+        "last_success_at": ow["last_success_at"],
+        "last_error_at": ow["last_error_at"],
+        "status": ow["status"],
+        "last_fetch_attempt_at": max(
+            (stamp for stamp in (ow["last_success_at"], ow["last_error_at"]) if stamp),
+            default=None,
+        ),
+        "latest_observation_at": None,
+        "latest_observation_ingested_at": None,
+        "latest_variable": None,
+        "latest_value": None,
+        "latest_unit": None,
+        "latest_observation_status": None,
+        "latest_observation_simulated": None,
+        "latest_forecast_24h_mm": None,
+        "latest_forecast_period_start_at": None,
+        "latest_forecast_period_end_at": None,
+        "latest_forecast_fetched_at": None,
+        "latest_forecast_status": None,
+    })
     return result
 
 @router.get("/system/audit-logs", response_model=List[AuditLogOut])
@@ -309,6 +386,19 @@ def list_models(db: Session = Depends(get_db)):
     return result
 
 # ----------------- 2. LOCATIONS -----------------
+@router.get("/weather/locations")
+def get_weather_locations():
+    """Curated point locations with coordinates; no point represents a whole state."""
+    locations = list_weather_locations()
+    return {
+        "locations": locations,
+        "state_count": 8,
+        "location_count": len(locations),
+        "spatial_scope": "Each response is for an individual town or monitoring point, not a statewide summary.",
+        "data_source": "NE-SAFE reviewed location registry; coordinate references are included per point.",
+    }
+
+
 @router.get("/locations", response_model=List[LocationOut])
 def list_locations(db: Session = Depends(get_db)):
     """List all monitored geographic zones and river stations in study area"""
@@ -1249,14 +1339,15 @@ def get_tinyfish_history(
     return db.query(TinyFishRetrievalRecord).order_by(TinyFishRetrievalRecord.retrieval_timestamp.desc()).limit(limit).all()
 
 
-@router.post("/sources/tinyfish/{record_id}/gemini-summary")
+@router.post("/sources/tinyfish/{record_id}/gemini-summary", include_in_schema=False)
+@router.post("/sources/tinyfish/{record_id}/ai-summary")
 def summarize_tinyfish_retrieval(record_id: str, db: Session = Depends(get_db)):
-    """Summarize one verified, real TinyFish extraction; Gemini cannot alter source data."""
+    """Summarize one verified, real TinyFish extraction; AI cannot alter source data."""
     record = db.query(TinyFishRetrievalRecord).filter(TinyFishRetrievalRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="TinyFish retrieval record not found")
     if record.simulation_flag or record.data_quality_status != "VALID" or not record.extracted_text:
-        raise HTTPException(status_code=409, detail="Gemini summaries require a valid, non-simulated extraction")
+        raise HTTPException(status_code=409, detail="AI summaries require a valid, non-simulated extraction")
     if record.source_agency not in {"IMD", "CWC", "GSI", "NRSC_BHUVAN"}:
         raise HTTPException(status_code=400, detail="Only approved weather and hazard agency records can be summarized")
     now = utcnow()
@@ -1274,7 +1365,7 @@ def summarize_tinyfish_retrieval(record_id: str, db: Session = Depends(get_db)):
         "source_freshness": source_freshness,
         "extracted_content": record.extracted_text[:12000],
     }
-    summary = _gemini_response(
+    summary = _ai_response(
         "Summarize this official public weather or hazard source. Preserve only statements present in the source. Include source agency, publication/retrieval time, forecast period and affected places when explicitly stated. Do not invent rainfall amounts, districts, warnings, or current observations. If source_freshness is STALE or UNVERIFIED_DATE, say that the content must not be used as current conditions. State clearly that this is an AI summary of source text, not an official warning.",
         evidence,
     )
@@ -1445,23 +1536,59 @@ def get_weather_now(
 
 @router.get("/weather/current")
 def get_current_weather(
-    location_id: str = Query(..., description="Monitored location identifier"),
+    location_id: Optional[str] = Query(None, description="Approved monitored location identifier"),
+    lat: Optional[float] = Query(None, ge=21, le=30.5, description="Northeast India point latitude"),
+    lon: Optional[float] = Query(None, ge=88, le=98.5, description="Northeast India point longitude"),
     db: Session = Depends(get_db)
 ):
-    """Current Open-Meteo model conditions for one monitored location."""
-    location = db.query(Location).filter(
-        Location.id == location_id,
-        Location.active == True
-    ).first()
+    """OpenWeather conditions for an approved point, with attributed live fallback."""
+    if location_id:
+        registry_location = get_weather_location(location_id)
+        location = SimpleNamespace(**registry_location) if registry_location else db.query(Location).filter(
+            Location.id == location_id, Location.active == True
+        ).first()
+    elif lat is not None and lon is not None:
+        location = SimpleNamespace(
+            id=f"coord-{lat:.4f}-{lon:.4f}", name=f"Coordinate point ({lat:.4f}, {lon:.4f})",
+            city=None, state=None, district=None, latitude=lat, longitude=lon,
+        )
+    elif lat is not None or lon is not None:
+        raise HTTPException(status_code=422, detail="Provide both lat and lon for coordinate weather requests.")
+    else:
+        raise HTTPException(status_code=422, detail="Provide a registered location_id or both lat and lon.")
     if not location:
-        raise HTTPException(status_code=404, detail=f"Unknown monitored location: {location_id}")
-    return open_meteo_service.fetch_current_weather(db, location)
+        raise HTTPException(status_code=404, detail="Unknown weather location. Use /weather/locations for approved location IDs.")
+    primary = openweather_service.fetch_current_weather(location)
+    if primary.get("data_mode") in ("LIVE", "CACHED"):
+        return primary
+
+    fallback = open_meteo_service.fetch_current_weather(db, location)
+    if fallback.get("current") and fallback.get("data_mode") in ("LIVE", "CACHED"):
+        fallback.update({
+            "location_id": location.id,
+            "location_name": getattr(location, "name", location.name),
+            "city": getattr(location, "city", None),
+            "state": location.state,
+            "district": location.district,
+            "latitude": float(location.latitude),
+            "longitude": float(location.longitude),
+            "spatial_scope": "point_observation_not_state_summary",
+            "availability_status": "FALLBACK",
+        })
+        fallback["fallback_notice"] = primary.get("live_error") or "OpenWeather current conditions are stale."
+        fallback["provenance_policy"] = (
+            "OpenWeather was unavailable, so this card uses Open-Meteo model current conditions. "
+            "This is not an IMD warning or local rain-gauge reading."
+        )
+        return fallback
+    return primary
 
 
 # ----------------- 12B. OBSERVED + FORECAST PRECIPITATION (OPEN-METEO) -----------------
 @router.get("/weather/forecast")
 def get_weather_forecast(
     location_id: Optional[str] = None,
+    provider: str = Query("open_meteo", pattern="^(open_meteo|openweather)$"),
     db: Session = Depends(get_db)
 ):
     """
@@ -1470,6 +1597,17 @@ def get_weather_forecast(
     Fills only the rainfall gaps that official IMD/CWC feeds don't cover, and is
     always provenance-stamped (LIVE / CACHED / UNAVAILABLE, never faked).
     """
+    if provider == "openweather":
+        if not location_id:
+            raise HTTPException(status_code=422, detail="OpenWeather forecast requires one approved location_id.")
+        registry_location = get_weather_location(location_id)
+        location = SimpleNamespace(**registry_location) if registry_location else db.query(Location).filter(
+            Location.id == location_id, Location.active == True
+        ).first()
+        if not location:
+            raise HTTPException(status_code=404, detail="Unknown weather location. Use /weather/locations for approved location IDs.")
+        return openweather_service.fetch_forecast(location)
+
     query = db.query(Location).filter(Location.active == True)
     if location_id:
         query = query.filter(Location.id == location_id)

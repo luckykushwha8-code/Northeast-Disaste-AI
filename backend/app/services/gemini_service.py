@@ -5,20 +5,24 @@ import json
 import logging
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
+from app.time_utils import utcnow
 
 logger = logging.getLogger("nesafe.gemini")
 
 
 class AssistanceResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     summary: str = Field(max_length=1200)
     supporting_observations: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=5)
     uncertainties: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=5)
     preparedness_actions: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list, max_length=5)
     evidence_sufficient: bool
     content_type: Literal["AI_GENERATED_EXPLANATION"] = "AI_GENERATED_EXPLANATION"
+    generated_at: str | None = None
+    model: str | None = None
 
 
 class GeminiUnavailable(Exception):
@@ -74,11 +78,12 @@ class GeminiService:
                 )
             parsed = getattr(response, "parsed", None)
             if isinstance(parsed, AssistanceResult):
-                return parsed
+                return parsed.model_copy(update={"generated_at": utcnow().isoformat(), "model": settings.GEMINI_MODEL})
             text = getattr(response, "text", None)
             if not text:
                 raise ValueError("empty response")
-            return AssistanceResult.model_validate_json(text)
+            result = AssistanceResult.model_validate_json(text)
+            return result.model_copy(update={"generated_at": utcnow().isoformat(), "model": settings.GEMINI_MODEL})
         except GeminiUnavailable:
             raise
         except Exception as exc:

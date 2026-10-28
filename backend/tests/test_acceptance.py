@@ -110,15 +110,8 @@ def test_at03_query_prediction():
 def test_at04_simulate_stale_data():
     """AT-04: Simulate stale data -> UI/API shows stale status; no false live claim is made (Rule R-02)"""
     res = client.post("/api/v1/simulation/scenario/stale_feed_failure")
-    assert res.status_code == 200
-
-    # Inspect predictions
-    preds_res = client.get("/api/v1/predictions?hazard_type=FLOOD")
-    preds = preds_res.json()
-    stale_preds = [p for p in preds if p["data_quality_status"] == "STALE"]
-    assert len(stale_preds) > 0
-    assert stale_preds[0]["risk_category"] == "UNAVAILABLE"
-    assert "STALE" in stale_preds[0]["explanation"]["primary_reason"]
+    assert res.status_code == 410
+    assert "disabled on the live service" in res.json()["detail"]
 
 def test_at05_trigger_proposed_alert():
     """AT-05: Trigger a proposed alert -> Alert enters PROPOSED lifecycle state (FR-ALERT-04)"""
@@ -213,25 +206,14 @@ def test_at08_notification_failure_retry():
 def test_at09_simulation_scenario_watermark():
     """AT-09: Load simulation scenario -> All related screens visibly label simulation data (FR-DATA-09)"""
     res = client.post("/api/v1/simulation/scenario/extreme_flood")
-    assert res.status_code == 200
-    data = res.json()
-    alert_id = data["alert_id"]
-
-    # Fetch alerts
-    alerts = client.get("/api/v1/alerts?lifecycle_status=PROPOSED").json()
-    assert len(alerts) > 0
-    assert alerts[0]["simulation_flag"] is True
+    assert res.status_code == 410
+    assert "disabled on the live service" in res.json()["detail"]
 
 def test_at10_sensor_missing_fallback():
     """AT-10: Sensor missing fallback -> Returns UNAVAILABLE status and retains safety integrity (Rule R-03, R-14)"""
     res = client.post("/api/v1/simulation/scenario/sensor_missing_fallback")
-    assert res.status_code == 200
-
-    preds = client.get("/api/v1/predictions").json()
-    missing_preds = [p for p in preds if p["data_quality_status"] == "MISSING_CRITICAL"]
-    assert len(missing_preds) > 0
-    assert missing_preds[0]["probability"] is None
-    assert missing_preds[0]["risk_category"] == "UNAVAILABLE"
+    assert res.status_code == 410
+    assert "disabled on the live service" in res.json()["detail"]
 
 def test_at11_alert_expiry():
     """AT-11: Alert expires -> Status updates without claiming hazard has ended (Rule R-08)"""

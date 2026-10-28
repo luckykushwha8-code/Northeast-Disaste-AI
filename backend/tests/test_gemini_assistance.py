@@ -10,6 +10,11 @@ from app.main import app
 from app.services.gemini_service import AssistanceResult, GeminiRequestFailed, GeminiService, GeminiUnavailable
 
 
+@pytest.fixture(autouse=True)
+def keep_openrouter_disabled_for_gemini_tests(monkeypatch):
+    monkeypatch.setattr(settings, "OPENROUTER_ENABLED", False)
+
+
 def test_missing_key_disables_gemini_without_import_or_request(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_ENABLED", True)
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
@@ -29,7 +34,10 @@ def test_structured_output_is_validated_and_key_is_not_logged(monkeypatch, caplo
 
     result = GeminiService().generate("district", {"district": "Example"})
 
-    assert result == expected
+    assert result.summary == expected.summary
+    assert result.evidence_sufficient == expected.evidence_sufficient
+    assert result.model == settings.GEMINI_MODEL
+    assert result.generated_at
     assert secret not in caplog.text
     assert mock_client.__enter__.return_value.models.generate_content.call_args.kwargs["model"] == settings.GEMINI_MODEL
 
@@ -57,7 +65,11 @@ def test_ai_status_never_returns_configuration(client, monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "secret")
     response = client.get("/api/v1/ai/status")
     assert response.status_code == 200
-    assert response.json() == {"available": True, "content_type": "AI_GENERATED_EXPLANATION"}
+    assert response.json() == {
+        "available": True,
+        "provider": "Gemini",
+        "content_type": "AI_GENERATED_EXPLANATION",
+    }
     assert "secret" not in response.text
 
 

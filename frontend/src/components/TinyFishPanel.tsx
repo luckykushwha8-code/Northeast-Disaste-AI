@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
-import { TinyFishStatus, TinyFishRetrievalResult, TinyFishGeminiSummary } from '../types';
+import { TinyFishStatus, TinyFishRetrievalResult, TinyFishAISummary } from '../types';
 import {
   Globe,
   ShieldCheck,
@@ -27,7 +27,7 @@ export const TinyFishPanel: React.FC = () => {
   const [format, setFormat] = useState<'markdown' | 'html' | 'json'>('markdown');
   const [retrieving, setRetrieving] = useState<boolean>(false);
   const [activeResult, setActiveResult] = useState<TinyFishRetrievalResult | null>(null);
-  const [geminiSummary, setGeminiSummary] = useState<TinyFishGeminiSummary | null>(null);
+  const [aiSummary, setAiSummary] = useState<TinyFishAISummary | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedContent, setExpandedContent] = useState<boolean>(true);
@@ -82,7 +82,7 @@ export const TinyFishPanel: React.FC = () => {
         simulate_if_unavailable: false
       });
       setActiveResult(result);
-      setGeminiSummary(null);
+      setAiSummary(null);
       fetchStatus();
       fetchHistory();
     } catch (err: any) {
@@ -92,14 +92,14 @@ export const TinyFishPanel: React.FC = () => {
     }
   };
 
-  const summarizeWithGemini = async () => {
+  const summarizeWithAI = async () => {
     if (!activeResult || activeResult.simulation_flag || activeResult.data_quality_status !== 'VALID') return;
     setSummarizing(true);
     setErrorMessage(null);
     try {
-      setGeminiSummary(await api.summarizeTinyFishRecord(activeResult.id));
+      setAiSummary(await api.summarizeTinyFishRecord(activeResult.id));
     } catch (err: any) {
-      setErrorMessage(err.message || 'Gemini could not summarize this source record.');
+      setErrorMessage(err.message || 'AI could not summarize this source record.');
     } finally {
       setSummarizing(false);
     }
@@ -412,22 +412,22 @@ export const TinyFishPanel: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-bold text-slate-900">Gemini source summary</div>
+              <div className="text-sm font-bold text-slate-900">AI source summary</div>
               <div className="text-[11px] text-slate-500">Uses this retrieved agency text only. It does not create or upgrade warnings.</div>
             </div>
-            <button type="button" onClick={() => void summarizeWithGemini()} disabled={summarizing} className="inline-flex items-center gap-1.5 rounded-lg bg-[#806047] px-3 py-2 text-xs font-bold text-white hover:bg-[#654a36] disabled:opacity-50">
+            <button type="button" onClick={() => void summarizeWithAI()} disabled={summarizing} className="inline-flex items-center gap-1.5 rounded-lg bg-[#806047] px-3 py-2 text-xs font-bold text-white hover:bg-[#654a36] disabled:opacity-50">
               <Sparkles className={`h-3.5 w-3.5 ${summarizing ? 'animate-pulse' : ''}`} />
-              {summarizing ? 'Summarizing…' : 'Summarize with Gemini'}
+              {summarizing ? 'Summarizing…' : 'Summarize with AI'}
             </button>
           </div>
-          {geminiSummary && <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-700">
-            <div className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${geminiSummary.source_freshness === 'CURRENT' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-              Source freshness: {geminiSummary.source_freshness ?? 'UNVERIFIED_DATE'}
+          {aiSummary && <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-700">
+            <div className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${aiSummary.source_freshness === 'CURRENT' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              Source freshness: {aiSummary.source_freshness ?? 'UNVERIFIED_DATE'}
             </div>
-            <div className="font-semibold">{geminiSummary.summary}</div>
-            {geminiSummary.supporting_observations.length > 0 && <ul className="list-disc pl-5">{geminiSummary.supporting_observations.map((item, i) => <li key={i}>{item}</li>)}</ul>}
-            {geminiSummary.uncertainties.length > 0 && <div className="rounded-md bg-amber-50 p-2 text-amber-800"><b>Uncertainties:</b> {geminiSummary.uncertainties.join(' · ')}</div>}
-            <div className="text-[10px] text-slate-500">AI summary · source: {activeResult.source_agency} · published {geminiSummary.publication_timestamp ? new Date(geminiSummary.publication_timestamp).toLocaleString() : 'date not identified'} · retrieved {new Date(activeResult.retrieval_timestamp).toLocaleString()}</div>
+            <div className="font-semibold">{aiSummary.summary}</div>
+            {aiSummary.supporting_observations.length > 0 && <ul className="list-disc pl-5">{aiSummary.supporting_observations.map((item, i) => <li key={i}>{item}</li>)}</ul>}
+            {aiSummary.uncertainties.length > 0 && <div className="rounded-md bg-amber-50 p-2 text-amber-800"><b>Uncertainties:</b> {aiSummary.uncertainties.join(' · ')}</div>}
+            <div className="text-[10px] text-slate-500">AI summary{aiSummary.model ? ` · model: ${aiSummary.model}` : ''} · source: {activeResult.source_agency} · published {aiSummary.publication_timestamp ? new Date(aiSummary.publication_timestamp).toLocaleString() : 'date not identified'} · retrieved {new Date(activeResult.retrieval_timestamp).toLocaleString()}</div>
           </div>}
         </div>
       )}

@@ -55,9 +55,8 @@ def test_source_freshness_never_promotes_seeded_or_missing_data(client):
     assert response.status_code == 200
     sources = {source["id"]: source for source in response.json()}
 
-    synthetic = sources["src_smart_city_iot"]
-    assert synthetic["status"] == "SIMULATED"
-    assert synthetic["last_success_at"] is None
+    # Synthetic IoT is excluded from the public source list entirely.
+    assert "src_smart_city_iot" not in sources
 
     imd = sources["src_imd_api"]
     assert imd["status"] == "AUTH_REQUIRED"
@@ -89,7 +88,7 @@ def test_district_summaries_schema_and_honest_modes(client):
     assert km["state"] == "Assam"
     assert km["flood_risk"]["model"] in ("prototype", "none")
     assert km["boundary"]["status"] in ("APPROXIMATED", "EXACT")
-    assert km["data_quality"]["risk"] == "PROTOTYPE_MODEL"
+    assert km["data_quality"]["risk"] == "UNAVAILABLE_WITHOUT_VERIFIED_INPUTS"
     assert km["data_quality"]["rainfall"] in ("FRESH", "STALE", "MISSING")
     assert km["official_warnings"] == [] or km["official_warnings"][0]["source"].startswith("IMD")
     assert all(d["flood_risk"]["risk_category"] in

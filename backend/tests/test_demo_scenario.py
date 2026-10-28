@@ -3,6 +3,7 @@ import pytest
 from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.data.seed_data import seed_database
+from app.services.validation_service import seed_historical_validation_cases
 from app.services import demo_service
 from app.config import settings
 
@@ -17,6 +18,8 @@ def setup_demo_module(monkeypatch_module=None):
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     seed_database(db)
+    # Historical inputs are test fixtures; production startup does not seed them.
+    seed_historical_validation_cases(db)
     yield
     db.close()
     settings.OPEN_METEO_ENABLED = original_flag
@@ -27,10 +30,12 @@ def test_demo_replay_end_to_end():
     db = SessionLocal()
     try:
         result = demo_service.run_documented_demo(db, "val_land_kharghuli_2022_06")
-        # Event replay must hit or exceed documented categories (Kharghuli 2022 was CRITICAL)
-        assert result["replayed_documented_assessment"]["predicted_category"] in ("HIGH", "CRITICAL")
-        assert result["replayed_documented_assessment"]["passed"] is True
-        # Alert lifecycle: PROPOSED -> APPROVED/ISSUED with receipt
+        # Bundled historical inputs are not independently verified, so replay
+        # must remain unavailable instead of claiming model validation.
+        replay = result["replayed_documented_assessment"]
+        assert replay["predicted_category"] == "UNAVAILABLE"
+        assert replay["passed"] is False
+        # The isolated exercise still demonstrates the simulated alert lifecycle.
         lc = result["alert_lifecycle"]
         assert lc["simulation_flag"] is True
         assert lc["final_status"] == "ISSUED"

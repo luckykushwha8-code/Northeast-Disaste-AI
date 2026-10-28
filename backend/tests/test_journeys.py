@@ -170,7 +170,8 @@ def test_journey_f_mobile_shaped_payloads():
     now = client.get("/api/v1/weather/now", params={"location_id": loc_id})
     assert now.status_code == 200
     n = now.json()
-    assert n.get("readings"), "weather/now must list current readings"
+    assert n.get("readings") == []
+    assert "never presented as live" in n.get("provenance_policy", "")
     for reading in n["readings"]:
         assert reading["source_name"], "every reading must name its source"
         assert reading.get("observed_at") and reading.get("unit")

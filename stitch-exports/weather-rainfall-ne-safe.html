@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"secondary-fixed-dim":"#9ed1bd","primary-fixed":"#d6e3ff","surface-variant":"#d3e4fe","inverse-on-surface":"#eaf1ff","surface-container-high":"#dce9ff","on-secondary-fixed":"#002117","surface-dim":"#cbdbf5","primary":"#000000","surface-container":"#e5eeff","on-tertiary-container":"#497cff","outline-variant":"#c5c6cd","on-tertiary":"#ffffff","on-primary-fixed-variant":"#39475f","on-surface":"#0b1c30","secondary-container":"#baeed9","tertiary-fixed":"#dbe1ff","tertiary-container":"#00174b","inverse-surface":"#213145","on-error":"#ffffff","primary-fixed-dim":"#b9c7e4","surface-bright":"#f8f9ff","on-primary-container":"#76849f","on-primary":"#ffffff","surface-tint":"#515f78","on-primary-fixed":"#0d1c32","on-surface-variant":"#44474d","on-background":"#0b1c30","outline":"#75777e","surface":"#f8f9ff","error":"#ba1a1a","primary-container":"#0d1c32","on-secondary":"#ffffff","error-container":"#ffdad6","secondary-fixed":"#baeed9","on-secondary-container":"#3d6d5d","surface-container-low":"#eff4ff","secondary":"#376757","background":"#f8f9ff","surface-container-lowest":"#ffffff","inverse-primary":"#b9c7e4","on-secondary-fixed-variant":"#1d4f40","on-error-container":"#93000a","on-tertiary-fixed":"#00174b","tertiary-fixed-dim":"#b4c5ff","tertiary":"#000000","on-tertiary-fixed-variant":"#003ea8","surface-container-highest":"#d3e4fe"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1rem","space-lg":"1.25rem","margin-desktop":"2.5rem","space-xl":"2rem","space-sm":"0.5rem","margin-tablet":"1.5rem","gutter":"1.25rem","space-md":"0.875rem","space-xs":"0.25rem","gutter-desktop":"1.5rem"},fontFamily:{"body-lg":["Inter"],"headline-xl":["Geist"],"headline-md":["Geist"],"label-lg":["Geist"],"label-md":["Geist"],"headline-xl-mobile":["Geist"],"label-sm":["Geist"],"body-sm":["Inter"],"headline-lg-mobile":["Geist"],"body-md":["Inter"],"headline-lg":["Geist"],"headline-sm":["Geist"]},fontSize:{"body-lg":["1.125rem",{"lineHeight":"1.6","letterSpacing":"-0.005em","fontWeight":"400"}],"headline-xl":["3rem",{"lineHeight":"1.15","letterSpacing":"-0.03em","fontWeight":"700"}],"headline-md":["1.5rem",{"lineHeight":"1.3","letterSpacing":"-0.015em","fontWeight":"600"}],"label-lg":["0.875rem",{"lineHeight":"1.25","letterSpacing":"0.02em","fontWeight":"600"}],"label-md":["0.75rem",{"lineHeight":"1.2","letterSpacing":"0.04em","fontWeight":"500"}],"headline-xl-mobile":["2rem",{"lineHeight":"1.2","letterSpacing":"-0.02em","fontWeight":"700"}],"label-sm":["0.6875rem",{"lineHeight":"1.15","letterSpacing":"0.06em","fontWeight":"600"}],"body-sm":["0.8125rem",{"lineHeight":"1.45","letterSpacing":"0.005em","fontWeight":"400"}],"headline-lg-mobile":["1.5rem",{"lineHeight":"1.25","letterSpacing":"-0.015em","fontWeight":"600"}],"body-md":["0.9375rem",{"lineHeight":"1.5","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["2.25rem",{"lineHeight":"1.2","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-sm":["1.125rem",{"lineHeight":"1.35","letterSpacing":"-0.01em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.06)]"><div class="h-16 w-full px-margin-desktop flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md min-w-[280px]"><img alt="NE-SAFE Sentinel Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XVm5Detu-Ge3iPYr-0B9bPJEg4rEMJU_yzI_8-Z48RHhlN01qWQn8lSUW2dWTpj3fpW1j6mrvX0RPbVvTqaWg8YrBMreapaFmGxvdpdfpMQlLAnR7n9nh0MqeH1d-ME_gfyvT2gLVbXin1o6FCB4q1OsOnXGc8rafCtsh3cMbRSE2mPiR9Hv87jNcM0QGTrckCXEmNn8txz1k5mxfaJq6kfeeRrjBV9lIuW5_5YZdaNNfeOOiq-sOqV1Kd"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm uppercase tracking-tight text-on-surface">NE-SAFE</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Northeast Sentinel GIS</span></div></div><div class="hidden xl:flex items-center flex-1 max-w-xl bg-surface-container-low px-space-md py-space-xs rounded-lg gap-space-sm"><span class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm uppercase font-bold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>IMD / CWC</span><div class="overflow-hidden whitespace-nowrap text-ellipsis font-body-sm text-body-sm text-on-surface-variant"><span class="font-semibold text-on-surface">Orange Warning:</span> Heavy precipitation &amp; flash flood alert in lower Brahmaputra valley and Barak basin. NH-27 transit restricted.</div></div><div class="flex items-center gap-space-md shrink-0"><div class="hidden md:flex items-center bg-surface-container px-space-sm py-1 rounded-lg gap-space-xs"><span class="material-symbols-outlined text-[18px] text-on-surface-variant">public</span><select aria-label="Select State or Region" class="bg-transparent font-label-md text-label-md text-on-surface outline-none cursor-pointer pr-space-xs"><option>All 8 States (NER Region)</option><option>Assam</option><option>Meghalaya</option><option>Sikkim</option><option>Arunachal Pradesh</option><option>Nagaland</option><option>Manipur</option><option>Mizoram</option><option>Tripura</option></select></div><div class="hidden sm:flex items-center gap-1.5 px-space-sm py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-md text-label-md"><span class="w-2 h-2 rounded-full bg-secondary"></span><span>Live • Sync: 42s ago</span></div><div class="hidden lg:flex items-center gap-2 bg-error text-on-error px-space-sm py-1.5 rounded-lg font-label-sm text-label-sm tracking-wide"><span class="material-symbols-outlined text-[16px]">sos</span><span>NDRF 1078 • ERSS 112</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><aside class="fixed left-0 top-16 bottom-10 w-64 bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex flex-col justify-between pt-space-md pb-space-md"><div class="flex flex-col gap-space-xs px-space-sm"><div class="px-space-sm py-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Mission Command</span></div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-semibold rounded-lg"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="situation-overview" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-lg text-label-lg">Situation Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="interactive-gis-map" href="#"><span class="material-symbols-outlined text-[20px]">map</span><span class="font-label-lg text-label-lg">Interactive GIS Map</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="weather-and-rainfall" href="#"><span class="material-symbols-outlined text-[20px]">rainy</span><span class="font-label-lg text-label-lg">Weather &amp; Rainfall</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="roads-and-travel" href="#"><span class="material-symbols-outlined text-[20px]">traffic</span><span class="font-label-lg text-label-lg">Roads &amp; Travel</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="flood-monitoring" href="#"><span class="material-symbols-outlined text-[20px]">flood</span><span class="font-label-lg text-label-lg">Flood Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="landslide-monitoring" href="#"><span class="material-symbols-outlined text-[20px]">landslide</span><span class="font-label-lg text-label-lg">Landslide Monitoring</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="official-alerts" href="#"><span class="material-symbols-outlined text-[20px]">warning</span><span class="font-label-lg text-label-lg">Official Alerts</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="emergency-help-and-contacts" href="#"><span class="material-symbols-outlined text-[20px]">call</span><span class="font-label-lg text-label-lg">Emergency Help</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="incident-reports" href="#"><span class="material-symbols-outlined text-[20px]">assignment_late</span><span class="font-label-lg text-label-lg">Incident Reports</span></a></nav></div><div class="px-space-md py-space-sm bg-surface-container mx-space-sm rounded-lg flex flex-col gap-1"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm uppercase text-on-surface-variant">Satellite Feed</span><span class="font-label-sm text-label-sm text-secondary font-bold">INSAT-3DR</span></div><div class="font-body-sm text-body-sm text-on-surface">NER Cloud Radar: Clear Coverage</div></div></aside><div class="pl-64"><main class="relative pt-16 pb-10 w-full min-h-screen bg-surface px-margin-desktop"><div class="flex flex-col w-full gap-space-xl">
+<!-- Top Telemetry Tactical Marquee / Status Header -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">RMC Borjhar Telemetry Stream</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Station ID: NER-SYN-9104</span>
+</div>
+<div class="flex items-baseline gap-space-sm flex-wrap">
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Meteorological Early Warning</h2>
+<span class="font-label-md text-label-md text-on-surface-variant">Regional Met Centre Guwahati • Special Monsoonal Bulletin #14</span>
+</div>
+</div>
+<!-- Real-time Status Badges & Quick Action Controls -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-2 px-space-md py-space-xs bg-error-container text-on-error-container rounded-lg font-label-md text-label-md">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+<span class="font-bold">KHASI HILLS: RED ALERT</span>
+</div>
+<div class="flex items-center gap-1.5 px-space-md py-space-xs bg-surface-container text-on-surface rounded-lg font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-secondary">satellite_alt</span>
+<span>INSAT-3DR • MOSDAC 14:15 IST</span>
+</div>
+<button class="flex items-center gap-1 px-space-md py-space-xs bg-primary text-on-primary rounded-lg font-label-md text-label-md transition-opacity hover:opacity-90 active:scale-95 shadow-sm" id="refreshTeleBtn">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>Force Station Poll</span>
+</button>
+</div>
+</div>
+<!-- SECTION 1: Regional Precipitation Overview & Warning Matrix -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+<!-- Warning Matrix By State -->
+<div class="xl:col-span-8 flex flex-col bg-surface-container-lowest p-space-lg rounded-xl shadow-sm gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Synoptic Risk Stratification</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">State Warning Tiers (Next 48 Hours)</h3>
+</div>
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">verified_user</span>
+<span>IMD Impact-Based Warning Protocol</span>
+</div>
+</div>
+<!-- State Warning Matrix Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Meghalaya (Red Alert) -->
+<div class="flex flex-col bg-surface-container-low p-space-md rounded-lg gap-space-xs relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-error"></div>
+<div class="flex items-center justify-between pl-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Meghalaya</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>Red Alert
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-space-xs">
+<span class="font-semibold text-on-surface">Extremely Heavy Rainfall (&gt;204.4 mm)</span> projected in East &amp; West Khasi Hills, Ri-Bhoi, and South Garo Hills. High orographic uplifting.
+          </p>
+<div class="flex items-center gap-2 pl-space-xs mt-1 font-label-sm text-label-sm text-error font-semibold">
+<span class="material-symbols-outlined text-[16px]">landslide</span>
+            Severe Slope Disruption &amp; Flash Flooding Expected
+          </div>
+</div>
+<!-- Assam (Orange Alert) -->
+<div class="flex flex-col bg-surface-container-low p-space-md rounded-lg gap-space-xs relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-on-tertiary-container"></div>
+<div class="flex items-center justify-between pl-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Assam</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-variant text-on-primary-fixed-variant font-label-sm text-label-sm uppercase font-bold">
+              Orange Alert
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-space-xs">
+<span class="font-semibold text-on-surface">Heavy to Very Heavy Rain (115.6 - 204.4 mm)</span> across Lower Brahmaputra Basin (Kamrup Metro, Dhubri, Barpeta) and Barak Valley.
+          </p>
+<div class="flex items-center gap-2 pl-space-xs mt-1 font-label-sm text-label-sm text-on-primary-fixed-variant font-semibold">
+<span class="material-symbols-outlined text-[16px]">waves</span>
+            Riverine Swell • Brahmaputra Warning Stage Approach
+          </div>
+</div>
+<!-- Arunachal Pradesh (Orange Alert) -->
+<div class="flex flex-col bg-surface-container-low p-space-md rounded-lg gap-space-xs relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-on-tertiary-container"></div>
+<div class="flex items-center justify-between pl-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Arunachal Pradesh</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-variant text-on-primary-fixed-variant font-label-sm text-label-sm uppercase font-bold">
+              Orange Alert
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-space-xs">
+<span class="font-semibold text-on-surface">Heavy Precipitation (64.5 - 115.5 mm)</span> concentrated in Upper Siang, Papum Pare, and Changlang. High mountain run-off.
+          </p>
+<div class="flex items-center gap-2 pl-space-xs mt-1 font-label-sm text-label-sm text-on-primary-fixed-variant font-semibold">
+<span class="material-symbols-outlined text-[16px]">terrain</span>
+            Debris Flow Hazard on Trans-Arunachal Highway
+          </div>
+</div>
+<!-- Sikkim (Yellow Alert) -->
+<div class="flex flex-col bg-surface-container-low p-space-md rounded-lg gap-space-xs relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary"></div>
+<div class="flex items-center justify-between pl-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Sikkim</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm uppercase font-bold">
+              Yellow Alert
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-space-xs">
+<span class="font-semibold text-on-surface">Moderate to Isolated Heavy Showers</span> along Teesta Basin (Mangan &amp; Pakyong districts). Saturated scree slopes under observation.
+          </p>
+<div class="flex items-center gap-2 pl-space-xs mt-1 font-label-sm text-label-sm text-secondary font-semibold">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+            Cautious Transit • Teesta River Level Nominal
+          </div>
+</div>
+</div>
+</div>
+<!-- Meteorological Synopsis Panel -->
+<div class="xl:col-span-4 flex flex-col bg-surface-container-lowest p-space-lg rounded-xl shadow-sm justify-between gap-space-md">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Synoptic Guidance</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Valid till 08:30 IST Tomorrow</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Regional Met Centre Synopsis</h3>
+<blockquote class="bg-surface-container-low p-space-md rounded-lg text-on-surface font-body-sm text-body-sm leading-relaxed border-l-2 border-secondary">
+          “Active monsoon trough anchored south of Himalayan foothills with vigorous moisture incursion from the Bay of Bengal over northeastern states. Convective cloud clusters persist over the Meghalaya plateau and south Assam valley, sustaining intense orographic lifting.”
+        </blockquote>
+<div class="flex flex-col gap-space-xs pt-1">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">Low-Level Jet Stream (850 hPa):</span>
+<span class="font-semibold text-on-surface">32 Knots (SW)</span>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">Precipitable Water Index (PW):</span>
+<span class="font-semibold text-error">64.8 mm (Extreme)</span>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">CAPE Index (Convective Energy):</span>
+<span class="font-semibold text-on-surface">2,150 J/kg</span>
+</div>
+</div>
+</div>
+<!-- Quick Guidance Callout -->
+<div class="bg-surface-container p-space-md rounded-lg flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px] shrink-0">info</span>
+<div class="flex flex-col font-body-sm text-body-sm">
+<span class="font-semibold text-on-surface">State Emergency Protocol 04 Activated</span>
+<span class="text-on-surface-variant">All district disaster control rooms instructed to maintain 24x7 telemetry VHF check-ins.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 2: Live Automated Weather Stations (AWS) Grid -->
+<div class="flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">In-Situ Surface Stations</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Live Automated Weather Station (AWS) Grid</h3>
+</div>
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+<span>6 of 42 Key Gauges Displayed</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-mono">Sampling: 15m intervals</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-md">
+<!-- Station 1: Cherrapunji (Sohra, Meghalaya) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Meghalaya • 1,484m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Cherrapunji (Sohra)</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>Extreme Downpour
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-error tracking-tight font-bold">192.4 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">18.2 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">19.4<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<!-- Sparkline indicator -->
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-error">trending_up</span> Hourly Peak: 24.6 mm</span>
+<span class="font-mono">Sensor ID: AWS-SHR-01</span>
+</div>
+</div>
+<!-- Station 2: Pasighat (Arunachal Pradesh) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Arunachal Pradesh • 153m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Pasighat AWS</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-variant text-on-primary-fixed-variant font-label-sm text-label-sm uppercase font-bold">
+            Heavy Rain
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-on-tertiary-container tracking-tight font-bold">88.0 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">11.0 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">24.2<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">water_drop</span> Siang Basin Inflow Alert</span>
+<span class="font-mono">Sensor ID: AWS-PSG-09</span>
+</div>
+</div>
+<!-- Station 3: Gangtok (Tadong AWS, Sikkim) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Sikkim • 1,322m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Gangtok (Tadong)</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm uppercase font-bold">
+            Moderate Rain
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">52.6 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">6.5 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">17.8<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">cloud</span> Overcast • RH: 98%</span>
+<span class="font-mono">Sensor ID: AWS-TDG-04</span>
+</div>
+</div>
+<!-- Station 4: Guwahati (Borjhar AWS, Assam) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Assam • 55m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Guwahati (Borjhar)</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-on-surface font-label-sm text-label-sm uppercase font-semibold">
+            Thunderstorms
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">44.2 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">4.1 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">28.1<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">thunderstorm</span> Squall Watch (Gusts 38km/h)</span>
+<span class="font-mono">Sensor ID: AWS-BOR-02</span>
+</div>
+</div>
+<!-- Station 5: Aizawl (Mizoram) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Mizoram • 1,132m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Aizawl AWS</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm uppercase font-semibold">
+            Showers
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">38.5 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">3.8 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">22.4<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">waves</span> Intermittent Slant Rains</span>
+<span class="font-mono">Sensor ID: AWS-AZL-06</span>
+</div>
+</div>
+<!-- Station 6: Agartala (Tripura) -->
+<div class="flex flex-col bg-surface-container-lowest p-space-md rounded-xl shadow-sm gap-space-sm relative overflow-hidden transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Tripura • 15m MSL</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Agartala Aero</h4>
+</div>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">
+            Light Rain
+          </span>
+</div>
+<div class="grid grid-cols-3 gap-space-xs py-space-xs bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">24h Rain</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-bold">14.2 <span class="text-label-sm font-normal">mm</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Intensity</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">1.1 <span class="text-label-sm font-normal">mm/h</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Surface Temp</span>
+<span class="font-headline-md text-headline-md text-on-surface tracking-tight font-semibold">29.6<span class="text-label-sm font-normal">°C</span></span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-secondary">wb_sunny</span> Intermittent Cloud Break</span>
+<span class="font-mono">Sensor ID: AWS-AGT-03</span>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 3: High-Clarity Rainfall Analytics & Threshold Comparisons -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+<!-- 7-Day Cumulative vs Normal Monsoon Baseline -->
+<div class="xl:col-span-8 flex flex-col bg-surface-container-lowest p-space-lg rounded-xl shadow-sm gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Regional Climatology Analysis</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">7-Day Cumulative Rainfall vs. Long-Period Average (LPA)</h3>
+</div>
+<!-- Legend -->
+<div class="flex items-center gap-space-md font-label-sm text-label-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-primary"></span>
+<span>Recorded 2025</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-sm bg-surface-variant"></span>
+<span>Historical Normal</span>
+</div>
+</div>
+</div>
+<!-- Compact High-Precision SVG Bar Chart -->
+<div class="w-full overflow-x-auto py-2">
+<svg class="w-full min-w-[580px] h-56" fill="none" viewbox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+<!-- Horizontal Grid Lines -->
+<line stroke="#e5eeff" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="580" y1="20" y2="20"></line>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="32" y="24">300mm</text>
+<line stroke="#e5eeff" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="580" y1="70" y2="70"></line>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="32" y="74">200mm</text>
+<line stroke="#e5eeff" stroke-dasharray="3 3" stroke-width="1" x1="40" x2="580" y1="120" y2="120"></line>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="32" y="124">100mm</text>
+<line stroke="#c5c6cd" stroke-width="1" x1="40" x2="580" y1="170" y2="170"></line>
+<text fill="#75777e" font-family="Geist" font-size="9" text-anchor="end" x="32" y="174">0mm</text>
+<!-- Day 1: D-6 -->
+<rect fill="#d3e4fe" height="60" rx="2" width="16" x="65" y="110"></rect>
+<rect fill="#0d1c32" height="85" rx="2" width="16" x="85" y="85"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="83" y="190">08 Oct</text>
+<!-- Day 2: D-5 -->
+<rect fill="#d3e4fe" height="55" rx="2" width="16" x="145" y="115"></rect>
+<rect fill="#0d1c32" height="80" rx="2" width="16" x="165" y="90"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="163" y="190">09 Oct</text>
+<!-- Day 3: D-4 -->
+<rect fill="#d3e4fe" height="65" rx="2" width="16" x="225" y="105"></rect>
+<rect fill="#0d1c32" height="95" rx="2" width="16" x="245" y="75"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="243" y="190">10 Oct</text>
+<!-- Day 4: D-3 -->
+<rect fill="#d3e4fe" height="58" rx="2" width="16" x="305" y="112"></rect>
+<rect fill="#0d1c32" height="110" rx="2" width="16" x="325" y="60"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="323" y="190">11 Oct</text>
+<!-- Day 5: D-2 -->
+<rect fill="#d3e4fe" height="50" rx="2" width="16" x="385" y="120"></rect>
+<rect fill="#0d1c32" height="128" rx="2" width="16" x="405" y="42"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="403" y="190">12 Oct</text>
+<!-- Day 6: Yesterday -->
+<rect fill="#d3e4fe" height="55" rx="2" width="16" x="465" y="115"></rect>
+<rect fill="#0d1c32" height="140" rx="2" width="16" x="485" y="30"></rect>
+<text fill="#44474d" font-family="Geist" font-size="10" text-anchor="middle" x="483" y="190">13 Oct</text>
+<!-- Day 7: Today (Live) -->
+<rect fill="#d3e4fe" height="52" rx="2" width="16" x="540" y="118"></rect>
+<rect fill="#ba1a1a" height="146" rx="2" width="16" x="560" y="24"></rect>
+<text fill="#ba1a1a" font-family="Geist" font-size="10" font-weight="bold" text-anchor="middle" x="558" y="190">Today (Surge)</text>
+</svg>
+</div>
+<!-- District-Wise Departure Summary Table -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">District Departure Telemetry (1 Oct - Present)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">IMD Categorical Classification</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase">
+<tr>
+<th class="py-2 px-space-sm">District / State</th>
+<th class="py-2 px-space-sm">Actual (mm)</th>
+<th class="py-2 px-space-sm">Normal (mm)</th>
+<th class="py-2 px-space-sm">% Departure</th>
+<th class="py-2 px-space-sm text-right">Category</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-on-surface">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2 px-space-sm font-semibold">East Khasi Hills (ML)</td>
+<td class="py-2 px-space-sm font-mono">488.2</td>
+<td class="py-2 px-space-sm font-mono">194.0</td>
+<td class="py-2 px-space-sm font-mono font-bold text-error">+151.6%</td>
+<td class="py-2 px-space-sm text-right">
+<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-bold">Large Excess</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2 px-space-sm font-semibold">Kamrup Metro (AS)</td>
+<td class="py-2 px-space-sm font-mono">182.4</td>
+<td class="py-2 px-space-sm font-mono">112.1</td>
+<td class="py-2 px-space-sm font-mono font-bold text-on-tertiary-container">+62.7%</td>
+<td class="py-2 px-space-sm text-right">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-primary-fixed-variant font-label-sm text-label-sm font-bold">Excess</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2 px-space-sm font-semibold">Upper Siang (AR)</td>
+<td class="py-2 px-space-sm font-mono">210.5</td>
+<td class="py-2 px-space-sm font-mono">138.0</td>
+<td class="py-2 px-space-sm font-mono font-bold text-on-tertiary-container">+52.5%</td>
+<td class="py-2 px-space-sm text-right">
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-primary-fixed-variant font-label-sm text-label-sm font-bold">Excess</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2 px-space-sm font-semibold">West Tripura (TR)</td>
+<td class="py-2 px-space-sm font-mono">92.0</td>
+<td class="py-2 px-space-sm font-mono">88.5</td>
+<td class="py-2 px-space-sm font-mono font-medium text-secondary">+3.9%</td>
+<td class="py-2 px-space-sm text-right">
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Normal</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Flash Flood Guidance & Soil Saturation Gauge -->
+<div class="xl:col-span-4 flex flex-col bg-surface-container-lowest p-space-lg rounded-xl shadow-sm justify-between gap-space-md">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-error font-bold">CWC Hydrological Index</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Model: SAC-SMA</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Flash Flood Guidance (FFG)</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Assessment of rainfall depth required over 6-hour window to initiate bankfull streamflow in zero-order mountain catchments.
+        </p>
+<!-- Soil Moisture Saturation Ring Gauge -->
+<div class="flex flex-col items-center justify-center p-space-md bg-surface-container-low rounded-xl relative my-2">
+<svg class="w-40 h-40 transform -rotate-90" viewbox="0 0 120 120">
+<!-- Background Ring -->
+<circle cx="60" cy="60" fill="none" r="50" stroke="#dce9ff" stroke-width="12"></circle>
+<!-- Saturation Arc (92% = 314 * 0.92 = 289) -->
+<circle cx="60" cy="60" fill="none" r="50" stroke="#ba1a1a" stroke-dasharray="314" stroke-dashoffset="25" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+<span class="font-headline-xl text-headline-xl text-error font-bold tracking-tight">92<span class="text-headline-md">%</span></span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Soil Saturated</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="flex justify-between items-center bg-surface-container-low p-space-xs px-space-sm rounded-lg font-label-md text-label-md">
+<span class="text-on-surface-variant">Threshold Breach Depth:</span>
+<span class="font-bold text-error">Only 18.5 mm needed</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-space-xs px-space-sm rounded-lg font-label-md text-label-md">
+<span class="text-on-surface-variant">Immediate Hazard Basin:</span>
+<span class="font-semibold text-on-surface">Umiam • Umngot Catchment</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-space-xs px-space-sm rounded-lg font-label-md text-label-md">
+<span class="text-on-surface-variant">Run-off Ratio Index:</span>
+<span class="font-mono font-semibold text-on-surface">0.88 (High Direct Spill)</span>
+</div>
+</div>
+</div>
+<!-- Action Note -->
+<div class="bg-error-container p-space-md rounded-lg text-on-error-container flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-[20px] shrink-0">warning</span>
+<div class="flex flex-col font-body-sm text-body-sm">
+<span class="font-bold">Inundation Alert for Downstream Valleys</span>
+<span>Water retention capacity in Khasi range practically exhausted. Rapid surface runoff surging toward Sylhet and Kamrup borders.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 4: Satellite & Radar Imagery Viewer -->
+<div class="flex flex-col bg-surface-container-lowest p-space-lg rounded-xl shadow-sm gap-space-md">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Active Remote Sensing Suite</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Doppler Weather Radar (DWR) Composite • Northeast Mosaic</h3>
+</div>
+<!-- Radar Time Scrubbing Controls -->
+<div class="flex items-center gap-space-xs bg-surface-container-low p-1 rounded-lg">
+<button class="radar-step-btn px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" data-time="T-60">
+          T-60m (13:15)
+        </button>
+<button class="radar-step-btn px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" data-time="T-30">
+          T-30m (13:45)
+        </button>
+<button class="radar-step-btn active-radar-btn px-space-sm py-1 rounded bg-primary text-on-primary font-label-sm text-label-sm font-semibold transition-colors" data-time="T-00">
+          Live (14:15 IST)
+        </button>
+</div>
+</div>
+<!-- Interactive Composite Visual Workspace -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
+<!-- Radar Map Area with Visual Overlays -->
+<div class="lg:col-span-8 relative min-h-[380px] bg-surface-container-high rounded-xl overflow-hidden shadow-inner flex flex-col justify-between p-space-md">
+<!-- Background GIS Texture Map Placeholder -->
+<div class="absolute inset-0 w-full h-full bg-cover bg-center opacity-70" data-location="Guwahati, Assam, India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDnhQRvnQpPDGr0LnChmUxF8X44M90wtAsEPZ_52Z75iurDx478iUKdRxmq3gU9_StE3H8HMvEKN2pQQsoM1Vs7S06FAwaoXQReI8iQX0OGFFsVJV0z2lwIIwwvksiV8C3DuNp2MuxBFQHAZKbiCTGSTtl6PyeK8Dc3P0cjjZa0fu4hbLkZ9aEZhhLAYNSx_kmh6iKIz9gTF1dtUwsRJKG3QiEueUwbAo3I7HqsoSp-gRPEMdiI-6lO-Q')"></div>
+<!-- Radar Radial Sweep Synthetic Simulation Overlay -->
+<div class="absolute inset-0 bg-gradient-to-tr from-surface-container-highest/60 via-transparent to-surface-variant/40 pointer-events-none"></div>
+<!-- Radar Echo Simulation Artifacts -->
+<div class="absolute top-1/4 left-1/3 w-48 h-48 rounded-full bg-error/20 blur-xl pointer-events-none animate-pulse"></div>
+<div class="absolute top-1/3 left-1/4 w-32 h-32 rounded-full bg-on-tertiary-container/30 blur-lg pointer-events-none"></div>
+<!-- Radar Reticle / HUD Elements -->
+<div class="relative z-10 flex items-center justify-between">
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/90 backdrop-blur px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface shadow-sm">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span>DWR Guwahati (Borjhar) • Range: 250 km • El: 0.5°</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-lowest/90 backdrop-blur px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface shadow-sm">
+<span>DWR Mohanbari (Dibrugarh) Dual Feed Linked</span>
+</div>
+</div>
+<!-- Center Crosshair & Range Rings -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-64 h-64 rounded-full border border-dashed border-outline-variant/60 flex items-center justify-center">
+<div class="w-36 h-36 rounded-full border border-dashed border-outline-variant/60 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[18px]">radio_button_checked</span>
+</div>
+</div>
+</div>
+<!-- Radar Legend & Timestamp Anchor -->
+<div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-surface-container-lowest/90 backdrop-blur p-space-sm rounded-lg shadow-sm">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm uppercase font-bold text-on-surface-variant">dBZ Intensity:</span>
+<div class="flex items-center gap-1 font-label-sm text-label-sm">
+<span class="w-4 h-3 bg-secondary-container text-[9px] text-center font-mono">15</span>
+<span class="w-4 h-3 bg-surface-variant text-[9px] text-center font-mono">25</span>
+<span class="w-4 h-3 bg-primary-fixed text-[9px] text-center font-mono">35</span>
+<span class="w-4 h-3 bg-error-container text-[9px] text-center font-mono">45</span>
+<span class="w-4 h-3 bg-error text-on-error text-[9px] text-center font-mono">55+</span>
+</div>
+</div>
+<div class="font-mono text-label-sm text-on-surface-variant">
+            Composite Timestamp: <span class="font-bold text-on-surface">2025-10-14 14:15:00 IST</span>
+</div>
+</div>
+</div>
+<!-- Radar Configuration & Limitations Panel -->
+<div class="lg:col-span-4 flex flex-col justify-between bg-surface-container-low p-space-md rounded-xl gap-space-sm">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Telemetry Disclosures</span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">verified</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Data Lineage &amp; Physical Constraints</h4>
+<div class="flex flex-col gap-space-sm pt-2">
+<div class="flex flex-col bg-surface-container-lowest p-space-sm rounded-lg gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Direct Agency Connect</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+                Data polled directly via India Meteorological Department (IMD) REST API endpoint and NESAC MOSDAC geostationary feed.
+              </p>
+</div>
+<div class="flex flex-col bg-surface-container-lowest p-space-sm rounded-lg gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-error">Radar Beam Blockage Warning</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+                Significant ground clutter and orographic beam blockage occur in deep gorges along the Kameng, Subansiri, and Lohit river valleys. Echoes below 2,500m MSL in these pockets may be partially obscured.
+              </p>
+</div>
+<div class="flex flex-col bg-surface-container-lowest p-space-sm rounded-lg gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface-variant">Telemetry Latency SLA</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+                Typical DWR azimuth sweep cycle: 12 minutes. High-altitude satellite cloud-top temperature maps synchronize every 30 minutes.
+              </p>
+</div>
+</div>
+</div>
+<!-- Download & Protocol Documentation -->
+<div class="flex items-center justify-between pt-2 border-t-0">
+<a class="font-label-sm text-label-sm text-secondary hover:underline flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span>View IMD Tech Bulletin (PDF)</span>
+</a>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">Ver 4.12-NER</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Operational Footer Callout / Field Dispatch Directive -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md bg-primary text-on-primary p-space-lg rounded-xl shadow-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary text-[28px]">notifications_active</span>
+</div>
+<div class="flex flex-col">
+<h4 class="font-headline-sm text-headline-sm font-semibold">Field Team Pre-Deployment Advisory</h4>
+<p class="font-body-sm text-body-sm text-on-primary/80">
+          SDRF battalions in Shillong, Guwahati, and Silchar are staged on 15-minute alert notice. Satellite phone checks required every 120 minutes.
+        </p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0 w-full sm:w-auto">
+<button class="w-full sm:w-auto px-space-lg py-2 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold hover:bg-secondary-fixed transition-colors text-center">
+        Acknowledge Bulletin
+      </button>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interactions for radar scrubbing buttons & telemetry refresh simulation
+  document.querySelectorAll('.radar-step-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.radar-step-btn').forEach(b => {
+        b.classList.remove('bg-primary', 'text-on-primary', 'font-semibold', 'active-radar-btn');
+        b.classList.add('text-on-surface-variant');
+      });
+      this.classList.add('bg-primary', 'text-on-primary', 'font-semibold', 'active-radar-btn');
+      this.classList.remove('text-on-surface-variant');
+    });
+  });
+
+  const refreshBtn = document.getElementById('refreshTeleBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function() {
+      const originalText = this.innerHTML;
+      this.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Polling AWS...</span>';
+      setTimeout(() => {
+        this.innerHTML = originalText;
+      }, 1000);
+    });
+  }
+</script></main></div><footer class="fixed bottom-0 left-0 right-0 h-10 z-40 bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.04)]"><div class="h-full w-full px-margin-desktop flex items-center justify-between"><div class="flex items-center gap-space-md overflow-hidden whitespace-nowrap"><span class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">Authorized Nodes:</span><div class="flex items-center gap-space-sm font-label-md text-label-md text-on-surface"><span class="hover:text-primary cursor-pointer">IMD</span>•<span class="hover:text-primary cursor-pointer">CWC</span>•<span class="hover:text-primary cursor-pointer">BRO</span>•<span class="hover:text-primary cursor-pointer">NESAC</span>•<span class="hover:text-primary cursor-pointer">ASDMA</span></div></div><div class="flex items-center gap-space-md shrink-0 font-label-sm text-label-sm text-on-surface-variant"><span class="hidden sm:inline">Telemetry Source: National Data Sharing Platform (NDSP)</span><span>Verified Sync: 14:02:18 IST</span></div></div></footer></body></html>

@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 
@@ -6,6 +7,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     APP_ENV: str = "development"
     API_V1_PREFIX: str = "/api/v1"
+    PORT: int = 8000
     
     # Database
     DATABASE_URL: str = "sqlite:///./ne_safe.db"
@@ -58,6 +60,41 @@ class Settings(BaseSettings):
     OPEN_METEO_ENABLED: bool = True
     OPEN_METEO_API_URL: str = "https://api.open-meteo.com/v1/forecast"
     OPEN_METEO_TIMEOUT_SECONDS: int = 8
+
+    # Current weather provider. Keep this credential on the backend only.
+    OPENWEATHER_API_KEY: Optional[str] = None
+    OPENWEATHER_API_URL: str = "https://api.openweathermap.org/data/2.5/weather"
+    OPENWEATHER_FORECAST_API_URL: str = "https://api.openweathermap.org/data/2.5/forecast"
+    OPENWEATHER_TIMEOUT_SECONDS: int = 8
+    OPENWEATHER_CACHE_TTL_SECONDS: int = 300
+    OPENWEATHER_FORECAST_CACHE_TTL_SECONDS: int = 1800
+
+    @field_validator("OPENWEATHER_API_KEY", mode="before")
+    @classmethod
+    def normalize_openweather_key(cls, value):
+        """Treat blank environment values as unconfigured without logging a secret."""
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    # Optional AI explanation provider. The browser never receives this key.
+    OPENROUTER_ENABLED: bool = False
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "openrouter/auto"
+    OPENROUTER_TIMEOUT_SECONDS: int = 12
+    OPENROUTER_MAX_TOKENS: int = 700
+    OPENROUTER_RATE_LIMIT_PER_MINUTE: int = 8
+
+    @field_validator("OPENROUTER_API_KEY", mode="before")
+    @classmethod
+    def normalize_openrouter_key(cls, value):
+        """Treat blank environment values as unconfigured without logging secrets."""
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
 
     # Background sync scheduler
     AUTO_SYNC_ENABLED: bool = True

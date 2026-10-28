@@ -428,7 +428,7 @@ export interface TinyFishRetrievalResult {
   error_message?: string | null;
 }
 
-export interface TinyFishGeminiSummary {
+export interface TinyFishAISummary {
   summary: string;
   source_freshness?: 'CURRENT' | 'STALE' | 'UNVERIFIED_DATE';
   publication_timestamp?: string | null;
@@ -437,5 +437,10 @@ export interface TinyFishGeminiSummary {
   preparedness_actions: string[];
   evidence_sufficient: boolean;
   content_type: 'AI_GENERATED_EXPLANATION';
+  generated_at?: string | null;
+  model?: string | null;
 }
+
+/** @deprecated Use TinyFishAISummary. */
+export type TinyFishGeminiSummary = TinyFishAISummary;
 

@@ -4,7 +4,7 @@ import {
   LiveNewsFeedItem, LiveDataSyncItem,
   RescueRequestItem, RescueTrackingItem, RescueRequestCreate, UpdateRescueStatusPayload, AnalyticsOverview,
   AlertDistrictItem, SubscriptionResult, GeoJSONFeatureCollection, HistoricalEventItem,
-  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, TinyFishGeminiSummary, AuthenticatedUser, ModelValidationReport
+  TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, TinyFishAISummary, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
 const configuredApiBase = (import.meta as any).env?.VITE_API_BASE_URL ||
@@ -16,22 +16,95 @@ export interface CurrentWeatherItem {
   location_id: string;
   location_name: string;
   source: string;
+  city?: string | null;
+  state?: string | null;
+  district?: string | null;
+  latitude?: number;
+  longitude?: number;
+  spatial_scope?: string;
   current: {
     time?: string;
     temperature_2m?: number;
+    feels_like?: number;
     precipitation?: number;
     wind_speed_10m?: number;
+    wind_gust_10m?: number;
+    relative_humidity_2m?: number;
+    surface_pressure?: number;
+    wind_direction_deg?: number;
+    cloud_cover_percent?: number;
+    weather_condition?: string | null;
+    weather_description?: string | null;
+    weather_icon?: string | null;
+    rainfall?: Record<string, number>;
+    snowfall?: Record<string, number>;
   } | null;
   current_units: {
     temperature_2m?: string;
+    feels_like?: string;
     precipitation?: string;
     wind_speed_10m?: string;
+    wind_gust_10m?: string;
+    relative_humidity_2m?: string;
+    surface_pressure?: string;
+    wind_direction_deg?: string;
+    cloud_cover_percent?: string;
+    rainfall?: string;
+    snowfall?: string;
   };
   retrieved_at: string;
+  observed_at?: string | null;
+  observation_age_seconds?: number | null;
+  data_mode: 'LIVE' | 'CACHED' | 'STALE' | 'UNAVAILABLE';
+  availability_status?: string;
+  cache_hit: boolean;
+  cache_age_seconds?: number | null;
+  live_error?: string | null;
+  fallback_notice?: string | null;
+  provenance_policy: string;
+}
+
+export interface WeatherLocationItem {
+  id: string;
+  city: string;
+  name: string;
+  state: string;
+  district: string;
+  latitude: number;
+  longitude: number;
+  location_type: string;
+  coordinate_source: string;
+  coordinate_reference_url: string;
+}
+
+export interface WeatherForecastItem {
+  forecast_at: string;
+  temperature_c?: number | null;
+  feels_like_c?: number | null;
+  precipitation_probability?: number | null;
+  rainfall_3h_mm?: number | null;
+  snowfall_3h_mm?: number | null;
+  weather_condition?: string | null;
+  weather_description?: string | null;
+  cloud_cover_percent?: number | null;
+}
+
+export interface WeatherForecastResponse {
+  location_id: string;
+  location_name: string;
+  city?: string | null;
+  state?: string | null;
+  latitude: number;
+  longitude: number;
+  source: string;
+  forecast_kind: 'PROVIDER_FORECAST_NOT_OBSERVATION';
+  forecast: WeatherForecastItem[];
+  forecast_units?: Record<string, string>;
+  retrieved_at: string;
   data_mode: 'LIVE' | 'CACHED' | 'UNAVAILABLE';
+  availability_status: string;
   cache_hit: boolean;
   live_error?: string | null;
-  provenance_policy: string;
 }
 
 async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
@@ -109,6 +182,19 @@ export const api = {
     return res.json();
   },
 
+  async getAIStatus(): Promise<{
+    available: boolean;
+    provider: string;
+    content_type: string;
+    status?: string;
+    connectivity_verified?: boolean;
+    model?: string | null;
+  }> {
+    const res = await apiFetch(`${API_BASE}/ai/status`);
+    if (!res.ok) throw new Error(`AI status unavailable (HTTP ${res.status})`);
+    return res.json();
+  },
+
   async getLocations(): Promise<LocationItem[]> {
     const res = await apiFetch(`${API_BASE}/locations`);
     if (!res.ok) throw new Error("Failed to fetch locations");
@@ -133,6 +219,22 @@ export const api = {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data?.detail || `Could not fetch current weather (HTTP ${res.status})`);
+    }
+    return res.json();
+  },
+
+  async getWeatherLocations(): Promise<{ locations: WeatherLocationItem[]; state_count: number; spatial_scope: string }> {
+    const res = await apiFetch(`${API_BASE}/weather/locations`);
+    if (!res.ok) throw new Error(`Could not fetch weather locations (HTTP ${res.status})`);
+    return res.json();
+  },
+
+  async getWeatherForecast(locationId: string): Promise<WeatherForecastResponse> {
+    const query = new URLSearchParams({ location_id: locationId, provider: 'openweather' });
+    const res = await apiFetch(`${API_BASE}/weather/forecast?${query}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.detail || `Could not fetch forecast (HTTP ${res.status})`);
     }
     return res.json();
   },
@@ -458,10 +560,10 @@ export const api = {
     return res.json();
   },
 
-  async summarizeTinyFishRecord(recordId: string): Promise<TinyFishGeminiSummary> {
-    const res = await apiFetch(`${API_BASE}/sources/tinyfish/${encodeURIComponent(recordId)}/gemini-summary`, { method: 'POST' });
+  async summarizeTinyFishRecord(recordId: string): Promise<TinyFishAISummary> {
+    const res = await apiFetch(`${API_BASE}/sources/tinyfish/${encodeURIComponent(recordId)}/ai-summary`, { method: 'POST' });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.detail || `Gemini summary unavailable (HTTP ${res.status})`);
+    if (!res.ok) throw new Error(data?.detail || `AI summary unavailable (HTTP ${res.status})`);
     return data;
   }
 };

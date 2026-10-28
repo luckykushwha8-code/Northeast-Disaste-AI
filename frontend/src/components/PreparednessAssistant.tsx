@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, Loader2, Send } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -9,6 +9,16 @@ type AssistantResult = {
   preparedness_actions: string[];
   evidence_sufficient: boolean;
   disclaimer?: string;
+  generated_at?: string | null;
+  model?: string | null;
+};
+
+type AIStatus = {
+  available: boolean;
+  provider: string;
+  status?: string;
+  connectivity_verified?: boolean;
+  model?: string | null;
 };
 
 export function PreparednessAssistant() {
@@ -16,6 +26,15 @@ export function PreparednessAssistant() {
   const [result, setResult] = useState<AssistantResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getAIStatus().then(value => { if (active) setAiStatus(value); }).catch(() => {
+      if (active) setAiStatus(null);
+    });
+    return () => { active = false; };
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -31,6 +50,10 @@ export function PreparednessAssistant() {
       <h2 id="preparedness-title" className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-800">
         <Bot className="h-4 w-4 text-teal-700" /> Preparedness assistant
       </h2>
+      {aiStatus && <p className="mb-2 text-[10px] text-slate-500" aria-live="polite">
+        {aiStatus.provider}: {aiStatus.connectivity_verified ? 'verified' : aiStatus.available ? 'configured, not verified' : aiStatus.status ?? 'unavailable'}
+        {aiStatus.model ? ` · ${aiStatus.model}` : ''}
+      </p>}
       <form onSubmit={submit} className="flex gap-2">
         <label className="sr-only" htmlFor="preparedness-question">Ask about preparedness</label>
         <input id="preparedness-question" value={question} onChange={e => setQuestion(e.target.value)} maxLength={600}
@@ -41,10 +64,10 @@ export function PreparednessAssistant() {
       </form>
       {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
       {result && <div className="mt-3 space-y-2 border-t border-slate-100 pt-2 text-xs text-slate-700">
-        <p className="font-medium">AI-generated guidance</p><p>{result.summary}</p>
+        <p className="font-medium">AI-generated guidance{result.model ? ` · ${result.model}` : ''}</p><p>{result.summary}</p>
         {result.preparedness_actions.length > 0 && <ul className="list-disc space-y-1 pl-4">{result.preparedness_actions.map((item, i) => <li key={i}>{item}</li>)}</ul>}
         {!result.evidence_sufficient && <p className="text-amber-800">Evidence is limited. Check official updates.</p>}
-        <p className="text-[10px] text-slate-500">{result.disclaimer ?? 'Follow current official instructions. For immediate danger in India, call 112. This assistant does not dispatch rescue.'}</p>
+        <p className="text-[10px] text-slate-500">{result.generated_at ? `Generated ${new Date(result.generated_at).toLocaleString()}. ` : ''}{result.disclaimer ?? 'Follow current official instructions. For immediate danger in India, call 112. This assistant does not dispatch rescue.'}</p>
       </div>}
     </section>
   );

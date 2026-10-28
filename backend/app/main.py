@@ -9,6 +9,7 @@ from app.config import settings
 from app.database import engine, Base, SessionLocal
 from app.api.v1.routes import router as api_v1_router
 from app.data.seed_data import seed_database
+from app.services.openweather_service import openweather_service
 
 logger = logging.getLogger("nesafe.scheduler")
 
@@ -47,6 +48,11 @@ def run_daily_report():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    weather_status = openweather_service.validate_configuration()
+    logger.info(
+        "OpenWeather configuration checked (configured=%s, connectivity=%s).",
+        weather_status["configured"], weather_status["status"],
+    )
     # Initialize database tables
     Base.metadata.create_all(bind=engine)
     # Seed initial data
@@ -131,4 +137,4 @@ def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=settings.PORT, reload=True)

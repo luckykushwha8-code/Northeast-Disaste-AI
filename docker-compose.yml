@@ -9,9 +9,20 @@ services:
     environment:
       - APP_NAME=NE-SAFE AI
       - DATABASE_URL=sqlite:////data/nesafe.db
+      - PORT=${PORT:-8000}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-http://localhost:5173}
       - AUTH_SECRET_KEY=${AUTH_SECRET_KEY-}
       - AUTH_USERS_JSON=${AUTH_USERS_JSON-}
       - AUTH_TOKEN_TTL_MINUTES=${AUTH_TOKEN_TTL_MINUTES:-480}
+      - TINYFISH_API_KEY=${TINYFISH_API_KEY-}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY-}
+      - OPENROUTER_ENABLED=${OPENROUTER_ENABLED:-false}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openrouter/auto}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - GEMINI_ENABLED=${GEMINI_ENABLED:-false}
+      - GEMINI_API_KEY=${GEMINI_API_KEY-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
       # Synthetic replay data must never be enabled in a deployed stack by default.
       - ALLOW_SIMULATION=false
     volumes:

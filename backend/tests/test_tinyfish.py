@@ -60,7 +60,7 @@ def test_tinyfish_status_missing_key():
     assert data["key_preview"] is None
     assert data["endpoint"] == "https://api.fetch.tinyfish.ai"
     assert "imd.gov.in" in data["approved_domains"]
-    assert data["scheduled_sync_enabled"] is True
+    assert data["scheduled_sync_enabled"] is settings.AUTO_SYNC_ENABLED
     assert data["scheduled_sync_interval_minutes"] == 30
 
 # 2. Status with API key configured (masked key, no plaintext leaks)

@@ -164,7 +164,7 @@ def spec_texts_verbatim(spec):
 
 def test_connection_probe_all_endpoints_auth_gated(db_fixture=None):
     """Without an API key, fail closed without a network call or LIVE claim."""
-    if settings.IMD_API_KEY:
+    if getattr(settings, "IMD_API_KEY", None):
         pytest.skip("API key is configured; live 401 path not applicable")
     db = SessionLocal()
     try:
@@ -177,49 +177,13 @@ def test_connection_probe_all_endpoints_auth_gated(db_fixture=None):
         db.close()
 
 
-def test_route_imd_sync_with_live_mocked(monkeypatch):
-    """Full /imd/sync flow with all three feeds mocked LIVE from doc samples."""
-    db = SessionLocal()
-    try:
-        monkeypatch.setattr(imd_api_service, "fetch_endpoint",
-                            lambda d, slug, id_param=None: {
-                                "rainfall": _mocked_fetch(RAIN_ROWS),
-                                "warnings": _mocked_fetch(WARNING_ROWS),
-                                "qpf": _mocked_fetch(QPF_ROWS),
-                                "nowcast": _mocked_fetch([]),
-                            }.get(slug, _mocked_fetch([])))
-        client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
-        resp = client.post("/api/v1/imd/sync")
-        assert resp.status_code == 200, resp.text[:300]
-        body = resp.json()
-        assert body["rainfall"]["ingested"] == 7
-        assert body["rainfall"]["unmatched_districts"] == ["UNKNOWN IMPERIAL DISTRICT"]
-        # Kamrup: 2 day-warnings x 5 locations == 10 official alerts
-        assert body["official_warnings"]["alerts_created"] == 10, str(body["official_warnings"])
-
-        # Official alerts stored verbatim with OFFICIAL_AGENCY source and reference
-        guide = db.query(Alert).filter(
-            Alert.source_type == "OFFICIAL_AGENCY",
-            Alert.created_by == "IMD_REST_API_ADAPTER"
-        ).all()
-        assert len(guide) == 10
-        guwahati = [a for a in guide if a.location_id == "loc_pandu_ghat"]
-        assert any("Heavy Rain" in a.title for a in guwahati)
-        assert all(a.official_source_reference for a in guide)
-
-        # Idempotent: a second sync must not duplicate official alerts
-        resp2 = client.post("/api/v1/imd/sync")
-        body2 = resp2.json()
-        assert body2["official_warnings"]["alerts_created"] == 0
-    finally:
-        db.close()
+def test_legacy_direct_imd_sync_route_is_not_exposed():
+    """Live official-source extraction uses TinyFish; the legacy IMD API proxy stays retired."""
+    client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
+    assert client.post("/api/v1/imd/sync").status_code == 404
 
 
 def test_route_imd_status_shape():
     client = TestClient(app, headers=AUTH_HEADERS["OPERATOR"])
     resp = client.get("/api/v1/imd/status")
-    assert resp.status_code == 200
-    d = resp.json()
-    assert d["api_key_configured"] == bool(settings.IMD_API_KEY)
-    for slug in ("rainfall", "warnings", "nowcast", "qpf", "aws", "aws_map"):
-        assert any(e["endpoint"] == slug for e in d["endpoints"])
+    assert resp.status_code == 404

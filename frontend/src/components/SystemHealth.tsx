@@ -73,7 +73,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initial
         </div>
         <p className="text-xs text-slate-500 mb-4">
           Refreshes CWC station telemetry, IMD and GSI public pages through TinyFish, and
-          regional news. Only dated source data is shown as current; Gemini summaries are
+          regional news. Only dated source data is shown as current; AI summaries are
           labeled as AI summaries and never create official warnings.
         </p>
 

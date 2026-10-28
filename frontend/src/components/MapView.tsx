@@ -4,11 +4,12 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { LocationItem, PredictionItem, AlertItem, ShelterItem, IncidentReportItem, Language, GeoJSONFeatureCollection, HistoricalEventItem } from '../types';
-import { Mountain, Info, MapPin, Radio, ShieldCheck, Megaphone, Layers, CheckCircle2 } from 'lucide-react';
+import { Mountain, Info, MapPin, Radio, ShieldCheck, Megaphone, Layers, CheckCircle2, CloudRain, X } from 'lucide-react';
 import {
   buildBaseStyle, NE_BOUNDS, NE_CENTER, NE_ZOOM, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
-import { api } from '../api/client';
+import { api, type WeatherLocationItem } from '../api/client';
+import { LiveWeatherCard } from './LiveWeatherCard';
 
 interface MapViewProps {
   locations: LocationItem[];
@@ -54,8 +55,13 @@ export const MapView: React.FC<MapViewProps> = ({
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [baseMapProvider, setBaseMapProvider] = useState<BaseMapProvider>(() => defaultBaseProvider());
   const [styleVersion, setStyleVersion] = useState<number>(0);
-  const [layers, setLayers] = useState({ risk: true, terrain: false, history: false, shelters: true, incidents: true, districts: true });
+  const [layers, setLayers] = useState({ risk: true, terrain: false, history: false, shelters: true, incidents: true, districts: true, weather: true });
   const [riskData, setRiskData] = useState<GeoJSONFeatureCollection | null>(null);
+  const [weatherLocations, setWeatherLocations] = useState<WeatherLocationItem[]>([]);
+  const [selectedWeatherLocation, setSelectedWeatherLocation] = useState<WeatherLocationItem | null>(null);
+  const [weatherLocationsLoading, setWeatherLocationsLoading] = useState(true);
+  const [weatherLocationsError, setWeatherLocationsError] = useState<string | null>(null);
+  const weatherClickHandler = useRef<((event: any) => void) | null>(null);
   const [history, setHistory] = useState<HistoricalEventItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [boundaryData, setBoundaryData] = useState<GeoJSONFeatureCollection | null>(null);
@@ -65,12 +71,21 @@ export const MapView: React.FC<MapViewProps> = ({
       // Static validated district boundaries (public India boundary data, NE subset)
       const bd = await fetch('/geo/ne_districts.geojson');
       if (bd.ok) setBoundaryData(await bd.json());
-      const [geoResult, eventsResult] = await Promise.allSettled([
-        api.getRiskGeo(), api.getHistoricalEvents()
+      const [geoResult, eventsResult, weatherResult] = await Promise.allSettled([
+        api.getRiskGeo(), api.getHistoricalEvents(), api.getWeatherLocations()
       ]);
       if (geoResult.status === 'fulfilled') setRiskData(geoResult.value as GeoJSONFeatureCollection);
       if (eventsResult.status === 'fulfilled') setHistory(eventsResult.value);
+      if (weatherResult.status === 'fulfilled') {
+        setWeatherLocations(weatherResult.value.locations);
+        setWeatherLocationsError(null);
+      } else {
+        setWeatherLocationsError('Weather monitoring locations are unavailable.');
+      }
+      setWeatherLocationsLoading(false);
     } catch (e) {
+      setWeatherLocationsLoading(false);
+      setWeatherLocationsError('Weather monitoring locations are unavailable.');
       console.error('Risk layer fetch failed', e);
     }
   };
@@ -159,11 +174,15 @@ export const MapView: React.FC<MapViewProps> = ({
     try {
       const style = map.getStyle();
       if (style) {
+        if (weatherClickHandler.current) {
+          map.off('click', 'weather-location-points', weatherClickHandler.current);
+          weatherClickHandler.current = null;
+        }
         (style.layers || [])
-          .filter((l: any) => l.id.startsWith('risk') || l.id.startsWith('terrain') || l.id.startsWith('hist') || l.id.startsWith('shelter') || l.id.startsWith('incident') || l.id.startsWith('boundary'))
+          .filter((l: any) => l.id.startsWith('risk') || l.id.startsWith('terrain') || l.id.startsWith('hist') || l.id.startsWith('shelter') || l.id.startsWith('incident') || l.id.startsWith('boundary') || l.id.startsWith('weather-location'))
           .forEach((l: any) => { try { map.removeLayer(l.id); } catch { /* ignore */ } });
         Object.keys(style.sources || {})
-          .filter(s => s.startsWith('risk') || s.startsWith('terrain') || s.startsWith('hist') || s.startsWith('shelter') || s.startsWith('incident') || s.startsWith('boundary'))
+          .filter(s => s.startsWith('risk') || s.startsWith('terrain') || s.startsWith('hist') || s.startsWith('shelter') || s.startsWith('incident') || s.startsWith('boundary') || s.startsWith('weather-location'))
           .forEach(s => { try { map.removeSource(s); } catch { /* not yet added */ } });
       }
     } catch (e) {
@@ -312,6 +331,61 @@ export const MapView: React.FC<MapViewProps> = ({
       map.on('mouseleave', 'risk-core', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
 
       setLastUpdated(riskData.generated_at ?? null);
+    }
+
+    /* ---- Weather location points. Values load only after selecting a point. ---- */
+    if (layers.weather && weatherLocations.length) {
+      map.addSource('weather-location-src', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: weatherLocations.map(location => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
+            properties: { id: location.id, city: location.city, name: location.name, state: location.state, district: location.district }
+          }))
+        }
+      });
+      map.addLayer({
+        id: 'weather-location-points',
+        type: 'circle',
+        source: 'weather-location-src',
+        filter: selectedState === 'ALL' ? undefined : ['==', ['get', 'state'], selectedState],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 9],
+          'circle-color': '#0f766e',
+          'circle-opacity': 0.96,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2.5
+        }
+      });
+      map.addLayer({
+        id: 'weather-location-labels',
+        type: 'symbol',
+        source: 'weather-location-src',
+        filter: selectedState === 'ALL' ? undefined : ['==', ['get', 'state'], selectedState],
+        minzoom: 7,
+        layout: {
+          'text-field': ['get', 'city'],
+          'text-size': 10,
+          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Regular'],
+          'text-offset': [0, 1.2],
+          'text-anchor': 'top',
+          'text-allow-overlap': false
+        },
+        paint: { 'text-color': '#134e4a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
+      });
+      const onWeatherClick = (event: any) => {
+        const props = event.features?.[0]?.properties;
+        if (!props) return;
+        const point = weatherLocations.find(item => item.id === props.id);
+        if (point) {
+          setSelectedWeatherLocation(point);
+          map.easeTo({ center: [point.longitude, point.latitude], zoom: Math.max(map.getZoom(), 7), duration: 450 });
+        }
+      };
+      weatherClickHandler.current = onWeatherClick;
+      map.on('click', 'weather-location-points', onWeatherClick);
     }
 
     if (layers.history && history.length) {
@@ -471,13 +545,14 @@ export const MapView: React.FC<MapViewProps> = ({
         map.on('mouseleave', 'incident-core', () => map.getCanvas().style.cursor = '');
       }
     }
-  }, [ready, styleVersion, riskData, history, layers, baseMapProvider, locations, predictions, alerts, shelters, reports, boundaryData]);
+  }, [ready, styleVersion, riskData, history, layers, baseMapProvider, locations, predictions, alerts, shelters, reports, boundaryData, weatherLocations, selectedState]);
 
   const flyToState = (state: string) => {
     setSelectedState(state);
     const map = mlRef.current;
     if (!map) return;
-    const locs = state === 'ALL' ? locations : locations.filter(l => l.state === state);
+    const weatherLocs = weatherLocations.filter(l => state === 'ALL' || l.state === state);
+    const locs = weatherLocs.length ? weatherLocs : state === 'ALL' ? locations : locations.filter(l => l.state === state);
     if (locs.length) {
       const lats = locs.map(l => l.latitude);
       const lngs = locs.map(l => l.longitude);
@@ -488,7 +563,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
-  const toggleLayer = (key: 'risk' | 'terrain' | 'history' | 'shelters' | 'incidents' | 'districts') => setLayers(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleLayer = (key: 'risk' | 'terrain' | 'history' | 'shelters' | 'incidents' | 'districts' | 'weather') => setLayers(prev => ({ ...prev, [key]: !prev[key] }));
 
   const activeAlertCount = alerts.filter(a => a.lifecycle_status === 'ISSUED' || a.lifecycle_status === 'PROPOSED').length;
 
@@ -518,6 +593,13 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
 
         <div className="bg-white/95 backdrop-blur-sm p-1 rounded-lg shadow-md border border-slate-200 flex items-center gap-1">
+          <button
+            onClick={() => toggleLayer('weather')}
+            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-all ${layers.weather ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            aria-pressed={layers.weather}
+          >
+            <CloudRain className="w-3.5 h-3.5" /> Weather points
+          </button>
           <button
             onClick={() => toggleLayer('risk')}
             className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition-all ${layers.risk ? 'bg-red-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
@@ -592,6 +674,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <span>NER Risk Layers (MapLibre)</span>
         </div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-teal-700" /><span>Weather point · select for conditions</span></div>
           <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-600" /><span>CRITICAL</span></div>
           <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-500" /><span>HIGH</span></div>
           <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" /><span>MODERATE</span></div>
@@ -611,6 +694,22 @@ export const MapView: React.FC<MapViewProps> = ({
           </div>
         )}
       </div>
+
+      {selectedWeatherLocation && (
+        <aside className="absolute right-3 top-16 z-[410] w-[min(390px,calc(100%-1.5rem))] max-h-[calc(100%-5rem)] overflow-y-auto rounded-xl bg-white/95 p-2 shadow-xl backdrop-blur-sm" aria-label="Selected weather location">
+          <div className="flex items-center justify-between px-2 pb-1">
+            <div><p className="text-[10px] font-bold uppercase tracking-wide text-teal-800">Selected weather point</p><p className="text-xs text-slate-500">{selectedWeatherLocation.district}, {selectedWeatherLocation.state}</p></div>
+            <button onClick={() => setSelectedWeatherLocation(null)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Close selected weather point"><X className="h-4 w-4" /></button>
+          </div>
+          <p className="px-2 pb-2 text-[10px] text-slate-500">Coordinates: {selectedWeatherLocation.latitude.toFixed(4)}, {selectedWeatherLocation.longitude.toFixed(4)} · <a className="underline decoration-teal-500 underline-offset-2" href={selectedWeatherLocation.coordinate_reference_url} target="_blank" rel="noreferrer">{selectedWeatherLocation.coordinate_source}</a></p>
+          <LiveWeatherCard location={selectedWeatherLocation.name} locationId={selectedWeatherLocation.id} />
+        </aside>
+      )}
+      {layers.weather && !weatherLocations.length && (weatherLocationsLoading || weatherLocationsError) && (
+        <div className="absolute right-3 top-16 z-[410] rounded-lg border border-slate-200 bg-white/95 p-3 text-xs text-slate-700 shadow" role="status">
+          {weatherLocationsLoading ? 'Loading weather monitoring points…' : weatherLocationsError}
+        </div>
+      )}
 
       {activeAlertCount > 0 && (
         <div className="absolute top-4 right-14 z-[400] bg-red-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow">
