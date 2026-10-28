@@ -77,7 +77,7 @@ export const api = {
     return data;
   },
 
-  async askPreparednessAssistant(question: string) {
+  async askVoiceAssistant(question: string) {
     const res = await apiFetch(`${API_BASE}/ai/preparedness`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question })
@@ -112,6 +112,19 @@ export const api = {
   async getHealth() {
     const res = await apiFetch(`${API_BASE}/health`);
     if (!res.ok) throw new Error("Health check failed");
+    return res.json();
+  },
+
+  async getAIStatus(): Promise<{
+    available: boolean;
+    provider: string;
+    content_type: string;
+    status?: string;
+    connectivity_verified?: boolean;
+    model?: string | null;
+  }> {
+    const res = await apiFetch(`${API_BASE}/ai/status`);
+    if (!res.ok) throw new Error(`AI status unavailable (HTTP ${res.status})`);
     return res.json();
   },
 

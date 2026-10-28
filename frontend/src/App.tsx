@@ -1,15 +1,15 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
-  Activity, BarChart2, Bell, Bot, FileText, FlaskConical, Layers,
-  LayoutDashboard, LifeBuoy, LogIn, LogOut, Mail, Map, MapPinned, X
+  Activity, BarChart2, Bell, FileText, FlaskConical, Layers,
+  LayoutDashboard, LifeBuoy, LogIn, LogOut, Mail, Map, MapPinned, Mic, X
 } from 'lucide-react';
 
 import { AuthDialog } from './components/AuthDialog';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 import { RoleBadge } from './components/ui/RoleBadge';
 import { ToastProvider } from './components/ui/Toast';
-import { PreparednessAssistant } from './components/PreparednessAssistant';
+import { VoiceAssistant } from './components/VoiceAssistant';
 import { api } from './api/client';
 import { useVisibleRefresh } from './hooks/useVisibleRefresh';
 import type { AlertItem, AuthenticatedUser, Language, PredictionItem, UserRole } from './types';
@@ -160,15 +160,15 @@ function AppShell() {
       </div>
 
       <div className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end gap-3">
-        {assistantOpen && <div className="w-[min(23rem,calc(100vw-2rem))] rounded-2xl border border-[#e8e1d8] bg-white p-3 shadow-[0_18px_60px_rgba(50,35,20,0.2)]">
+        {assistantOpen && <div className="w-[min(27rem,calc(100vw-2rem))] max-h-[min(75dvh,44rem)] overflow-y-auto rounded-2xl border border-[#e8e1d8] bg-white p-3 shadow-[0_18px_60px_rgba(50,35,20,0.2)]">
           <div className="mb-2 flex items-center justify-between px-1">
-            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#503b2d]"><Bot className="h-4 w-4 text-[#806047]" /> Preparedness assistant</span>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#503b2d]"><Mic className="h-4 w-4 text-[#806047]" /> GeoShield voice assistant</span>
             <button onClick={() => setAssistantOpen(false)} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close assistant"><X className="h-4 w-4" /></button>
           </div>
-          <PreparednessAssistant />
+          <VoiceAssistant lang={lang} />
         </div>}
-        <button onClick={() => setAssistantOpen(open => !open)} className="inline-flex items-center gap-2 rounded-full bg-[#6f513e] px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#59412f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7b62]" aria-expanded={assistantOpen} aria-label={assistantOpen ? 'Close preparedness assistant' : 'Open preparedness assistant'}>
-          {assistantOpen ? <X className="h-4 w-4" /> : <Bot className="h-4 w-4" />}<span className="hidden sm:inline">AI assistant</span>
+        <button onClick={() => setAssistantOpen(open => !open)} className="inline-flex items-center gap-2 rounded-full bg-[#6f513e] px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#59412f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b7b62]" aria-expanded={assistantOpen} aria-label={assistantOpen ? 'Close GeoShield voice assistant' : 'Talk to GeoShield'}>
+          {assistantOpen ? <X className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="hidden sm:inline">{assistantOpen ? 'Close voice assistant' : 'Talk to GeoShield'}</span>
         </button>
       </div>
 
