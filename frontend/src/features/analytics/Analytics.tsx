@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ReferenceLine
+  CartesianGrid, Tooltip, Legend
 } from 'recharts';
 import { api } from '../../api/client';
 import type { AnalyticsOverview } from '../../types';
@@ -10,7 +10,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { useVisibleRefresh } from '../../hooks/useVisibleRefresh';
 import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity, RefreshCw } from 'lucide-react';
 import { LiveWeatherCard } from '../../components/LiveWeatherCard';
-import type { WeatherLocationItem } from '../../api/client';
+import type { WeatherForecastResponse, WeatherLocationItem } from '../../api/client';
 
 const CARD_ICONS: Record<string, React.ElementType> = {
   rainfall: Droplets,
@@ -24,10 +24,10 @@ const CARD_ICONS: Record<string, React.ElementType> = {
 };
 
 function AnalyticsCard({
-  title, subtitle, icon: Icon, children, onCSV,
+  title, subtitle, icon: Icon, children, onCSV, dataLabel = 'Verified backend data',
 }: {
   title: string; subtitle: string; icon?: React.ElementType;
-  children: React.ReactNode; onCSV?: () => void;
+  children: React.ReactNode; onCSV?: () => void; dataLabel?: string;
 }) {
   const Ico = Icon ?? BarChart2;
   return (
@@ -41,7 +41,7 @@ function AnalyticsCard({
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] text-slate-500">Stored records · freshness varies</span>
+          <span className="text-[10px] text-slate-500">{dataLabel}</span>
           {onCSV && (
             <button onClick={onCSV} className="text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition">CSV</button>
           )}
@@ -79,6 +79,8 @@ export default function Analytics() {
   const [hoursWindow, setHoursWindow] = useState(48);
   const [weatherLocations, setWeatherLocations] = useState<WeatherLocationItem[]>([]);
   const [weatherLocationId, setWeatherLocationId] = useState('wx_guwahati');
+  const [weatherForecast, setWeatherForecast] = useState<WeatherForecastResponse | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -89,7 +91,16 @@ export default function Analytics() {
       .finally(() => setLoading(false));
   }, [hoursWindow]);
 
+  const refreshForecast = useCallback(() => {
+    if (!weatherLocationId) return;
+    setForecastError(null);
+    api.getWeatherForecast(weatherLocationId)
+      .then(setWeatherForecast)
+      .catch(reason => setForecastError(reason instanceof Error ? reason.message : 'Forecast unavailable'));
+  }, [weatherLocationId]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { refreshForecast(); }, [refreshForecast]);
   useEffect(() => {
     let active = true;
     api.getWeatherLocations().then(result => {
@@ -102,6 +113,7 @@ export default function Analytics() {
     return () => { active = false; };
   }, []);
   useVisibleRefresh(load, 5 * 60 * 1000);
+  useVisibleRefresh(refreshForecast, 30 * 60 * 1000);
 
   if (loading && !data) return (
     <div className="space-y-4">
@@ -114,6 +126,20 @@ export default function Analytics() {
   if (!data) return <ErrorState message="Analytics unavailable" onRetry={load} />;
 
   const riverWithMarks = data.river_trend;
+  const totalAlerts = data.alerts_by_severity.reduce((sum, item) => sum + item.official + item.ai_generated, 0);
+  const forecastCutoff = Date.now() + 24 * 60 * 60 * 1000;
+  const liveForecast24h = (weatherForecast?.forecast ?? [])
+    .filter(point => {
+      const time = Date.parse(point.forecast_at);
+      return Number.isFinite(time) && time >= Date.now() && time <= forecastCutoff;
+    })
+    .map(point => ({
+      time: point.forecast_at,
+      rain_mm: point.rainfall_3h_mm ?? null,
+      probability: point.precipitation_probability == null ? null : Math.round(point.precipitation_probability * 100),
+      temperature_c: point.temperature_c ?? null,
+      condition: point.weather_description ?? point.weather_condition ?? 'Not reported',
+    }));
 
   return (
     <div className="space-y-4">
@@ -161,10 +187,11 @@ export default function Analytics() {
           title="Observed Rainfall (24h accumulation)"
           subtitle="Average and peak station readings by report hour · mm/24h"
           icon={CARD_ICONS.rainfall}
+          dataLabel="Verified station records"
           onCSV={() => downloadCSV(data.rainfall_trend_hourly, 'rainfall-trend')}
         >
           {data.rainfall_trend_hourly.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No rainfall data in this window</div>
+            <div className="text-xs text-slate-500 text-center py-8">No verified station rainfall observations were recorded in this window.</div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={data.rainfall_trend_hourly} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -181,30 +208,30 @@ export default function Analytics() {
         </AnalyticsCard>
 
         <AnalyticsCard
-          title="Next 24h Rainfall Forecast by Location"
-          subtitle="Open-Meteo forecast model · advisory trigger at 64.5 mm/24h"
+          title="Next 24h Rainfall Forecast"
+          subtitle={`OpenWeather · ${weatherForecast?.city || 'selected monitored point'} · 3-hour steps`}
           icon={CARD_ICONS.rainfall}
-          onCSV={() => downloadCSV(data.forecast_rainfall_24h, 'rainfall-forecast-24h')}
+          dataLabel={`${weatherForecast?.data_mode ?? 'Loading'} · ${weatherForecast?.source ?? 'weather provider'}`}
+          onCSV={() => downloadCSV(liveForecast24h, 'rainfall-forecast-24h')}
         >
-          {data.forecast_rainfall_24h.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No cached forecast available. Check System Health for feed status.</div>
+          {liveForecast24h.length === 0 ? (
+            <div className="text-xs text-slate-500 text-center py-8">{forecastError ?? weatherForecast?.live_error ?? 'No verified forecast periods are available for this location.'}</div>
           ) : <>
-            <div className="text-[11px] text-slate-500 mb-2">{data.forecast_rainfall_24h.filter(point => point.forecast_mm >= 64.5).length} monitored locations exceed this dashboard’s advisory rainfall trigger. Model output is not an IMD warning.</div>
+            <div className="text-[11px] text-slate-500 mb-2">Point forecast for {weatherForecast?.location_name}. Blank rainfall amounts mean the provider reported no amount for that step; they are not filled as zero.</div>
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={data.forecast_rainfall_24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <BarChart data={liveForecast24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="location" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} interval={0} angle={-20} textAnchor="end" height={48} />
+                <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} tickFormatter={value => new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit' })} />
                 <YAxis tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} unit=" mm" />
-                <Tooltip contentStyle={{ fontSize: 11 }} formatter={v => [`${v} mm`, 'Forecast next 24h']} />
-                <ReferenceLine y={64.5} stroke="#dc2626" strokeDasharray="5 3" label={{ value: 'Heavy rain', fill: '#b91c1c', fontSize: 9 }} />
-                <Bar dataKey="forecast_mm" name="Forecast mm" fill="#7C3AED" radius={[3,3,0,0]} maxBarSize={28} />
+                <Tooltip contentStyle={{ fontSize: 11 }} labelFormatter={value => new Date(String(value)).toLocaleString('en-IN')} formatter={value => [value == null ? 'Not reported' : `${value} mm / 3h`, 'Forecast rainfall']} />
+                <Bar dataKey="rain_mm" name="Forecast rainfall · mm/3h" fill="#0E7490" radius={[3,3,0,0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
-            <div className="max-h-28 overflow-y-auto text-[10px] text-slate-500">
-              {data.forecast_rainfall_24h.map(point => <div key={`${point.location}-${point.district}`} className="flex justify-between border-b border-slate-100 py-1"><span>{point.location} · {point.district}</span><span className="font-semibold">{point.forecast_mm.toFixed(1)} mm</span></div>)}
+            <div className="max-h-32 overflow-y-auto text-[10px] text-slate-500">
+              {liveForecast24h.map(point => <div key={point.time} className="flex justify-between border-b border-slate-100 py-1"><span>{new Date(point.time).toLocaleString('en-IN', { weekday: 'short', hour: '2-digit' })} · {point.condition}{point.probability == null ? '' : ` · ${point.probability}% rain`}</span><span className="font-semibold">{point.rain_mm == null ? 'Not reported' : `${point.rain_mm.toFixed(2)} mm / 3h`}</span></div>)}
             </div>
           </>}
-          <p className="text-[10px] text-slate-400">Forecast window is the next 24h from retrieval time. Heavy-rain band follows IMD amount classification; model forecast does not mean an official warning.</p>
+          <p className="text-[10px] text-slate-400">Forecast, not an observation or official IMD warning. Retrieved {weatherForecast?.retrieved_at ? new Date(weatherForecast.retrieved_at).toLocaleString('en-IN') : '—'}.</p>
         </AnalyticsCard>
 
         {/* 2. River Levels vs CWC Marks */}
@@ -212,10 +239,11 @@ export default function Analytics() {
           title="River Levels vs CWC Warning/Danger Marks"
           subtitle="Gauge readings in metres · CWC official thresholds"
           icon={CARD_ICONS.river}
+          dataLabel="CWC gauge observations"
           onCSV={() => downloadCSV(riverWithMarks, 'river-levels')}
         >
           {riverWithMarks.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No river level data available</div>
+            <div className="text-xs text-slate-500 text-center py-8">CWC has not supplied a current gauge reading for these monitored stations. The warning and danger marks are reference thresholds only.</div>
           ) : (
             <div className="max-h-64 overflow-auto">
               <table className="w-full text-[11px]">
@@ -277,10 +305,11 @@ export default function Analytics() {
           title="Active Alerts by Severity"
           subtitle="Official vs AI-generated alerts breakdown"
           icon={CARD_ICONS.alerts}
+          dataLabel="Current active alert records"
           onCSV={() => downloadCSV(data.alerts_by_severity, 'alerts-by-severity')}
         >
-          {data.alerts_by_severity.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No alert data</div>
+          {data.alerts_by_severity.length === 0 || totalAlerts === 0 ? (
+            <div className="py-8 text-center"><div className="text-2xl font-semibold text-slate-800">0 active alerts</div><div className="mt-1 text-xs text-slate-500">No official alerts or AI proposals are recorded in the active queue.</div></div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data.alerts_by_severity} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -302,10 +331,11 @@ export default function Analytics() {
           title="Community Incidents by Category"
           subtitle={`Reports submitted in the selected ${hoursWindow}h window · rejected reports excluded`}
           icon={CARD_ICONS.incidents}
+          dataLabel="Community submissions"
           onCSV={() => downloadCSV(data.incidents_by_category, 'incidents')}
         >
           {data.incidents_by_category.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No incident data</div>
+            <div className="py-8 text-center"><div className="text-2xl font-semibold text-slate-800">0 incident reports</div><div className="mt-1 text-xs text-slate-500">No community reports were submitted in the selected window.</div></div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data.incidents_by_category} layout="vertical" margin={{ top: 4, right: 8, left: 80, bottom: 0 }}>
@@ -323,10 +353,11 @@ export default function Analytics() {
           title="Rescue Request Pipeline"
           subtitle={`Requests submitted in the selected ${hoursWindow}h window · responder workload`}
           icon={CARD_ICONS.rescue}
+          dataLabel="Rescue requests"
           onCSV={() => downloadCSV(data.rescue_by_status, 'rescue-pipeline')}
         >
           {data.rescue_by_status.length === 0 ? (
-            <div className="text-xs text-slate-400 text-center py-8">No rescue data</div>
+            <div className="py-8 text-center"><div className="text-2xl font-semibold text-slate-800">0 requests</div><div className="mt-1 text-xs text-slate-500">No rescue requests were submitted in the selected window.</div></div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {data.rescue_by_status.map(r => (
