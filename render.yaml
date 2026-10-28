@@ -37,6 +37,20 @@ services:
         value: "true"
       - key: AUTO_SYNC_INTERVAL_MINUTES
         value: "30"
+      - key: PUBLIC_ALERTS_ENABLED
+        value: "true"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      - key: SMTP_TIMEOUT_SECONDS
+        value: "15"
       - key: TINYFISH_API_KEY
         sync: false
       - key: AUTH_SECRET_KEY
