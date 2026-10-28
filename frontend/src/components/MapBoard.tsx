@@ -19,6 +19,7 @@ import {
   LocationItem, AlertItem, ShelterItem, IncidentReportItem, HistoricalEventItem,
   GeoJSONFeatureCollection
 } from '../types';
+import type { WeatherForecastResponse, WeatherLocationItem } from '../api/client';
 
 interface MapBoardProps {
   locations: LocationItem[];
@@ -73,7 +74,7 @@ const GROUPS: { group: string; items: { key: OverlayKeys; label: string; icon: a
     items: [
       { key: 'officialWarnings', label: 'Official IMD warnings', icon: ShieldAlert, color: 'bg-red-600' },
       { key: 'rainfall', label: '24h rainfall observed', icon: CloudRain, color: 'bg-sky-600' },
-      { key: 'forecastRain', label: 'Heavy rain forecast · 24h', icon: CloudRain, color: 'bg-indigo-600' }
+      { key: 'forecastRain', label: 'Rain forecast aura · 24h', icon: CloudRain, color: 'bg-blue-600' }
     ]
   },
   {
@@ -110,6 +111,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const [boundaryData, setBoundaryData] = useState<GeoJSONFeatureCollection | null>(null);
   const [riskGeo, setRiskGeo] = useState<GeoJSONFeatureCollection | null>(null);
   const [history, setHistory] = useState<HistoricalEventItem[]>([]);
+  const [weatherLocations, setWeatherLocations] = useState<WeatherLocationItem[]>([]);
+  const [weatherForecasts, setWeatherForecasts] = useState<WeatherForecastResponse[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState('ALL');
   const [search, setSearch] = useState('');
@@ -143,6 +146,20 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   }, []);
   useEffect(() => { void refreshMapData(); }, [refreshMapData]);
   useVisibleRefresh(refreshMapData, 5 * 60 * 1000);
+
+  const refreshRainForecasts = useCallback(async () => {
+    try {
+      const { locations: items } = await api.getWeatherLocations();
+      setWeatherLocations(items);
+      const forecasts = await Promise.allSettled(items.map(item => api.getWeatherForecast(item.id)));
+      setWeatherForecasts(forecasts.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
+    } catch {
+      setWeatherLocations([]);
+      setWeatherForecasts([]);
+    }
+  }, []);
+  useEffect(() => { void refreshRainForecasts(); }, [refreshRainForecasts]);
+  useVisibleRefresh(refreshRainForecasts, 15 * 60 * 1000);
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -241,8 +258,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   }, [boundaryFeatures]);
 
   const selected = useMemo(
-    () => summaries?.districts.find(d => d.district === selectedDistrict) ?? null,
-    [summaries, selectedDistrict]
+    () => summaries?.districts.find(d => d.district === selectedDistrict && (selectedState === 'ALL' || d.state === selectedState)) ?? null,
+    [summaries, selectedDistrict, selectedState]
   );
 
   const selectedAlerts = useMemo(() => {
@@ -256,8 +273,9 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     if (!summaries) return [];
     const q = search.trim().toLowerCase();
     return summaries.districts
+      .filter(d => selectedState === 'ALL' || d.state === selectedState)
       .filter(d => !q || d.district.toLowerCase().includes(q) || (d.state ?? '').toLowerCase().includes(q));
-  }, [summaries, search]);
+  }, [summaries, search, selectedState]);
 
   // ---- overlay rebuild ----
   useEffect(() => {
@@ -329,6 +347,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
           return;
         }
         setSelectedDistrict(s.district);
+        setSelectedState(s.state ?? 'ALL');
         popup.setLngLat(e.lngLat).setHTML(`
           <div style="font-family:system-ui;min-width:230px">
             <div style="font-weight:800;font-size:13px">${escapeHtml(s.district)}</div>
@@ -475,10 +494,11 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
     }
 
     /* -- 24h rainfall station labels (only monitored stations with an observation) -- */
-    const rainStations = summaries?.districts.flatMap(d =>
+    const rainStations = summaries?.districts.filter(d => (selectedState === 'ALL' || d.state === selectedState) && (!selectedDistrict || (d.district === selectedDistrict && d.state === selectedState))).flatMap(d =>
       (d.rainfall_24h_all_locations ?? []).map(r => ({
         id: r.location_id,
         dist: d.district,
+        state: d.state,
         name: r.location,
         mm: r.value?.valueOf?.() ?? r.value,
         age: r.age_hours,
@@ -535,8 +555,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
 
     /* -- 24h model forecast triggers: IMD heavy-rain band, clearly advisory -- */
     const forecastPoints = (summaries?.districts ?? []).flatMap(d =>
-      (d.forecast_rainfall_24h_all_locations ?? []).map(f => ({ ...f, district: d.district }))
-    ).filter(f => f.data_mode === 'LIVE' && f.value_mm >= 64.5 &&
+      (d.forecast_rainfall_24h_all_locations ?? []).map(f => ({ ...f, district: d.district, state: d.state }))
+    ).filter(f => f.data_mode === 'LIVE' && f.value_mm >= 64.5 && (selectedState === 'ALL' || f.state === selectedState) && (!selectedDistrict || (f.district === selectedDistrict && f.state === selectedState)) &&
       Number.isFinite(f.longitude) && Number.isFinite(f.latitude));
     if (layers.forecastRain) {
       forecastPoints.forEach(f => {
@@ -564,6 +584,66 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
         rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
           .setLngLat([f.longitude, f.latitude]).addTo(map));
       });
+    }
+
+    /* -- provider forecast rain aura: distinct from observed rain and warning risk -- */
+    const now = Date.now();
+    const rainAuraFeatures = weatherForecasts.flatMap(forecast => {
+      const location = weatherLocations.find(item => item.id === forecast.location_id);
+      if (!location || (selectedState !== 'ALL' && location.state !== selectedState)) return [];
+      if (selectedDistrict) {
+        const districtRecord = summaries?.districts.find(item => item.district === selectedDistrict && item.state === selectedState);
+        const belongsToDistrict = districtRecord?.monitored_locations.some(site => site.id === location.id) ||
+          location.district.toLocaleLowerCase() === selectedDistrict.toLocaleLowerCase();
+        if (!belongsToDistrict) return [];
+      }
+      const retrieved = new Date(forecast.retrieved_at).getTime();
+      const ageMs = now - retrieved;
+      if (forecast.data_mode === 'UNAVAILABLE' || !Number.isFinite(retrieved) || ageMs < -5 * 60_000 || ageMs > 6 * 60 * 60_000) return [];
+      const next24 = forecast.forecast.filter(item => {
+        const time = new Date(item.forecast_at).getTime();
+        return Number.isFinite(time) && time >= now && time <= now + 24 * 60 * 60_000;
+      });
+      const rainfall = next24.reduce((sum, item) => sum + Math.max(0, Number(item.rainfall_3h_mm) || 0), 0);
+      const probability = next24.reduce((max, item) => Math.max(max, Number(item.precipitation_probability) || 0), 0);
+      if (rainfall <= 0 && probability <= 0) return [];
+      return [{
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [location.longitude, location.latitude] },
+        properties: { id: location.id, name: location.city || location.name, state: location.state, district: location.district,
+          rainfall, probability, source: forecast.source, mode: forecast.data_mode, retrieved: forecast.retrieved_at }
+      }];
+    });
+    if (layers.forecastRain && rainAuraFeatures.length) {
+      map.addSource('ov-rain-aura', { type: 'geojson', data: { type: 'FeatureCollection', features: rainAuraFeatures } as any });
+      map.addLayer({
+        id: 'ov-rain-aura-glow', type: 'circle', source: 'ov-rain-aura',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, ['+', 7, ['min', 14, ['*', ['get', 'rainfall'], 0.16]]], 8, ['+', 12, ['min', 26, ['*', ['get', 'rainfall'], 0.34]]]],
+          'circle-color': ['case', ['>=', ['get', 'rainfall'], 64.5], '#7c3aed', ['>=', ['get', 'rainfall'], 20], '#2563eb', '#38bdf8'],
+          'circle-opacity': 0.3, 'circle-blur': 0.85
+        }
+      });
+      map.addLayer({
+        id: 'ov-rain-aura-center', type: 'circle', source: 'ov-rain-aura',
+        paint: { 'circle-radius': 5, 'circle-color': '#2563eb', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' }
+      });
+      bindLayerEvent('click', 'ov-rain-aura-center', (event: any) => {
+        const props = event.features?.[0]?.properties;
+        if (!props) return;
+        const amount = Number(props.rainfall) || 0;
+        const probability = Math.round((Number(props.probability) || 0) * 100);
+        popup.setLngLat(event.lngLat).setHTML(`<div style="font-family:system-ui;min-width:210px">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.05em;color:#2563eb">RAIN FORECAST AURA · NEXT 24H</div>
+          <div style="font-weight:800;font-size:13px">${escapeHtml(props.name)}</div>
+          <div style="font-size:11px;color:#64748b">${escapeHtml(props.district)}, ${escapeHtml(props.state)}</div>
+          <div style="font-size:12px;margin-top:5px"><b>${amount.toFixed(1)} mm</b> forecast rain · up to <b>${probability}%</b> precipitation probability</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px">${escapeHtml(props.source)} · ${escapeHtml(props.mode)} · retrieved ${new Date(props.retrieved).toLocaleString()}</div>
+          <div style="font-size:10px;color:#92400e;margin-top:4px">Provider forecast, not an observed rainfall reading or official warning.</div>
+        </div>`).addTo(map);
+      });
+      bindLayerEvent('mouseenter', 'ov-rain-aura-center', onEnter);
+      bindLayerEvent('mouseleave', 'ov-rain-aura-center', onLeave);
     }
 
     /* -- terrain susceptibility (score circles from /risk/geo) -- */
@@ -758,7 +838,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       rainfallMarkers.forEach(marker => marker.remove());
       popup.remove();
     };
-  }, [ready, styleVersion, summaries, boundaryData, riskGeo, history, layers, locations, alerts, shelters, reports, opacity, selectedDistrict, baseProvider, summaryByBoundary, boundaryFeatures, scenePlaying]);
+  }, [ready, styleVersion, summaries, boundaryData, riskGeo, history, layers, locations, alerts, shelters, reports, opacity, selectedDistrict, selectedState, baseProvider, summaryByBoundary, boundaryFeatures, scenePlaying, weatherForecasts, weatherLocations]);
 
   useEffect(() => {
     const map = mlRef.current;
@@ -867,16 +947,16 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
 
   const sortedForPanel = useMemo(() => {
     if (!summaries) return [];
-    return [...summaries.districts].sort((a, b) =>
+    return summaries.districts.filter(d => selectedState === 'ALL' || d.state === selectedState).sort((a, b) =>
       (Math.max(severityRank(b.flood_risk.risk_category), severityRank(b.landslide_risk.risk_category)) -
         Math.max(severityRank(a.flood_risk.risk_category), severityRank(a.landslide_risk.risk_category))));
-  }, [summaries]);
+  }, [summaries, selectedState]);
 
-  const officialWarningRows = useMemo(() => (summaries?.districts ?? []).flatMap(d =>
+  const officialWarningRows = useMemo(() => (summaries?.districts ?? []).filter(d => (selectedState === 'ALL' || d.state === selectedState) && (!selectedDistrict || (d.district === selectedDistrict && d.state === selectedState))).flatMap(d =>
     d.official_warnings.map(warning => ({ district: d.district, state: d.state, warning }))
-  ), [summaries]);
+  ), [summaries, selectedState, selectedDistrict]);
 
-  const stateRiskRows = useMemo(() => stateNames.map(state => {
+  const stateRiskRows = useMemo(() => stateNames.filter(state => selectedState === 'ALL' || state === selectedState).map(state => {
     const rows = (summaries?.districts ?? []).filter(d => d.state === state);
     const categories = rows.map(d => layers.floodRisk ? d.flood_risk.risk_category : d.landslide_risk.risk_category);
     const category = categories
@@ -889,20 +969,20 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       category,
       warnings: rows.reduce((count, d) => count + d.official_warning_count, 0)
     };
-  }), [stateNames, summaries, layers.floodRisk]);
+  }), [stateNames, summaries, layers.floodRisk, selectedState]);
 
-  const matchedDistrictCount = useMemo(
-    () => (summaries?.districts ?? []).filter(d => d.boundary.status !== 'UNKNOWN').length,
-    [summaries]
+  const districtsInScope = useMemo(() => (summaries?.districts ?? []).filter(d =>
+    (selectedState === 'ALL' || d.state === selectedState) && (!selectedDistrict || (d.district === selectedDistrict && d.state === selectedState))),
+    [summaries, selectedState, selectedDistrict]
   );
+  const matchedDistrictCount = districtsInScope.filter(d => d.boundary.status !== 'UNKNOWN').length;
 
   const freshRainfallDistrictCount = useMemo(
-    () => (summaries?.districts ?? []).filter(d => d.data_quality.rainfall === 'FRESH').length,
-    [summaries]
+    () => districtsInScope.filter(d => d.data_quality.rainfall === 'FRESH').length,
+    [districtsInScope]
   );
 
   /* ------------------ table filters ------------------ */
-  const [stateFilter, setStateFilter] = useState('ALL');
   const [hazardFilter, setHazardFilter] = useState<'ALL' | 'FLOOD' | 'LANDSLIDE'>('ALL');
   const [severityMin, setSeverityMin] = useState(0);
   const [freshFilter, setFreshFilter] = useState('ALL');
@@ -911,7 +991,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
   const tableRows = useMemo(() => {
     if (!summaries) return [];
     let rows = summaries.districts
-      .filter(d => stateFilter === 'ALL' || d.state === stateFilter)
+      .filter(d => selectedState === 'ALL' || d.state === selectedState)
       .filter(d => freshFilter === 'ALL' || d.data_quality.rainfall === freshFilter);
     if (hazardFilter !== 'ALL') {
       rows = rows.filter(d => severityRank(
@@ -927,7 +1007,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       if (sa !== sb) return sb - sa;
       return b.incidents_verified - a.incidents_verified;
     });
-  }, [summaries, stateFilter, hazardFilter, severityMin, freshFilter]);
+  }, [summaries, selectedState, hazardFilter, severityMin, freshFilter]);
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-2">
@@ -1062,6 +1142,10 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               <p className="mt-2 border-t border-[#eee7df] pt-2 leading-relaxed">
                 District polygons: geohacker/india · EPSG:4326 · 78 districts. Unmatched districts stay UNKNOWN. Risk fill is a prototype estimate; official warnings are separate.
               </p>
+              <p className="mt-2 flex items-start gap-2 border-t border-[#eee7df] pt-2 leading-relaxed">
+                <span className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-full border-2 border-blue-600 bg-sky-300/70 shadow-[0_0_8px_3px_rgba(37,99,235,0.35)]" />
+                <span>Blue aura marks provider forecast rain over the next 24 hours. Click a point for amount, probability, source, and retrieval time; it is not observed rain or an official warning.</span>
+              </p>
             </div>
           </aside>
 
@@ -1081,12 +1165,12 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               <h3 className="mb-2 text-[11px] font-bold">Observed and official data</h3>
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
-                  <div className="text-lg font-bold text-sky-700">{summaries ? `${matchedDistrictCount}/78` : '—'}</div>
-                  <div className="text-[9px] leading-tight text-slate-500">districts matched</div>
+                  <div className="text-lg font-bold text-sky-700">{summaries ? `${matchedDistrictCount}/${districtsInScope.length}` : '—'}</div>
+                  <div className="text-[9px] leading-tight text-slate-500">districts matched in scope</div>
                 </div>
                 <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
                   <div className="text-lg font-bold text-cyan-700">{summaries ? freshRainfallDistrictCount : '—'}</div>
-                  <div className="text-[9px] leading-tight text-slate-500">fresh rain obs.</div>
+                  <div className="text-[9px] leading-tight text-slate-500">fresh rain obs. in scope</div>
                 </div>
                 <div className="rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2">
                   <div className="text-lg font-bold text-rose-700">{summaries ? officialWarningRows.length : '—'}</div>
@@ -1102,7 +1186,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
                 <span className="text-[9px] text-slate-500">agency records</span>
               </div>
               {officialWarningRows.length ? officialWarningRows.slice(0, 4).map(({ district, state, warning }) => {
-                const districtSummary = summaries?.districts.find(d => d.district === district);
+                const districtSummary = summaries?.districts.find(d => d.district === district && d.state === state);
                 return <button key={warning.alert_id} onClick={() => districtSummary && flyToDistrict(districtSummary)}
                   className="mb-1.5 w-full rounded-lg border border-[#e8e1d8] bg-[#faf8f6] p-2 text-left hover:border-[#b59a82]">
                   <div className="flex items-start justify-between gap-2">
@@ -1424,7 +1508,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       {districtTableOpen && <div className="max-h-[34vh] flex-shrink-0 overflow-auto bg-white rounded-xl p-3 border border-slate-200 shadow-sm">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <h3 className="text-sm font-bold text-slate-900 mr-2">District summary — affected-area analysis</h3>
-          <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}
+          <select value={selectedState} onChange={e => flyToState(e.target.value)}
             className="text-xs font-semibold p-1.5 rounded border border-slate-300">
             <option value="ALL">All states</option>
             {["Assam", "Arunachal Pradesh", "Meghalaya", "Manipur", "Mizoram", "Nagaland", "Tripura", "Sikkim"].map(s =>

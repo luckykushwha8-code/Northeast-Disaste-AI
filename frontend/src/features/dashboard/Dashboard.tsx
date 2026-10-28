@@ -47,8 +47,7 @@ export default function Dashboard() {
       setOverview(next);
       setError(null);
       setDistrictId(current => current && next.districts.some(item => `${item.state}:${item.district}` === current)
-        ? current
-        : next.districts[0] ? `${next.districts[0].state}:${next.districts[0].district}` : '');
+        ? current : '');
     } else {
       setError(summary.reason instanceof Error ? summary.reason.message : 'District data is unavailable');
     }
@@ -63,9 +62,11 @@ export default function Dashboard() {
   const visibleDistricts = useMemo(() => (overview?.districts ?? [])
     .filter(item => state === 'ALL' || item.state === state)
     .sort((a, b) => a.district.localeCompare(b.district)), [overview, state]);
-  const selected = overview?.districts.find(item => `${item.state}:${item.district}` === districtId) ?? visibleDistricts[0] ?? null;
-  const activeWarnings = overview?.districts.reduce((total, item) => total + (item.official_warning_count ?? 0), 0) ?? 0;
-  const freshRainfall = overview?.districts.filter(item => item.rainfall_status === 'FRESH').length ?? 0;
+  const selected = visibleDistricts.find(item => `${item.state}:${item.district}` === districtId) ?? null;
+  const scopedDistricts = selected ? [selected] : visibleDistricts;
+  const activeWarnings = scopedDistricts.reduce((total, item) => total + (item.official_warning_count ?? 0), 0);
+  const freshRainfall = scopedDistricts.filter(item => item.rainfall_status === 'FRESH').length;
+  const monitoredLocations = scopedDistricts.reduce((total, item) => total + (item.monitored_locations?.length ?? 0), 0);
   const connectedFeeds = feeds.filter(item => item.status === 'OPERATIONAL').length;
 
   return (
@@ -94,10 +95,10 @@ export default function Dashboard() {
       {error && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}. The map only shows the latest data that loaded successfully.</div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric icon={<Activity className="h-4 w-4" />} label="Districts covered" value={overview?.districts.length ?? '—'} note="District summary records" tone="teal" />
-        <Metric icon={<ShieldAlert className="h-4 w-4" />} label="Official warnings" value={activeWarnings} note="From district summaries" tone={activeWarnings ? 'amber' : 'slate'} />
-        <Metric icon={<CloudRain className="h-4 w-4" />} label="Fresh rainfall" value={`${freshRainfall} / ${overview?.districts.length ?? '—'}`} note="District observations" tone="blue" />
-        <Metric icon={<Waves className="h-4 w-4" />} label="Operational feeds" value={`${connectedFeeds} / ${feeds.length || '—'}`} note="Backend source status" tone="teal" />
+        <Metric icon={<Activity className="h-4 w-4" />} label="Districts in scope" value={overview ? scopedDistricts.length : '—'} note={selected ? `${selected.district}, ${selected.state}` : state === 'ALL' ? 'Northeast India' : state} tone="teal" />
+        <Metric icon={<ShieldAlert className="h-4 w-4" />} label="Official warnings" value={activeWarnings} note="Selected geographic scope" tone={activeWarnings ? 'amber' : 'slate'} />
+        <Metric icon={<CloudRain className="h-4 w-4" />} label="Fresh rainfall" value={`${freshRainfall} / ${overview ? scopedDistricts.length : '—'}`} note="District observations in scope" tone="blue" />
+        <Metric icon={<Waves className="h-4 w-4" />} label="Monitored locations" value={monitoredLocations} note="Within selected scope" tone="teal" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -109,16 +110,22 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-2">
               <label className="sr-only" htmlFor="district-state">State</label>
-              <select id="district-state" value={state} onChange={event => setState(event.target.value)} className="max-w-44 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-700">
+              <select id="district-state" value={state} onChange={event => { setState(event.target.value); setDistrictId(''); }} className="max-w-44 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-700">
                 <option value="ALL">All states</option>{states.map(item => <option key={item} value={item}>{item}</option>)}
               </select>
               <label className="sr-only" htmlFor="district-choice">District</label>
-              <select id="district-choice" value={selected ? `${selected.state}:${selected.district}` : ''} onChange={event => setDistrictId(event.target.value)} className="max-w-52 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-700">
+              <select id="district-choice" value={districtId} onChange={event => {
+                const nextId = event.target.value;
+                const nextDistrict = visibleDistricts.find(item => `${item.state}:${item.district}` === nextId);
+                setDistrictId(nextId);
+                if (nextDistrict?.state) setState(nextDistrict.state);
+              }} className="max-w-52 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-700">
+                <option value="">All districts in scope</option>
                 {visibleDistricts.map(item => <option key={`${item.state}:${item.district}`} value={`${item.state}:${item.district}`}>{item.district}{item.state ? ` · ${item.state}` : ''}</option>)}
               </select>
             </div>
           </div>
-          <DistrictRiskMap districts={overview?.districts ?? []} state={state} selected={selected} onSelect={item => { setDistrictId(`${item.state}:${item.district}`); setState('ALL'); }} />
+          <DistrictRiskMap districts={overview?.districts ?? []} state={state} selected={selected} onSelect={item => { setDistrictId(`${item.state}:${item.district}`); setState(item.state ?? 'ALL'); }} />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3 text-[11px] text-slate-600">
             <span className="font-semibold text-slate-700">Prototype risk</span>
             <Legend color="#10b981" label="Low" /><Legend color="#f59e0b" label="Moderate" /><Legend color="#f97316" label="High" /><Legend color="#dc2626" label="Critical" /><Legend color="#94a3b8" label="No district assessment" />
@@ -128,7 +135,7 @@ export default function Dashboard() {
 
         <aside className="space-y-4">
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Selected district</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{selected ? 'Selected district' : state === 'ALL' ? 'Northeast overview' : `${state} overview`}</p>
             {selected ? <>
               <h2 className="mt-1 text-xl font-semibold text-slate-900">{selected.district}</h2>
               <p className="text-sm text-slate-500">{selected.state}</p>
@@ -145,7 +152,18 @@ export default function Dashboard() {
                 {selected.monitored_locations.map(location => <li key={location.id} className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: selectedRisk(selected) === 'UNKNOWN' || selectedRisk(selected) === 'UNAVAILABLE' ? '#94a3b8' : ({ LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#f97316', CRITICAL: '#dc2626' } as Record<string, string>)[selectedRisk(selected)] }} /><span>{location.name}</span></li>)}
               </ul>}
               {selected.data_quality?.missing_inputs?.length > 0 && <p className="mt-3 text-xs leading-relaxed text-slate-500">Missing: {selected.data_quality.missing_inputs.join(', ')}</p>}
-            </> : <p className="mt-3 text-sm text-slate-500">{loading ? 'Loading district data…' : 'No district data available.'}</p>}
+            </> : <>
+              <p className="mt-1 text-sm text-slate-600">{visibleDistricts.length} district{visibleDistricts.length === 1 ? '' : 's'} · {activeWarnings} official warning{activeWarnings === 1 ? '' : 's'} · {monitoredLocations} monitored location{monitoredLocations === 1 ? '' : 's'}</p>
+              <ul className="mt-3 max-h-72 divide-y divide-slate-100 overflow-auto">
+                {visibleDistricts.map(item => <li key={`${item.state}:${item.district}`}>
+                  <button onClick={() => setDistrictId(`${item.state}:${item.district}`)} className="flex w-full items-center justify-between gap-2 py-2 text-left hover:bg-slate-50">
+                    <span className="min-w-0"><span className="block truncate text-xs font-semibold text-slate-800">{item.district}</span><span className="text-[10px] text-slate-500">{item.state} · rain {item.observed_rainfall_24h ? `${item.observed_rainfall_24h.value} ${item.observed_rainfall_24h.unit}` : 'no observation'} · {item.rainfall_status ?? 'UNKNOWN'}</span></span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${riskTone(selectedRisk(item))}`}>{selectedRisk(item)}</span>
+                  </button>
+                </li>)}
+                {!visibleDistricts.length && <li className="py-3 text-xs text-slate-500">{loading ? 'Loading district data…' : 'No district data available for this scope.'}</li>}
+              </ul>
+            </>}
           </section>
           {selected?.monitored_locations?.[0] && <LiveWeatherCard
             location={selected.monitored_locations[0].name}
