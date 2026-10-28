@@ -14,12 +14,12 @@ import {
   MapDistrictsResponse, DistrictSummary, BaseMapProvider, defaultBaseProvider, baseProviderLabel, hasMapTilerKey
 } from './mapStyle';
 import { api } from '../api/client';
+import { getWeatherForecast, getWeatherLocations, type WeatherForecastResponse, type WeatherLocationItem } from '../api/weather';
 import { useVisibleRefresh } from '../hooks/useVisibleRefresh';
 import {
   LocationItem, AlertItem, ShelterItem, IncidentReportItem, HistoricalEventItem,
   GeoJSONFeatureCollection
 } from '../types';
-import type { WeatherForecastResponse, WeatherLocationItem } from '../api/client';
 
 interface MapBoardProps {
   locations: LocationItem[];
@@ -149,9 +149,9 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
 
   const refreshRainForecasts = useCallback(async () => {
     try {
-      const { locations: items } = await api.getWeatherLocations();
+      const { locations: items } = await getWeatherLocations();
       setWeatherLocations(items);
-      const forecasts = await Promise.allSettled(items.map(item => api.getWeatherForecast(item.id)));
+      const forecasts = await Promise.allSettled(items.map(item => getWeatherForecast(item.id)));
       setWeatherForecasts(forecasts.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
     } catch {
       setWeatherLocations([]);
@@ -594,7 +594,8 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
       if (selectedDistrict) {
         const districtRecord = summaries?.districts.find(item => item.district === selectedDistrict && item.state === selectedState);
         const belongsToDistrict = districtRecord?.monitored_locations.some(site => site.id === location.id) ||
-          location.district.toLocaleLowerCase() === selectedDistrict.toLocaleLowerCase();
+          location.district.toLocaleLowerCase() === selectedDistrict.toLocaleLowerCase() ||
+          (selectedState === 'Sikkim' && location.city === 'Gangtok' && selectedDistrict === 'East Sikkim');
         if (!belongsToDistrict) return [];
       }
       const retrieved = new Date(forecast.retrieved_at).getTime();
