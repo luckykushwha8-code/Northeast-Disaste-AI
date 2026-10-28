@@ -107,6 +107,32 @@ export interface WeatherForecastResponse {
   live_error?: string | null;
 }
 
+export interface CwcStationFeed {
+  source: string;
+  portal_url: string;
+  retrieved_at?: string | null;
+  data_mode: 'LIVE' | 'CACHED' | 'UNAVAILABLE' | string;
+  live_status?: string | null;
+  note?: string | null;
+  monitored_brahmaputra_region_stations?: Array<{
+    location_id: string;
+    station_code: string;
+    station_name: string;
+    river: string;
+    state: string;
+    warning_level_m: number | null;
+    danger_level_m: number | null;
+    hfl_m: number | null;
+    current_level_m: number | null;
+    observed_at: string | null;
+    retrieved_at: string | null;
+    reading_status: string;
+    trend: string;
+    status: string;
+    data_mode: string;
+  }>;
+}
+
 async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
@@ -425,7 +451,7 @@ export const api = {
     return res.json();
   },
 
-  async getCwcStations(): Promise<any> {
+  async getCwcStations(): Promise<CwcStationFeed> {
     const res = await apiFetch(`${API_BASE}/sources/cwc/stations`);
     if (!res.ok) throw new Error("Failed to fetch CWC stations");
     return res.json();

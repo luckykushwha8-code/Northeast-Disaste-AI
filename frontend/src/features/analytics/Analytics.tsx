@@ -10,7 +10,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { useVisibleRefresh } from '../../hooks/useVisibleRefresh';
 import { BarChart2, Droplets, Waves, Map, Bell, AlertTriangle, LifeBuoy, History, Activity, RefreshCw } from 'lucide-react';
 import { LiveWeatherCard } from '../../components/LiveWeatherCard';
-import type { WeatherForecastResponse, WeatherLocationItem } from '../../api/client';
+import type { CwcStationFeed, WeatherForecastResponse, WeatherLocationItem } from '../../api/client';
 
 const CARD_ICONS: Record<string, React.ElementType> = {
   rainfall: Droplets,
@@ -81,6 +81,8 @@ export default function Analytics() {
   const [weatherLocationId, setWeatherLocationId] = useState('wx_guwahati');
   const [weatherForecast, setWeatherForecast] = useState<{ locationId: string; data: WeatherForecastResponse } | null>(null);
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [cwcFeed, setCwcFeed] = useState<CwcStationFeed | null>(null);
+  const [cwcError, setCwcError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -99,8 +101,16 @@ export default function Analytics() {
       .catch(reason => setForecastError(reason instanceof Error ? reason.message : 'Forecast unavailable'));
   }, [weatherLocationId]);
 
+  const refreshCwc = useCallback(() => {
+    setCwcError(null);
+    api.getCwcStations()
+      .then(setCwcFeed)
+      .catch(reason => setCwcError(reason instanceof Error ? reason.message : 'CWC feed unavailable'));
+  }, []);
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => { refreshForecast(); }, [refreshForecast]);
+  useEffect(() => { refreshCwc(); }, [refreshCwc]);
   useEffect(() => {
     let active = true;
     api.getWeatherLocations().then(result => {
@@ -114,6 +124,7 @@ export default function Analytics() {
   }, []);
   useVisibleRefresh(load, 5 * 60 * 1000);
   useVisibleRefresh(refreshForecast, 30 * 60 * 1000);
+  useVisibleRefresh(refreshCwc, 15 * 60 * 1000);
 
   if (loading && !data) return (
     <div className="space-y-4">
@@ -126,6 +137,17 @@ export default function Analytics() {
   if (!data) return <ErrorState message="Analytics unavailable" onRetry={load} />;
 
   const riverWithMarks = data.river_trend;
+  const cwcStations = cwcFeed?.monitored_brahmaputra_region_stations ?? [];
+  const cwcRiverChart = cwcStations.map(station => ({
+    location: `${station.river} · ${station.state}`,
+    current_level_m: station.current_level_m,
+    warning_level_m: station.warning_level_m,
+    danger_level_m: station.danger_level_m,
+    station_code: station.station_code,
+    observed_at: station.observed_at,
+    reading_status: station.reading_status,
+  }));
+  const cwcLiveReadings = cwcRiverChart.filter(station => station.current_level_m != null);
   const totalAlerts = data.alerts_by_severity.reduce((sum, item) => sum + item.official + item.ai_generated, 0);
   const selectedForecast = weatherForecast?.locationId === weatherLocationId ? weatherForecast.data : null;
   const forecastCutoff = Date.now() + 24 * 60 * 60 * 1000;
@@ -141,6 +163,11 @@ export default function Analytics() {
       temperature_c: point.temperature_c ?? null,
       condition: point.weather_description ?? point.weather_condition ?? 'Not reported',
     }));
+  const reportedRainPeriods = liveForecast24h.filter(point => point.rain_mm != null);
+  const reportedRainSum = reportedRainPeriods.reduce((sum, point) => sum + (point.rain_mm ?? 0), 0);
+  const rainPeriodCoverage = liveForecast24h.length
+    ? Math.round(reportedRainPeriods.length / liveForecast24h.length * 100)
+    : null;
   const riskDistribution = ['CRITICAL', 'HIGH', 'MODERATE', 'LOW', 'UNKNOWN', 'UNAVAILABLE'].map(severity => ({
     severity,
     flood: data.risk_by_area.filter(location => location.flood_category === severity).length,
@@ -225,6 +252,10 @@ export default function Analytics() {
             <div className="text-xs text-slate-500 text-center py-8">{forecastError ?? selectedForecast?.live_error ?? 'No verified forecast periods are available for this location.'}</div>
           ) : <>
             <div className="text-[11px] text-slate-500 mb-2">Point forecast for {selectedForecast?.location_name}. Blank rainfall amounts mean the provider reported no amount for that step; they are not filled as zero.</div>
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-cyan-50 px-3 py-2"><div className="text-[10px] text-slate-500">Reported forecast rain</div><div className="text-lg font-semibold text-cyan-900">{reportedRainSum.toFixed(2)} mm</div><div className="text-[10px] text-slate-500">sum of {reportedRainPeriods.length} provider-reported periods</div></div>
+              <div className="rounded-lg bg-slate-50 px-3 py-2"><div className="text-[10px] text-slate-500">Rain amount coverage</div><div className="text-lg font-semibold text-slate-800">{rainPeriodCoverage}%</div><div className="text-[10px] text-slate-500">{reportedRainPeriods.length} of {liveForecast24h.length} intervals reported an amount</div></div>
+            </div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={liveForecast24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -246,11 +277,33 @@ export default function Analytics() {
           title="River Levels vs CWC Warning/Danger Marks"
           subtitle="Gauge readings in metres · CWC official thresholds"
           icon={CARD_ICONS.river}
-          dataLabel="CWC gauge observations"
+          dataLabel={`${cwcFeed?.data_mode ?? 'Loading'} · CWC FFS`}
           onCSV={() => downloadCSV(riverWithMarks, 'river-levels')}
         >
+          {cwcRiverChart.length > 0 && <>
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={cwcRiverChart} layout="vertical" margin={{ top: 4, right: 12, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis type="number" tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} unit=" m" />
+                <YAxis dataKey="location" type="category" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} width={116} />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value, name) => [value == null ? 'Not reported' : `${value} m`, name]} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Bar dataKey="current_level_m" name="CWC reported level" fill="#0E7490" radius={[0, 2, 2, 0]} maxBarSize={16} />
+                <Bar dataKey="warning_level_m" name="Warning mark" fill="#F59E0B" radius={[0, 2, 2, 0]} maxBarSize={16} />
+                <Bar dataKey="danger_level_m" name="Danger mark" fill="#DC2626" radius={[0, 2, 2, 0]} maxBarSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-[10px] text-slate-500">
+              {cwcLiveReadings.length
+                ? `${cwcLiveReadings.length} monitored values are present in CWC’s above-warning feed.`
+                : cwcFeed?.data_mode === 'UNAVAILABLE'
+                  ? `Live CWC feed unavailable${cwcFeed.live_status ? `: ${cwcFeed.live_status}` : cwcError ? `: ${cwcError}` : ''}. Only reference thresholds are plotted.`
+                  : 'CWC’s public endpoint lists stations above warning only; no monitored Northeast station was returned. This does not establish a below-warning level.'}
+              {' '}The CWC endpoint does not provide observation timestamps for these records; retrieved {cwcFeed?.retrieved_at ? new Date(cwcFeed.retrieved_at).toLocaleString('en-IN') : '—'}.
+            </p>
+          </>}
           {riverWithMarks.length === 0 ? (
-            <div className="text-xs text-slate-500 text-center py-8">CWC has not supplied a current gauge reading for these monitored stations. The warning and danger marks are reference thresholds only.</div>
+            <div className="text-xs text-slate-500 text-center py-3">No timestamped CWC gauge observations are stored for this window. Current above-warning feed values, when returned, are shown in the chart above.</div>
           ) : (
             <div className="max-h-64 overflow-auto">
               <table className="w-full text-[11px]">

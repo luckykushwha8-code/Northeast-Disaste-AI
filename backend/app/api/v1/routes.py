@@ -33,7 +33,10 @@ from app.services.landslide_engine import LandslidePredictionEngine
 from app.services.alert_engine import AlertEngine
 from app.services.audit_service import log_audit
 from app.services.tinyfish_service import tinyfish_service
-from app.services.live_data_service import live_data_service
+from app.services.live_data_service import (
+    live_data_service, MONITORED_STATION_CODES, STATION_RIVER_NAMES,
+    STATION_STATES, BASELINE_REFERENCES,
+)
 from app.services.open_meteo_service import open_meteo_service
 from app.services.openweather_service import openweather_service
 from app.data.weather_locations import get_weather_location, list_weather_locations
@@ -1214,14 +1217,35 @@ def GEODATA_reference_meta():
 # IMD REST API integration intentionally omitted; official public pages are read via TinyFish.
 
 def _baseline_cwc_stations() -> Dict[str, Any]:
+    references = []
+    for location_id, station_code in MONITORED_STATION_CODES.items():
+        marks = BASELINE_REFERENCES.get(location_id, {})
+        references.append({
+            "location_id": location_id,
+            "station_code": station_code,
+            "station_name": station_code,
+            "river": STATION_RIVER_NAMES.get(location_id, "River"),
+            "state": STATION_STATES.get(location_id, ""),
+            "warning_level_m": marks.get("warning_level_m"),
+            "danger_level_m": marks.get("danger_level_m"),
+            "hfl_m": marks.get("hfl_m"),
+            "current_level_m": None,
+            "observed_at": None,
+            "retrieved_at": None,
+            "reading_status": "NO_LIVE_READING",
+            "trend": "NOT_ISSUED",
+            "status": "REFERENCE_ONLY",
+            "data_mode": "UNAVAILABLE",
+        })
     return {
         "source": "Central Water Commission (CWC) Flood Forecasting Network",
         "portal_url": "https://ffs.india-water.gov.in/",
         "attribution": "Government of India — Ministry of Jal Shakti / CWC",
         "retrieved_at": utcnow().isoformat(),
         "data_mode": "UNAVAILABLE",
-        "stations": [],
-        "note": "No verified live station readings are available. Current levels are not filled from reference thresholds."
+        "stations_above_warning": [],
+        "monitored_brahmaputra_region_stations": references,
+        "note": "CWC live readings are unavailable. Warning and danger marks below are reference thresholds only; no current water level is inferred from them."
     }
 
 

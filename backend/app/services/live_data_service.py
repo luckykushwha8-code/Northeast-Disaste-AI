@@ -207,10 +207,13 @@ class LiveDataService:
                     "warning_level_m": ref.get("warning_level_m"),
                     "danger_level_m": ref.get("danger_level_m"),
                     "hfl_m": ref.get("hfl_m"),
-                    "current_level_m": match["current_level_m"] if match and match.get("observed_at") else None,
+                    # The public above-warning endpoint does not publish an observation
+                    # timestamp. Keep its reported value visible as provider-reported,
+                    # but never ingest it into timed observations or risk assessments.
+                    "current_level_m": match["current_level_m"] if match else None,
                     "observed_at": match["observed_at"] if match else None,
                     "retrieved_at": now.isoformat(),
-                    "reading_status": match["reading_status"] if match else "NO_CURRENT_LEVEL",
+                    "reading_status": match["reading_status"] if match else "NO_ABOVE_WARNING_RECORD",
                     "trend": match["trend"] if match else "NOT_ISSUED",
                     "status": "ABOVE_WARNING_RECORD" if match else "NO_ABOVE_WARNING_RECORD",
                     "data_mode": "LIVE" if match else "NO_CURRENT_LEVEL"
