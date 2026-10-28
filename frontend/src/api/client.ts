@@ -7,8 +7,14 @@ import {
   TinyFishStatus, TinyFishRetrievalRequest, TinyFishRetrievalResult, TinyFishGeminiSummary, AuthenticatedUser, ModelValidationReport
 } from '../types';
 
-const configuredApiBase = (import.meta as any).env?.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? '/api/v1' : 'http://127.0.0.1:8000/api/v1');
+// Use same-origin routing by default: Vite proxies /api in development and
+// Vercel forwards /api to the deployed backend in production. A loopback API
+// URL embedded in a public build points at each visitor's own device, so fall
+// back to the Vercel rewrite there.
+const apiOverride = String((import.meta as any).env?.VITE_API_BASE_URL || '').trim();
+const loopbackApi = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i.test(apiOverride);
+const localFrontend = typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+const configuredApiBase = import.meta.env.PROD && loopbackApi && !localFrontend ? '/api/v1' : apiOverride || '/api/v1';
 export const API_BASE = configuredApiBase.replace(/\/+$/, '');
 const AUTH_TOKEN_KEY = 'nesafe.session-token';
 
