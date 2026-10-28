@@ -1793,7 +1793,6 @@ def get_analytics_overview(
     now = utcnow()
     window_cutoff = now - datetime.timedelta(hours=hours_window)
     locs = {l.id: l for l in db.query(Location).filter(Location.active == True).all()}
-    _prefetch_open_meteo(db, locs.values())
     src_map = {s.id: s for s in db.query(DataSource).all()}
 
     # 1-2. Rainfall trend (hourly buckets from all IMD/OpenMeteo rainfall obs)
@@ -1821,6 +1820,7 @@ def get_analytics_overview(
                   for k, v in sorted(daily.items())]
 
     forecast_rainfall_24h = []
+    reanalysis_rainfall_24h = []
     for loc in locs.values():
         cache = db.query(LiveDataCache).filter(
             LiveDataCache.cache_key == f"open_meteo_{loc.id}"
@@ -1829,6 +1829,20 @@ def get_analytics_overview(
             continue
         try:
             forecast = json.loads(cache.payload_json)
+            reanalysis_value = forecast.get("observed_precipitation_24h_mm")
+            reanalysis_age_minutes = ((now - cache.fetched_at).total_seconds() / 60.0) if cache.fetched_at else 10_000
+            if isinstance(reanalysis_value, (int, float)):
+                reanalysis_rainfall_24h.append({
+                    "location": loc.name, "district": loc.district, "state": loc.state,
+                    "precipitation_mm": round(float(reanalysis_value), 1),
+                    "last_provider_observation_at": forecast.get("last_observed_at"),
+                    "fetched_at": cache.fetched_at.isoformat() if cache.fetched_at else None,
+                    "source": forecast.get("source", "Open-Meteo station-assimilated reanalysis"),
+                    "data_mode": "LIVE" if reanalysis_age_minutes <= 60 else "CACHED" if reanalysis_age_minutes <= 360 else "STALE",
+                    "age_minutes": round(reanalysis_age_minutes, 1),
+                    "kind": "MODEL_REANALYSIS_ESTIMATE_NOT_GAUGE_OBSERVATION",
+                })
+
             value = forecast.get("forecast_precipitation_24h_mm")
             cache_age_minutes = ((now - cache.fetched_at).total_seconds() / 60.0) if cache.fetched_at else 10_000
             if forecast.get("data_mode") == "LIVE" and cache_age_minutes <= 60 and isinstance(value, (int, float)):
@@ -1845,6 +1859,7 @@ def get_analytics_overview(
         except (TypeError, ValueError, json.JSONDecodeError):
             continue
     forecast_rainfall_24h.sort(key=lambda item: item["forecast_mm"], reverse=True)
+    reanalysis_rainfall_24h.sort(key=lambda item: item["precipitation_mm"], reverse=True)
 
     # 3. River-level trend per station (with official marks for reference lines)
     river_trend = []
@@ -1961,6 +1976,7 @@ def get_analytics_overview(
         "generated_at": now,
         "rainfall_trend_hourly": rain_hourly,
         "rainfall_trend_daily": rain_daily,
+        "reanalysis_rainfall_24h": reanalysis_rainfall_24h,
         "forecast_rainfall_24h": forecast_rainfall_24h,
         "river_trend": river_trend,
         "risk_by_area": risk_by_area,

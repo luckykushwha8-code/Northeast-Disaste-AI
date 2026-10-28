@@ -15,7 +15,7 @@ interface SystemHealthProps {
 
 export const SystemHealth: React.FC<SystemHealthProps> = ({ dataSources: initialDataSources, onRefresh, userRole, onRequestLogin }) => {
   const canManage = ['OPERATOR', 'ADMIN'].includes(userRole);
-  const loginAction = userRole === 'RESIDENT' ? 'Staff login' : 'Switch staff account';
+  const loginAction = 'Authorized staff action';
   const [dataSources, setDataSources] = useState<DataSourceItem[]>(initialDataSources ?? []);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [syncing, setSyncing] = useState(false);

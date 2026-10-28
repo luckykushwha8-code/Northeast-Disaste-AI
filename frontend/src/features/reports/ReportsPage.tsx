@@ -72,7 +72,7 @@ export default function ReportsPage({ userRole, onRequestLogin }: { userRole: Us
               <p className="mt-1 text-xs text-slate-600">Summarizes stored observations and assessments. Only operators and analysts can request it.</p></div>
             {canSummarize ? <button onClick={summarize} disabled={summarizing} className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
               {summarizing ? 'Summarizing…' : 'Summarize report'}
-            </button> : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Staff login for AI summary</button>}
+            </button> : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">AI summary restricted to authorized staff</button>}
           </div>
           {summaryError && <p role="alert" className="mt-2 text-xs text-red-700">{summaryError}</p>}
           {summary && <div className="mt-3 space-y-2 border-t border-teal-200 pt-3 text-xs text-slate-700">

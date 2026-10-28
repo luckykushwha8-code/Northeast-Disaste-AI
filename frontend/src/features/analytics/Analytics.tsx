@@ -225,7 +225,10 @@ export default function Analytics() {
           onCSV={() => downloadCSV(data.rainfall_trend_hourly, 'rainfall-trend')}
         >
           {data.rainfall_trend_hourly.length === 0 ? (
-            <div className="text-xs text-slate-500 text-center py-8">No verified station rainfall observations were recorded in this window.</div>
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center">
+              <div className="text-2xl font-semibold text-slate-800">No gauge readings</div>
+              <div className="mt-1 text-xs text-slate-500">No verified station rainfall observations were recorded in this {hoursWindow}h window.</div>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={data.rainfall_trend_hourly} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -239,6 +242,24 @@ export default function Analytics() {
             </ResponsiveContainer>
           )}
           <p className="text-[10px] text-slate-400">Stored, non-simulated 24-hour rainfall observations · grouped by observation time. {hoursWindow}h filter. No model gap-fill is included.</p>
+          {data.reanalysis_rainfall_24h.length > 0 && <div className="border-t border-slate-100 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div><div className="text-xs font-semibold text-slate-700">24h precipitation estimate by location</div><div className="text-[10px] text-slate-500">Open-Meteo model/reanalysis · not a rain-gauge observation</div></div>
+              <span className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-semibold text-amber-800">MODEL ESTIMATE</span>
+            </div>
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={data.reanalysis_rainfall_24h.slice(0, 10)} layout="vertical" margin={{ top: 2, right: 12, left: 6, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis type="number" tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} unit=" mm" />
+                <YAxis dataKey="district" type="category" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} width={88} />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value, _name, item) => [`${value} mm · ${item.payload.location}`, 'Estimated 24h precipitation']} />
+                <Bar dataKey="precipitation_mm" name="Estimated 24h precipitation" fill="#0E7490" radius={[0, 3, 3, 0]} maxBarSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500">
+              {data.reanalysis_rainfall_24h.slice(0, 10).map(item => <span key={`${item.location}-${item.fetched_at ?? ''}`}>{item.district}: {item.precipitation_mm.toFixed(1)} mm · {item.data_mode.toLowerCase()} · {item.age_minutes < 60 ? `${Math.round(item.age_minutes)}m` : `${(item.age_minutes / 60).toFixed(1)}h`}</span>)}
+            </div>
+          </div>}
         </AnalyticsCard>
 
         <AnalyticsCard
@@ -269,6 +290,22 @@ export default function Analytics() {
               {liveForecast24h.map(point => <div key={point.time} className="flex justify-between border-b border-slate-100 py-1"><span>{new Date(point.time).toLocaleString('en-IN', { weekday: 'short', hour: '2-digit' })} · {point.condition}{point.probability == null ? '' : ` · ${point.probability}% rain`}</span><span className="font-semibold">{point.rain_mm == null ? 'Not reported' : `${point.rain_mm.toFixed(2)} mm / 3h`}</span></div>)}
             </div>
           </>}
+          {data.forecast_rainfall_24h.length > 0 && <div className="mt-3 border-t border-slate-100 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div><div className="text-xs font-semibold text-slate-700">Next 24h by monitored location</div><div className="text-[10px] text-slate-500">Provider forecast totals · not measured rainfall</div></div>
+              <span className="text-[9px] text-slate-500">{data.forecast_rainfall_24h.length} locations</span>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data.forecast_rainfall_24h.slice(0, 10)} layout="vertical" margin={{ top: 2, right: 12, left: 6, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis type="number" tick={{ fontSize: 9, fill: '#64748B' }} axisLine={false} tickLine={false} unit=" mm" />
+                <YAxis dataKey="district" type="category" tick={{ fontSize: 9, fill: '#64748B' }} tickLine={false} width={88} />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value, _name, item) => [`${value} mm · ${item.payload.location}`, `${item.payload.data_mode} forecast`]} />
+                <Bar dataKey="forecast_mm" name="Forecast total · next 24h" fill="#0E7490" radius={[0, 3, 3, 0]} maxBarSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-[9px] text-slate-500">Provider-reported time window and freshness are retained per location. A missing location means its provider forecast was unavailable, not zero.</p>
+          </div>}
           <p className="text-[10px] text-slate-400">Forecast, not an observation or official IMD warning. Retrieved {selectedForecast?.retrieved_at ? new Date(selectedForecast.retrieved_at).toLocaleString('en-IN') : '—'}.</p>
         </AnalyticsCard>
 

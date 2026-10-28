@@ -162,7 +162,7 @@ export const AlertQueue: React.FC<AlertQueueProps> = ({
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Propose Alert</span>
             </button>
-          ) : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Operator login for alert actions</button>}
+          ) : <button onClick={onRequestLogin} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Alert actions restricted to authorized staff</button>}
         </div>
       </div>
 

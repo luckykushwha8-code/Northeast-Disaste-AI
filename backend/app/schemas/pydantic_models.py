@@ -273,6 +273,7 @@ class AnalyticsOverview(BaseModel):
     units_note: str = "rainfall: mm; river level: m; counts: records"
     rainfall_trend_hourly: List[Dict[str, Any]]
     rainfall_trend_daily: List[Dict[str, Any]]
+    reanalysis_rainfall_24h: List[Dict[str, Any]]
     river_trend: List[Dict[str, Any]]
     risk_by_area: List[Dict[str, Any]]
     alerts_by_severity: List[Dict[str, Any]]

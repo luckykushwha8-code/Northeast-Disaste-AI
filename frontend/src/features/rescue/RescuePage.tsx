@@ -155,7 +155,7 @@ export default function RescuePage({ userRole, onRequestLogin }: RescuePageProps
       )}
       {!isResponder && (
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
-          Citizen request and reference tracking are available here. The responder worklist contains private contact and location details. {userRole === 'RESIDENT' ? <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">Staff login for responder access</button> : <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">Switch to a responder account</button>}
+          Citizen request and reference tracking are available here. The responder worklist contains private contact and location details. <button onClick={onRequestLogin} className="font-semibold text-teal-700 underline">Responder worklist restricted to authorized staff</button>
         </div>
       )}
     </div>

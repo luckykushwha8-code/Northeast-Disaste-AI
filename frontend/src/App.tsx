@@ -2,17 +2,15 @@ import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   Activity, BarChart2, Bell, Bot, FileText, FlaskConical, Layers,
-  LayoutDashboard, LifeBuoy, LogIn, LogOut, Mail, Map, MapPinned, X
+  LayoutDashboard, LifeBuoy, Mail, Map, MapPinned, X
 } from 'lucide-react';
 
-import { AuthDialog } from './components/AuthDialog';
 import { OfflineBanner } from './components/ui/OfflineBanner';
-import { RoleBadge } from './components/ui/RoleBadge';
-import { ToastProvider } from './components/ui/Toast';
+import { ToastProvider, useToast } from './components/ui/Toast';
 import { PreparednessAssistant } from './components/PreparednessAssistant';
 import { api } from './api/client';
 import { useVisibleRefresh } from './hooks/useVisibleRefresh';
-import type { AlertItem, AuthenticatedUser, Language, PredictionItem, UserRole } from './types';
+import type { AlertItem, Language, PredictionItem, UserRole } from './types';
 
 const Dashboard = lazy(() => import('./features/dashboard/Dashboard'));
 const AlertQueuePage = lazy(() => import('./components/AlertQueue').then(m => ({ default: m.AlertQueue })));
@@ -49,8 +47,7 @@ function LoadingFallback() {
 }
 
 function AppShell() {
-  const [authenticatedUser, setAuthenticatedUser] = useState<AuthenticatedUser | null>(null);
-  const [loginOpen, setLoginOpen] = useState(false);
+  const { addToast } = useToast();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [lang, setLang] = useState<Language>('en');
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -59,18 +56,17 @@ function AppShell() {
   const [shelters, setShelters] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const location = useLocation();
-  const userRole: UserRole = authenticatedUser?.role ?? 'RESIDENT';
+  const userRole: UserRole = 'RESIDENT';
 
   useEffect(() => {
-    api.getCurrentUser().then(setAuthenticatedUser).catch(() => setAuthenticatedUser(null));
-    const onExpired = () => setAuthenticatedUser(null);
-    window.addEventListener('nesafe:auth-expired', onExpired);
-    return () => window.removeEventListener('nesafe:auth-expired', onExpired);
+    // The public dashboard has no staff sign-in surface. Clear any old browser session
+    // so staff-only controls remain unavailable here; backend authorization stays intact.
+    api.logout();
   }, []);
 
   const refreshAppData = useCallback(async () => {
     const results = await Promise.allSettled([
-      authenticatedUser ? api.getAlerts() : api.getPublicAlerts(),
+      api.getPublicAlerts(),
       api.getPredictions(), api.getLocations(), api.getShelters(), api.getReports(),
     ]);
     if (results[0].status === 'fulfilled') setAlerts(results[0].value);
@@ -78,7 +74,13 @@ function AppShell() {
     if (results[2].status === 'fulfilled') setLocations(results[2].value);
     if (results[3].status === 'fulfilled') setShelters(results[3].value);
     if (results[4].status === 'fulfilled') setReports(results[4].value);
-  }, [authenticatedUser]);
+  }, []);
+
+  const explainStaffAccess = useCallback(() => addToast({
+    type: 'info',
+    title: 'Staff access is restricted',
+    message: 'Staff login was removed from the public interface. Protected actions still require server-side staff authorization.',
+  }), [addToast]);
 
   useEffect(() => { void refreshAppData(); }, [refreshAppData]);
   useVisibleRefresh(refreshAppData, 5 * 60 * 1000);
@@ -107,14 +109,6 @@ function AppShell() {
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {simulationActive && <span className="hidden rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-800 sm:inline-flex">Demo records present</span>}
-            {authenticatedUser ? <>
-              <span className="hidden sm:inline-flex"><RoleBadge role={authenticatedUser.role} /></span>
-              <button onClick={() => { api.logout(); setAuthenticatedUser(null); }} className="inline-flex items-center gap-1 rounded-lg border border-[#e8e1d8] px-2.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-[#f7f5f2]" aria-label={`Sign out ${authenticatedUser.username}`}>
-                <LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Sign out</span>
-              </button>
-            </> : <button onClick={() => setLoginOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#6f513e] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#59412f]">
-              <LogIn className="h-3.5 w-3.5" /> Staff login
-            </button>}
             <select value={lang} onChange={event => setLang(event.target.value as Language)} className="rounded-lg border border-[#e8e1d8] bg-white px-2 py-2 text-xs text-slate-700 outline-none transition focus:border-[#9b7b62]" aria-label="Language">
               {LANGUAGES.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}
             </select>
@@ -145,13 +139,13 @@ function AppShell() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/map" element={<MapBoardPage locations={locations} alerts={alerts} shelters={shelters} reports={reports} />} />
               <Route path="/layers" element={<LayersGuidePage />} />
-              <Route path="/alerts" element={<AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRequestLogin={() => setLoginOpen(true)} onRefresh={() => (authenticatedUser ? api.getAlerts() : api.getPublicAlerts()).then(setAlerts)} />} />
-              <Route path="/rescue" element={<RescuePage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
+              <Route path="/alerts" element={<AlertQueuePage alerts={alerts} predictions={predictions} userRole={userRole} lang={lang} onRequestLogin={explainStaffAccess} onRefresh={() => api.getPublicAlerts().then(setAlerts)} />} />
+              <Route path="/rescue" element={<RescuePage userRole={userRole} onRequestLogin={explainStaffAccess} />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/models" element={<ModelsPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
-              <Route path="/reports" element={<ReportsPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} />} />
+              <Route path="/models" element={<ModelsPage userRole={userRole} onRequestLogin={explainStaffAccess} />} />
+              <Route path="/reports" element={<ReportsPage userRole={userRole} onRequestLogin={explainStaffAccess} />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
-              <Route path="/system" element={<SystemHealthPage userRole={userRole} onRequestLogin={() => setLoginOpen(true)} onRefresh={() => { void api.getPublicAlerts().then(setAlerts); }} />} />
+              <Route path="/system" element={<SystemHealthPage userRole={userRole} onRequestLogin={explainStaffAccess} onRefresh={() => { void api.getPublicAlerts().then(setAlerts); }} />} />
               <Route path="/dev/components" element={<ComponentShowcase />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -172,7 +166,6 @@ function AppShell() {
         </button>
       </div>
 
-      {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onLogin={setAuthenticatedUser} />}
     </div>
   );
 }
