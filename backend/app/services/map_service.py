@@ -57,7 +57,9 @@ class MapService:
         out: Dict[str, Dict[str, Any]] = {}
         obs = db.query(Observation).filter(
             Observation.location_id.in_(location_ids),
-            Observation.variable.in_(["rainfall_24h_mm", "river_level_m", "river_rate_m_hr"])
+            Observation.variable.in_(["rainfall_24h_mm", "river_level_m", "river_rate_m_hr"]),
+            Observation.simulation_flag.is_(False),
+            Observation.quality_status.in_(["VALID", "STALE", "DELAYED"]),
         ).order_by(Observation.observed_at.desc()).all()
         for o in obs:
             slot = out.setdefault(o.location_id, {})
@@ -70,14 +72,13 @@ class MapService:
                 "quality_status": o.quality_status,
                 "provenance": o.provenance,
                 "source_id": o.source_id,
-                "simulation_flag": bool(o.simulation_flag)
+                "simulation_flag": False
             }
             if o.variable not in slot:
                 slot[o.variable] = entry
-            # Keep the newest verified real record independently when a newer
-            # demo or invalid record is also retained for the display layer.
+            # All operational map values are real, quality-screened observations.
             verified_key = f"{o.variable}_verified"
-            if not o.simulation_flag and o.quality_status == "VALID" and verified_key not in slot:
+            if o.quality_status == "VALID" and verified_key not in slot:
                 slot[verified_key] = entry
         return out
 
@@ -120,7 +121,9 @@ class MapService:
             dist = platform_from_boundary(dist, pre_mon)
             incidents_by_district.setdefault(dist, []).append(r)
 
-        shelters = db.query(Shelter).all()
+        # No shelter feed is connected yet. Database seed records are not
+        # treated as verified/open capacity in the public map.
+        shelters = []
         shelters_by_district: Dict[str, int] = {}
         for s in shelters:
             dist = geographic_service.district_for_point(s.longitude, s.latitude)
@@ -281,7 +284,7 @@ class MapService:
                     "river": _freshness(
                         min([e["age_hours"] for e in level_entries], default=None),
                         settings.FRESHNESS_RIVER_HOURS),
-                    "risk": "PROTOTYPE_MODEL",
+                "risk": "UNAVAILABLE_WITHOUT_VERIFIED_INPUTS",
                     "official_warnings": "OFFICIAL" if warnings else "NONE",
                     "missing_inputs": [
                         *([] if real_rain_entries else ["no verified rainfall observation"]),

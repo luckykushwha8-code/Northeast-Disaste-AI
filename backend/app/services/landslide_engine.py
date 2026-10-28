@@ -48,6 +48,22 @@ class LandslidePredictionEngine:
                 }
             }
 
+        # This model is not calibrated for use without a sourced terrain layer
+        # and observed antecedent rainfall windows. Do not fill these with
+        # plausible-looking defaults and publish a risk score.
+        if not terrain or terrain.get("slope_deg") is None or terrain.get("susceptibility_score") is None:
+            return {
+                "hazard_type": "LANDSLIDE", "model_version": cls.MODEL_VERSION,
+                "generated_at": now.isoformat(), "horizon_start": now.isoformat(),
+                "horizon_end": horizon_end.isoformat(), "probability": None,
+                "risk_category": "UNAVAILABLE", "data_quality_status": "MISSING_VERIFIED_TERRAIN",
+                "simulation_flag": is_simulation,
+                "input_snapshot": {"terrain": None, "observations": observations},
+                "explanation": {"primary_reason": "No verified terrain susceptibility layer is connected.",
+                                "disclaimer": "Unavailable assessment does not imply slope stability.",
+                                "contributing_factors": []}
+            }
+
         # 2. Check for stale data (Rule R-02)
         rainfall_age_hours = observations.get("rainfall_age_hours", 0.0)
         if rainfall_age_hours > settings.FRESHNESS_WEATHER_HOURS:
@@ -70,14 +86,26 @@ class LandslidePredictionEngine:
             }
 
         # Terrain static susceptibility
-        slope_deg = terrain.get("slope_deg", 25.0)
-        susceptibility_score = terrain.get("susceptibility_score", 0.50)  # 0.0 to 1.0
-        geology = terrain.get("geology", "Precambrian Gneissic Complex")
+        slope_deg = terrain["slope_deg"]
+        susceptibility_score = terrain["susceptibility_score"]
+        geology = terrain.get("geology", "Unspecified")
 
         # Dynamic rainfall features
-        rainfall_3d = observations.get("rainfall_3d_mm", rainfall_24h * 1.5)
-        rainfall_15d = observations.get("rainfall_15d_mm", rainfall_3d * 2.2)
-        soil_moisture = observations.get("soil_moisture_pct", 65.0)
+        rainfall_3d = observations.get("rainfall_3d_mm")
+        rainfall_15d = observations.get("rainfall_15d_mm")
+        if rainfall_3d is None or rainfall_15d is None:
+            return {
+                "hazard_type": "LANDSLIDE", "model_version": cls.MODEL_VERSION,
+                "generated_at": now.isoformat(), "horizon_start": now.isoformat(),
+                "horizon_end": horizon_end.isoformat(), "probability": None,
+                "risk_category": "UNAVAILABLE", "data_quality_status": "MISSING_ANTECEDENT_RAINFALL",
+                "simulation_flag": is_simulation,
+                "input_snapshot": {"terrain": terrain, "observations": observations},
+                "explanation": {"primary_reason": "Verified 3-day and 15-day rainfall observations are required.",
+                                "disclaimer": "Unavailable assessment does not imply slope stability.",
+                                "contributing_factors": []}
+            }
+        soil_moisture = observations.get("soil_moisture_pct")
 
         # Antecedent Rainfall Index (ARI)
         ari = rainfall_24h + (0.5 * rainfall_3d) + (0.2 * rainfall_15d)

@@ -40,6 +40,8 @@ def _latest_obs_map(db, location_id: str, max_records: int = 30) -> Dict[str, An
             latest[f"{o.variable}_observed_at"] = o.observed_at
             latest[f"{o.variable}_age_hours"] = _age_hours(o.observed_at)
             latest[f"{o.variable}_freshness"] = o.quality_status
+            latest[f"{o.variable}_source_id"] = o.source_id
+            latest[f"{o.variable}_provenance"] = o.provenance
     return latest
 
 
@@ -51,7 +53,9 @@ def _hazard_history_factor(db, location_id: str) -> float:
     now = utcnow()
     cutoff = now - datetime.timedelta(days=3650)
     events = db.query(DisasterEvent).filter(
-        DisasterEvent.event_start >= cutoff
+        DisasterEvent.event_start >= cutoff,
+        DisasterEvent.verification_status == "VERIFIED",
+        DisasterEvent.source_reference.like("https://%"),
     ).all()
     count = 0
     for ev in events:
@@ -105,7 +109,9 @@ class IntegratedRiskEngine:
 
     @classmethod
     def evaluate_location(cls, db, loc: Location) -> Dict[str, Any]:
-        terrain: Optional[TerrainFeature] = loc.terrain
+        # Stored terrain rows have no verified provenance field; exclude them
+        # from operational estimates until an authoritative layer is wired.
+        terrain: Optional[TerrainFeature] = None
         obs = _latest_obs_map(db, loc.id)
         history_factor = _hazard_history_factor(db, loc.id)
 
@@ -124,10 +130,13 @@ class IntegratedRiskEngine:
         rain24_age = obs.get("rainfall_24h_mm_age_hours")
         rain3d = obs.get("rainfall_3d_mm")
         rain_forecast = obs.get("forecast_rainfall_24h_mm")
-        rain24_source = "IMD AWS observation (stored)"
+        rain24_source = (
+            f"Stored observation ({obs.get('rainfall_24h_mm_source_id') or 'source unspecified'})"
+            if rain24 is not None else "Unavailable"
+        )
         river_level = obs.get("river_level_m")
         river_age = obs.get("river_level_m_age_hours")
-        river_rate = obs.get("river_rate_m_hr", 0.0)
+        river_rate = obs.get("river_rate_m_hr")
         soil = obs.get("soil_moisture_pct")
 
         if river_level is not None and (river_age is None or river_age > settings.FRESHNESS_RIVER_HOURS):
@@ -145,22 +154,20 @@ class IntegratedRiskEngine:
             if rain24 is None and (weather_ctx or {}).get("observed_precipitation_24h_mm") is not None:
                 rain24 = weather_ctx["observed_precipitation_24h_mm"]
                 rain24_age = weather_ctx.get("last_observed_age_hours")
-                if weather_mode == "LIVE":
-                    rain24_age = rain24_age if rain24_age is not None else 0.5
-                else:
-                    rain24_age = None if rain24_age is None else max(rain24_age, 1.0)
+                if weather_mode == "CACHED" and rain24_age is not None:
+                    rain24_age = max(rain24_age, 1.0)
                 rain24_source = "Open-Meteo observed precipitation (gap-fill)"
             if rain3d is None and (weather_ctx or {}).get("observed_precipitation_72h_mm") is not None:
                 rain3d = weather_ctx["observed_precipitation_72h_mm"]
             if rain_forecast is None and (weather_ctx or {}).get("forecast_precipitation_24h_mm") is not None:
                 rain_forecast = weather_ctx["forecast_precipitation_24h_mm"]
 
-        slope = terrain.slope_deg if terrain else 8.0
-        susceptibility = terrain.susceptibility_score if terrain else 0.30
-        drainage = terrain.drainage_density if terrain else 2.5
-        elevation = terrain.elevation_m if terrain else (loc.elevation_m or 50.0)
+        slope = terrain.slope_deg if terrain else None
+        susceptibility = terrain.susceptibility_score if terrain else None
+        drainage = terrain.drainage_density if terrain else None
+        elevation = terrain.elevation_m if terrain else None
 
-        ari = (rain24 or 0.0) + 0.5 * (rain3d or (rain24 or 0.0) * 1.5) + 0.2 * ((rain3d or 0.0) * 2.2)
+        ari = (rain24 or 0.0) + 0.5 * (rain3d or 0.0)
         forecast_trigger = min(max(rain_forecast or 0.0, 0.0), 250.0) / 200.0
 
         # ---------------- Flood sub-score ----------------
@@ -194,7 +201,7 @@ class IntegratedRiskEngine:
             flood_level_score = 0.05
 
         rain_flood_factor = min(ari / 250.0, 1.0) * 0.35 + forecast_trigger * 0.15
-        rate_factor = min(max((river_rate or 0.0) / 0.40, 0.0), 1.0) * 0.15
+        rate_factor = min(max(river_rate / 0.40, 0.0), 1.0) * 0.15 if river_rate is not None else 0.0
         flood_raw = min(0.65 + rain_flood_factor + rate_factor, 0.97) * (flood_level_score / 0.75) if river_level is not None else rain_flood_factor * 0.35
         flood_raw = min(flood_raw, 0.97)
         flood_category = "UNAVAILABLE" if (river_level is None and loc.location_type in ("RIVER_STATION", "URBAN_CATCHMENT")) else (
@@ -203,20 +210,22 @@ class IntegratedRiskEngine:
 
         # ---------------- Landslide sub-score ----------------
         rainfall_factor = min(ari / 160.0, 1.25) * 0.55
-        terrain_factor = susceptibility * 0.35
+        terrain_factor = susceptibility * 0.35 if susceptibility is not None else None
         forecast_factor = forecast_trigger * 0.10
-        landslide_raw = min(rainfall_factor + terrain_factor + forecast_factor, 0.97)
-        landslide_raw = landslide_raw * (1.0 + 0.10 * history_factor)
-        landslide_raw = min(landslide_raw, 0.97)
-        if ari >= 160.0 and slope >= 30.0:
+        landslide_raw = min(rainfall_factor + terrain_factor + forecast_factor, 0.97) if terrain_factor is not None else None
+        if landslide_raw is not None:
+            landslide_raw = min(landslide_raw * (1.0 + 0.10 * history_factor), 0.97)
+        if landslide_raw is None:
+            landslide_category = "UNKNOWN"
+        elif ari >= 160.0 and slope is not None and slope >= 30.0:
             landslide_category = "CRITICAL"
-        elif ari >= 95.0 and susceptibility >= 0.60:
+        elif ari >= 95.0 and susceptibility is not None and susceptibility >= 0.60:
             landslide_category = "HIGH"
-        elif ari >= 60.0 or susceptibility >= 0.70:
+        elif ari >= 60.0 or (susceptibility is not None and susceptibility >= 0.70):
             landslide_category = "MODERATE"
         else:
             landslide_category = "LOW"
-        if slope < 12.0 and landslide_category not in ("LOW",):
+        if slope is not None and slope < 12.0 and landslide_category not in ("LOW", "UNKNOWN"):
             landslide_category = "MODERATE" if landslide_category == "HIGH" else landslide_category
 
         # A low model score from absent/stale inputs is not evidence of safety.
@@ -225,6 +234,7 @@ class IntegratedRiskEngine:
         any_current_hazard_input = river_current or rain_current
         if not any_current_hazard_input:
             flood_category = "UNKNOWN"
+        if not rain_current or terrain is None:
             landslide_category = "UNKNOWN"
 
         conf_rain = _rainfall_confidence(rain24, rain24_age)
@@ -247,7 +257,10 @@ class IntegratedRiskEngine:
                 f"forecast-24h {(weather_ctx.get('forecast_precipitation_24h_mm') or 0):.1f}mm "
                 f"retrieved {(weather_ctx.get('retrieved_at') or '')[:19]}."
             )
-        data_notes.append(f"Terrain: slope {slope:.1f} deg, drainage density {drainage:.1f}, GSI susceptibility {susceptibility:.2f} at {elevation:.0f}m elevation.")
+        if terrain:
+            data_notes.append(f"Terrain: slope {slope:.1f} deg, drainage density {drainage:.1f}, GSI susceptibility {susceptibility:.2f} at {elevation:.0f}m elevation.")
+        else:
+            data_notes.append("Terrain susceptibility: unavailable; no verified terrain layer is connected.")
         data_notes.append(f"Documented hazard events within 20 km (10 y): history factor {history_factor:.2f}.")
 
         return {
@@ -263,18 +276,18 @@ class IntegratedRiskEngine:
             "generated_at": utcnow().isoformat(),
             "flood": {
                 "risk_category": flood_category,
-                "probability": round(flood_raw, 2) if any_current_hazard_input else None,
+                "probability": round(flood_raw, 2) if river_current else None,
                 "confidence": flood_confidence,
                 "uncertainty": "HIGH_UNCERTAINTY" if flood_confidence < 0.70 else "LOW_UNCERTAINTY",
-                "ari_mm": round(ari, 1),
+                "ari_mm": round(ari, 1) if rain_current else None,
                 "forecast_trigger_index": round(forecast_trigger, 2)
             },
             "landslide": {
                 "risk_category": landslide_category,
-                "probability": round(landslide_raw, 2) if rain_current else None,
+                "probability": round(landslide_raw, 2) if (rain_current and terrain is not None) else None,
                 "confidence": landslide_confidence,
                 "uncertainty": "HIGH_UNCERTAINTY" if landslide_confidence < 0.70 else "LOW_UNCERTAINTY",
-                "ari_mm": round(ari, 1),
+                "ari_mm": round(ari, 1) if rain_current else None,
                 "slope_deg": slope,
                 "susceptibility_score": susceptibility
             },

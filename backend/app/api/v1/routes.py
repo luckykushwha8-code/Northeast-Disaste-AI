@@ -203,12 +203,14 @@ def get_health(db: Session = Depends(get_db)):
 @router.get("/system/data-status", response_model=List[DataSourceOut])
 def get_data_source_status(db: Session = Depends(get_db)):
     """Shows all data feeds and their freshness/operational health (FR-DATA-06, FR-DATA-07)"""
-    sources = db.query(DataSource).all()
+    sources = db.query(DataSource).filter(DataSource.source_type != "SYNTH_IOT").all()
     now = utcnow()
     result = []
     for s in sources:
         latest_observation = db.query(Observation).filter(
-            Observation.source_id == s.id
+            Observation.source_id == s.id,
+            Observation.simulation_flag.is_(False),
+            Observation.quality_status.in_(["VALID", "STALE", "DELAYED"]),
         ).order_by(Observation.observed_at.desc()).first()
         forecast_cache = None
         forecast_payload: Dict[str, Any] = {}
@@ -227,25 +229,26 @@ def get_data_source_status(db: Session = Depends(get_db)):
             default=None
         )
 
+        status = s.status
         if s.source_type == "SYNTH_IOT":
-            s.status = "SIMULATED"
+            status = "SIMULATED"
         elif s.id == "src_imd_api":
-            s.status = "VIA_TINYFISH"
+            status = "AUTH_REQUIRED" if not settings.TINYFISH_API_KEY else "NOT_CHECKED"
         elif not s.enabled:
-            s.status = "DISABLED"
+            status = "DISABLED"
         elif s.last_error_at and (not s.last_success_at or s.last_error_at >= s.last_success_at):
-            if s.status not in {"AUTH_REQUIRED", "AUTH_ERROR"}:
-                s.status = "FAILED"
+            if status not in {"AUTH_REQUIRED", "AUTH_ERROR"}:
+                status = "FAILED"
         elif s.last_success_at:
             age_hours = (now - s.last_success_at).total_seconds() / 3600.0
             if age_hours > (s.expected_update_interval_hours * 2):
-                s.status = "STALE"
+                status = "STALE"
             elif age_hours > s.expected_update_interval_hours:
-                s.status = "DELAYED"
+                status = "DELAYED"
             else:
-                s.status = "OPERATIONAL"
+                status = "OPERATIONAL"
         else:
-            s.status = "NOT_CHECKED"
+            status = "NOT_CHECKED"
 
         result.append({
             "id": s.id,
@@ -256,7 +259,7 @@ def get_data_source_status(db: Session = Depends(get_db)):
             "enabled": s.enabled,
             "last_success_at": s.last_success_at if s.id != "src_imd_api" else None,
             "last_error_at": s.last_error_at,
-            "status": s.status,
+            "status": status,
             "last_fetch_attempt_at": fetch_attempt,
             "latest_observation_at": latest_observation.observed_at if latest_observation and s.id != "src_imd_api" else None,
             "latest_observation_ingested_at": latest_observation.ingested_at if latest_observation and s.id != "src_imd_api" else None,
@@ -277,7 +280,6 @@ def get_data_source_status(db: Session = Depends(get_db)):
                 else "STALE" if forecast_cache else None
             )
         })
-    db.commit()
     return result
 
 @router.get("/system/audit-logs", response_model=List[AuditLogOut])
@@ -291,14 +293,16 @@ def list_models(db: Session = Depends(get_db)):
     models = db.query(ModelVersion).all()
     result = []
     for m in models:
-        metrics = json.loads(m.evaluation_metrics_json) if m.evaluation_metrics_json else {}
+        # Bundled model metrics are not backed by an independently verifiable
+        # evaluation dataset; never present them as measured performance.
+        metrics = None
         result.append(ModelVersionOut(
             id=m.id,
             hazard_type=m.hazard_type,
             version=m.version,
-            training_data_version=m.training_data_version,
+            training_data_version="NOT_VERIFIED",
             evaluation_metrics=metrics,
-            approval_status=m.approval_status,
+            approval_status="PROTOTYPE",
             released_at=m.released_at,
             known_limitations=m.known_limitations
         ))
@@ -311,16 +315,8 @@ def list_locations(db: Session = Depends(get_db)):
     locations = db.query(Location).filter(Location.active == True).all()
     out = []
     for loc in locations:
+        # Stored terrain rows have no verified source/provenance field.
         terrain_dict = None
-        if loc.terrain:
-            terrain_dict = {
-                "slope_deg": loc.terrain.slope_deg,
-                "elevation_m": loc.terrain.elevation_m,
-                "geology": loc.terrain.geology,
-                "land_cover": loc.terrain.land_cover,
-                "drainage_density": loc.terrain.drainage_density,
-                "susceptibility_score": loc.terrain.susceptibility_score
-            }
         out.append(LocationOut(
             id=loc.id,
             name=loc.name,
@@ -344,7 +340,10 @@ def get_observations(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Observation)
+    query = db.query(Observation).filter(
+        Observation.simulation_flag.is_(False),
+        Observation.quality_status.in_(["VALID", "STALE", "DELAYED"]),
+    )
     if location_id:
         query = query.filter(Observation.location_id == location_id)
     if variable:
@@ -377,7 +376,7 @@ def get_predictions(
     limit: int = 50,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Prediction)
+    query = db.query(Prediction).filter(Prediction.simulation_flag.is_(False))
     if location_id:
         query = query.filter(Prediction.location_id == location_id)
     if hazard_type:
@@ -426,7 +425,11 @@ def generate_assessments(
         # Gather latest observations for this location
         latest_obs = {}
         is_simulation = False
-        obs_records = db.query(Observation).filter(Observation.location_id == loc.id).order_by(Observation.observed_at.desc()).limit(20).all()
+        obs_records = db.query(Observation).filter(
+            Observation.location_id == loc.id,
+            Observation.simulation_flag.is_(False),
+            Observation.quality_status.in_(["VALID", "STALE", "DELAYED"]),
+        ).order_by(Observation.observed_at.desc()).limit(40).all()
         for o in obs_records:
             if o.variable not in latest_obs:
                 latest_obs[o.variable] = o.value
@@ -472,12 +475,14 @@ def generate_assessments(
 
         # 2. Landslide Assessment
         # Relevant for Slope zones
-        if loc.location_type == "SLOPE_ZONE" or (loc.terrain and loc.terrain.slope_deg >= 15.0):
-            terrain_data = {
-                "slope_deg": loc.terrain.slope_deg if loc.terrain else 28.0,
-                "susceptibility_score": loc.terrain.susceptibility_score if loc.terrain else 0.65,
-                "geology": loc.terrain.geology if loc.terrain else "Gneissic Metamorphic"
-            }
+        if loc.location_type == "SLOPE_ZONE" or loc.terrain:
+            terrain_data = None
+            if loc.terrain and getattr(loc.terrain, "source_reference", None):
+                terrain_data = {
+                    "slope_deg": loc.terrain.slope_deg,
+                    "susceptibility_score": loc.terrain.susceptibility_score,
+                    "geology": loc.terrain.geology,
+                }
             landslide_res = LandslidePredictionEngine.evaluate(
                 location_id=loc.id,
                 terrain=terrain_data,
@@ -515,7 +520,7 @@ def list_alerts(
     principal: Principal = Depends(require_roles("RESPONDER", "OPERATOR", "ANALYST", "ADMIN"))
 ):
     """Staff alert queue, including proposals and audited delivery metadata."""
-    query = db.query(Alert)
+    query = db.query(Alert).filter(Alert.simulation_flag.is_(False))
     if lifecycle_status:
         query = query.filter(Alert.lifecycle_status == lifecycle_status)
     if hazard_type:
@@ -753,8 +758,8 @@ def resolve_alert(
 # ----------------- 6. SHELTERS -----------------
 @router.get("/shelters", response_model=List[ShelterOut])
 def list_shelters(db: Session = Depends(get_db)):
-    """Retrieve verified shelter records and operational status (FR-USER-11)"""
-    return db.query(Shelter).all()
+    """Return no shelters until an authoritative, current verification feed exists."""
+    return []
 
 # ----------------- 7. INCIDENT REPORTS -----------------
 @router.get("/reports/public", response_model=List[PublicIncidentReportOut])
@@ -937,6 +942,11 @@ def trigger_scenario(scenario_name: str, db: Session = Depends(get_db), principa
     4. 'stale_feed_failure': Simulates CWC sensor outage where gauge reading is 8 hours stale (Safety Rule R-02).
     5. 'sensor_missing_fallback': Missing gauge data triggers Rule R-03 uncertainty fallback without inventing numbers.
     """
+    raise HTTPException(
+        status_code=410,
+        detail="Demo scenarios are disabled on the live service; they write simulated readings and alerts.",
+    )
+
     now = utcnow()
 
     if scenario_name == "normal":
@@ -1132,82 +1142,21 @@ def get_cwc_stations(db: Session = Depends(get_db)):
 
 
 def _baseline_gsi_susceptibility() -> Dict[str, Any]:
-    """
-    Baseline regional macro-zonation derived from published GSI NLSM reports.
-    """
     return {
         "source": "Geological Survey of India (GSI)",
-        "programme": "National Landslide Susceptibility Mapping (NLSM)",
         "portal_url": "https://bhusanket.gsi.gov.in/",
         "attribution": "Government of India — Ministry of Mines / GSI",
-        "data_mode": "BASELINE",
-        "susceptibility_zones": [
-            {
-                "state": "Assam",
-                "district": "Kamrup Metropolitan",
-                "slopes": "Kharghuli, Nilachal, Narakasur, Sarania",
-                "geology": "Precambrian Gneissic Complex with thin weathered regolith",
-                "susceptibility_category": "HIGH_TO_VERY_HIGH",
-                "historical_events_count": 48
-            },
-            {
-                "state": "Meghalaya",
-                "district": "East Khasi Hills",
-                "slopes": "Sohra Rim, Shillong-Dawki Highway (NH 40)",
-                "geology": "Cretaceous-Tertiary Sediments over Precambrian Basement",
-                "susceptibility_category": "VERY_HIGH",
-                "historical_events_count": 82
-            },
-            {
-                "state": "Arunachal Pradesh",
-                "district": "Papum Pare & West Kameng",
-                "slopes": "Itanagar Road Cuts, Bhalukpong-Bomdila Corridor",
-                "geology": "Fragile Tertiary Siwalik sandstones and shales",
-                "susceptibility_category": "VERY_HIGH",
-                "historical_events_count": 64
-            },
-            {
-                "state": "Manipur",
-                "district": "Noney & Kangpokpi",
-                "slopes": "Jiribam-Imphal Railway Corridor (Tupul)",
-                "geology": "Tectonized Disang flysch shale and siltstone",
-                "susceptibility_category": "CRITICAL_SUSCEPTIBILITY",
-                "historical_events_count": 39
-            },
-            {
-                "state": "Mizoram",
-                "district": "Aizawl",
-                "slopes": "Ramhlun, Hunthar, Bawngkawn Slopes",
-                "geology": "Tertiary Surma Group sandstone and interbedded shale",
-                "susceptibility_category": "HIGH_TO_VERY_HIGH",
-                "historical_events_count": 55
-            },
-            {
-                "state": "Nagaland",
-                "district": "Kohima",
-                "slopes": "Phesama, Dzüdza, Zubza Corridor",
-                "geology": "Crushed Disang shale prone to deep creep",
-                "susceptibility_category": "VERY_HIGH",
-                "historical_events_count": 71
-            },
-            {
-                "state": "Sikkim",
-                "district": "East & North Sikkim",
-                "slopes": "Gangtok-Deorali, Mangan-Chungthang Highway",
-                "geology": "Daling phyllites, Central Crystalline Gneiss",
-                "susceptibility_category": "VERY_HIGH_TO_CRITICAL",
-                "historical_events_count": 112
-            }
-        ]
+        "data_mode": "UNAVAILABLE",
+        "susceptibility_zones": [],
+        "note": "No verified GSI susceptibility or current landslide bulletin feed is available."
     }
 
 
 @router.get("/sources/gsi/susceptibility")
 def get_gsi_susceptibility(db: Session = Depends(get_db)):
     """
-    LIVE-first adapter for Geological Survey of India (GSI) Bhusanket & NLSM.
-    Attempts live bulletin extraction via TinyFish; falls back to the last
-    cached bulletin, then to the published GSI baseline macro-zonation.
+    Only current, dated GSI bulletins are operational data. Generic portal text
+    and historical macro-zonation are not returned as current conditions.
     """
     live = live_data_service.fetch_gsi_susceptibility(db)
     if live.get("data_mode") in ("LIVE", "CACHED"):
@@ -1457,7 +1406,9 @@ def get_weather_now(
     readings = []
     for loc in locations:
         recs = db.query(Observation).filter(
-            Observation.location_id == loc.id
+            Observation.location_id == loc.id,
+            Observation.simulation_flag.is_(False),
+            Observation.quality_status.in_(["VALID", "STALE", "DELAYED"]),
         ).order_by(Observation.observed_at.desc()).limit(20).all()
         seen_variables = {}
         for o in recs:
@@ -1795,27 +1746,8 @@ def get_analytics_overview(
     for st, n in sorted(status_counts.items()):
         rescue_by_status.append({"status": st, "count": n})
 
-    # 7. Historical rainfall comparison (documented event ARIs vs current max)
-    import json as _json
+    # No independently verified historical rainfall dataset is connected.
     historical_rainfall_comparison = []
-    val_cases = _json.loads(_json.dumps([]))
-    from app.models.entities import HistoricalValidationCase
-    for c in db.query(HistoricalValidationCase).filter(HistoricalValidationCase.case_type == "POSITIVE_EVENT").all():
-        try:
-            inputs = _json.loads(c.documented_inputs_json)
-        except Exception:
-            continue
-        documented_rain = next((inputs[iv] for iv in ("rainfall_24h_mm", "arihant", "rain_24h_mm", "rainfall_24h")
-                                if iv in inputs and isinstance(inputs[iv], (int, float))), None)
-        if documented_rain is None:
-            continue
-        loc_name = locs[c.location_id].name if c.location_id in locs else c.location_id
-        historical_rainfall_comparison.append({
-            "event": c.event_name,
-            "location": loc_name,
-            "documented_ari_mm": float(documented_rain),
-            "year": c.event_date.year if c.event_date else None
-        })
 
     # 8. Source availability & freshness
     source_freshness = []

@@ -3,58 +3,15 @@ import { api } from '../../api/client';
 import type { LocationItem, ModelVersionItem, ModelValidationReport, UserRole } from '../../types';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { SimulationRibbon } from '../../components/ui/SimulationRibbon';
 import { LiveWeatherCard } from '../../components/LiveWeatherCard';
-import { FlaskConical, Activity, AlertCircle, Award, Play, CheckCircle2, XCircle, Shield } from 'lucide-react';
+import { FlaskConical, AlertCircle, Shield } from 'lucide-react';
 
-type DemoCase = {
-  id: string;
-  name: string;
-  hazard_type: string;
-  description: string;
-};
-
-const DEMO_CASES: DemoCase[] = [
-  { id: 'kharghuli_2022', name: 'Kharghuli Landslide 2022', hazard_type: 'LANDSLIDE', description: 'ARI 192mm/24h on Kharghuli Hill — Rule R2 triggered at 185mm threshold.' },
-  { id: 'pandu_2022', name: 'Pandu Flood June 2022', hazard_type: 'FLOOD', description: 'Brahmaputra peaked 49.88m — 0.20m above CWC Danger Level 49.68m.' },
-  { id: 'silchar_2022', name: 'Silchar Flood 2022', hazard_type: 'FLOOD', description: 'Barak river breached at Silchar — worst flood in 50 years per district records.' },
-  { id: 'tupul_2023', name: 'Tupul Landslide 2023', hazard_type: 'LANDSLIDE', description: 'Tupul railway station landslide — retrospective scenario for model sensitivity analysis.' },
-];
-
-function VerdictChip({ verdict }: { verdict: string }) {
-  const isGood = verdict === 'VALIDATED';
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${isGood ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-      {isGood ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-      {verdict}
-    </span>
-  );
-}
-
-function MetricBar({ value, label, color }: { value: number; label: string; color: string }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-slate-600">
-        <span>{label}</span>
-        <span className="font-bold" style={{ color }}>{(value * 100).toFixed(1)}%</span>
-      </div>
-      <div className="w-full bg-slate-100 rounded-full h-2">
-        <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(value * 100, 100)}%`, background: color }} />
-      </div>
-    </div>
-  );
-}
-
-export default function ModelsPage({ userRole, onRequestLogin }: { userRole: UserRole; onRequestLogin: () => void }) {
+export default function ModelsPage({ userRole: _userRole, onRequestLogin: _onRequestLogin }: { userRole: UserRole; onRequestLogin: () => void }) {
   const [models, setModels] = useState<ModelVersionItem[]>([]);
   const [validation, setValidation] = useState<ModelValidationReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [runningCase, setRunningCase] = useState<string | null>(null);
-  const [scenarioResult, setScenarioResult] = useState<Record<string, unknown> | null>(null);
-  const [scenarioError, setScenarioError] = useState<string | null>(null);
   const [weatherLocation, setWeatherLocation] = useState<LocationItem | null>(null);
-  const canRunScenario = userRole === 'ADMIN';
 
   const load = () => {
     setLoading(true);
@@ -77,19 +34,6 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
 
   useEffect(load, []);
 
-  const runScenario = async (caseId: string) => {
-    setRunningCase(caseId);
-    setScenarioResult(null);
-    setScenarioError(null);
-    try {
-      setScenarioResult(await api.runDemoScenario(caseId));
-    } catch (e) {
-      setScenarioError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setRunningCase(null);
-    }
-  };
-
   if (loading) return (
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
@@ -106,7 +50,7 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
           <h2 className="text-base font-bold text-slate-900">AI Models & Validation</h2>
         </div>
         <p className="text-xs text-slate-500">
-          Prototype rules and retrospective cases only. Any displayed metrics describe the bundled cases and are not independent operational validation.
+          Advisory prototypes only. Current feed data and official warnings remain separate; verified model performance is unavailable.
           <strong className="text-amber-700 ml-1">AI cannot override CWC/IMD official thresholds.</strong>
         </p>
       </div>
@@ -121,7 +65,7 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
               <Shield className="w-4 h-4 text-teal-700" />
               <span className="text-sm font-bold text-slate-900">Overall Validation Summary</span>
             </div>
-            <VerdictChip verdict={validation.verdict} />
+              <span className="text-xs font-bold text-amber-700">{validation.total_cases > 0 ? validation.verdict : 'NOT VALIDATED'}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {[
@@ -136,17 +80,6 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
               </div>
             ))}
           </div>
-          {validation.historical_hit_rate !== null && (
-            <div className="space-y-2.5">
-              <MetricBar value={validation.historical_hit_rate} label="Historical Hit Rate" color="#16A34A" />
-              {validation.false_alarm_rate !== null && (
-                <MetricBar value={validation.false_alarm_rate} label="False Alarm Rate" color="#F97316" />
-              )}
-              {validation.safety_rule_pass_rate !== null && (
-                <MetricBar value={validation.safety_rule_pass_rate} label="Safety Rule Pass Rate" color="#2563EB" />
-              )}
-            </div>
-          )}
           <p className="text-[10px] text-slate-400 mt-2">{validation.method_note}</p>
         </div>
       )}
@@ -172,14 +105,14 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[
-                  { k: 'precision', label: 'Precision', color: '#0F766E', fallback: '89%' },
-                  { k: 'recall', label: 'Recall', color: '#2563EB', fallback: '93%' },
-                  { k: 'lead_time_hours_mean', label: 'Lead Time', color: '#7C3AED', fallback: '6h', isHours: true },
-                ].map(({ k, label, color, fallback, isHours }) => {
+                  { k: 'precision', label: 'Precision', color: '#0F766E' },
+                  { k: 'recall', label: 'Recall', color: '#2563EB' },
+                  { k: 'lead_time_hours_mean', label: 'Lead Time', color: '#7C3AED', isHours: true },
+                ].map(({ k, label, color, isHours }) => {
                   const raw = metrics[k];
                   const display = raw != null
                     ? (isHours ? `${raw}h` : `${(Number(raw) * 100).toFixed(0)}%`)
-                    : fallback;
+                    : 'Not verified';
                   return (
                     <div key={k} className="p-2 bg-slate-50 rounded-lg border border-slate-100">
                       <div className="text-[10px] text-slate-500 font-semibold">{label}</div>
@@ -204,13 +137,6 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
                 )}
               </div>
 
-              {metrics.baseline_comparison && (
-                <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100 text-[11px] text-blue-900">
-                  <Award className="w-3 h-3 inline mr-1 text-blue-600" />
-                  {String(metrics.baseline_comparison)}
-                </div>
-              )}
-
               {m.known_limitations && (
                 <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-100 text-[11px] text-amber-900">
                   <AlertCircle className="w-3 h-3 inline mr-1 text-amber-600" />
@@ -222,93 +148,6 @@ export default function ModelsPage({ userRole, onRequestLogin }: { userRole: Use
         })}
       </div>
 
-      {/* Demo Case Replay Gallery */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-purple-600" />
-          <h3 className="text-sm font-bold text-slate-900">Documented Case Replay Gallery</h3>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">SIMULATION</span>
-        </div>
-        <p className="text-xs text-slate-500 mb-4">
-          Run documented historical scenarios through the current model. All outputs are marked SIMULATED and excluded from public/operational views.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {DEMO_CASES.map(dc => (
-            <div key={dc.id} className="relative border border-purple-200 rounded-xl p-3 bg-purple-50/40">
-              <SimulationRibbon compact />
-              <div className="flex items-start justify-between gap-2 mt-4">
-                <div>
-                  <div className="text-xs font-bold text-slate-900">{dc.name}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{dc.description}</div>
-                  <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${dc.hazard_type === 'FLOOD' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                    {dc.hazard_type}
-                  </span>
-                </div>
-                {canRunScenario ? <button
-                  onClick={() => runScenario(dc.id)}
-                  disabled={runningCase === dc.id}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 disabled:opacity-50 transition flex-shrink-0"
-                >
-                  {runningCase === dc.id ? <><span className="animate-spin">⟳</span> Running…</> : <><Play className="w-3 h-3" /> Run</>}
-                </button> : <button onClick={onRequestLogin} className="flex-shrink-0 rounded-lg border border-purple-300 px-2.5 py-1.5 text-[11px] font-semibold text-purple-800">Admin login to run</button>}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Scenario Result */}
-        {scenarioResult && (
-          <div className="mt-4 p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-purple-700" />
-              <span className="text-xs font-bold text-purple-900">Scenario Complete · SIMULATED</span>
-            </div>
-            <pre className="text-[10px] text-purple-800 bg-purple-100 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
-              {JSON.stringify(scenarioResult, null, 2)}
-            </pre>
-          </div>
-        )}
-        {scenarioError && (
-          <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-700">
-            <XCircle className="w-3.5 h-3.5 inline mr-1" />
-            {scenarioError}
-          </div>
-        )}
-      </div>
-
-      {/* Rules Reference */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <h3 className="text-sm font-bold text-slate-900 mb-3">Safety Rules & Thresholds Reference</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px]">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Rule ID</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Description</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Threshold</th>
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Provenance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {[
-                { id: 'R1', desc: 'River above Warning Level → MODERATE risk floor', threshold: 'Station-specific (CWC)', prov: 'CWC Flood Forecasting Service' },
-                { id: 'R2', desc: 'ARI rainfall exceeds 185mm/24h on slope zone → HIGH landslide', threshold: 'ARI > 185 mm/24h', prov: 'GSI NLSM 2022 + IMD ARI tables' },
-                { id: 'R3', desc: 'Data gap > 3h on CWC gauge → uncertainty fallback, no fabrication', threshold: 'Gap > 3 hours', prov: 'Internal safety rule' },
-                { id: 'R4', desc: 'Simulation flag → excluded from public views and official KPIs', threshold: 'simulation_flag = true', prov: 'Platform policy' },
-                { id: 'R5', desc: 'AI cannot raise risk above official CWC danger level prediction', threshold: 'CWC threshold ceiling', prov: 'CWC Flood Forecasting Service' },
-              ].map(row => (
-                <tr key={row.id} className="hover:bg-slate-50">
-                  <td className="py-2 px-3 font-mono font-bold text-indigo-700">{row.id}</td>
-                  <td className="py-2 px-3 text-slate-700">{row.desc}</td>
-                  <td className="py-2 px-3 font-mono text-teal-700">{row.threshold}</td>
-                  <td className="py-2 px-3 text-slate-500">{row.prov}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }

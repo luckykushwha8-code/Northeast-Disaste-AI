@@ -558,7 +558,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
             <div style="font-size:11px;color:#64748b">${escapeHtml(f.district)}</div>
             <div style="font-size:13px;margin-top:5px"><b>${Number(f.value_mm).toFixed(1)} mm</b> forecast</div>
             <div style="font-size:10px;color:#64748b;margin-top:3px">Open-Meteo model · retrieved ${f.fetched_at ? new Date(f.fetched_at).toLocaleString() : 'time unavailable'}</div>
-            <div style="font-size:10px;color:#92400e;margin-top:4px">Advisory model output, not an official IMD warning. IMD heavy-rain threshold: ≥64.5 mm/24h.</div>
+            <div style="font-size:10px;color:#92400e;margin-top:4px">Open-Meteo forecast model output; this dashboard trigger is advisory and is not an official IMD warning.</div>
           </div>`).addTo(map);
         });
         rainfallMarkers.push(new Marker({ element: markerButton, anchor: 'bottom' })
@@ -1341,7 +1341,7 @@ export const MapBoard: React.FC<MapBoardProps> = ({ locations, alerts, shelters,
               <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#b45309', border: '2px solid white', boxShadow: '0 0 0 1px #b45309' }} /> Landslide assessment point · prototype</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: SEVERITY_COLORS.UNKNOWN }} /> Unknown / no data (gray)</div>
               <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#087e9b' }} /> Rain gauge label · amber = demo/unverified {layers.rainfall ? '' : '(off)'}</div>
-              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#6d28d9' }} /> Heavy-rain model forecast ≥64.5 mm/24h {layers.forecastRain ? '' : '(off)'}</div>
+              <div><span className="inline-block w-3 h-3 rounded-full align-middle" style={{ background: '#6d28d9' }} /> Advisory rain forecast trigger ≥64.5 mm/24h {layers.forecastRain ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#16a34a' }} /> Verified shelter {layers.shelters ? '' : '(off)'}</div>
               <div><span className="inline-block w-3 h-3 rounded-sm align-middle" style={{ background: '#0d9488' }} /> Verified incident · amber = unverified</div>
               <div><span className="inline-block w-3 h-3 my-0.5 align-middle" style={{ height: 3, width: 14, background: '#111827' }} /> Official IMD warning outline</div>

@@ -149,6 +149,27 @@ def replay_case_baseline(case: HistoricalValidationCase) -> Dict[str, Any]:
 
 
 def run_historical_validation(db: Session) -> Dict[str, Any]:
+    # The bundled cases do not have independently verifiable source records.
+    # Keep them in storage for audit, but never report replay scores as measured
+    # real-world model performance.
+    return {
+        "validated_at": utcnow().isoformat(),
+        "total_cases": 0,
+        "positive_events": 0,
+        "negative_events": 0,
+        "safety_cases": 0,
+        "historical_hit_rate": None,
+        "false_alarm_rate": None,
+        "safety_rule_pass_rate": None,
+        "overall_pass_count": 0,
+        "verdict": "NEEDS_REVIEW",
+        "by_hazard": {},
+        "baseline_cases": [],
+        "cases": [],
+        "method_note": "Model validation is unavailable: no independently verified evaluation dataset is connected.",
+        "threshold_provenance": {},
+    }
+
     cases = db.query(HistoricalValidationCase).all()
     results = [replay_case(c) for c in cases]
     baseline_results = [replay_case_baseline(c) for c in cases]

@@ -60,12 +60,6 @@ BASELINE_REFERENCES = {
     "loc_agartala_howrah": {"warning_level_m": 6.00, "danger_level_m": 6.30, "hfl_m": 7.60}
 }
 
-TREND_TO_RATE_M_HR = {
-    "RISING": 0.10,
-    "STEADY": 0.02,
-    "FALLING": -0.08
-}
-
 CACHE_TTL_MINUTES = 30
 
 
@@ -149,11 +143,25 @@ class LiveDataService:
                 if not code:
                     continue
                 value = row.get("value")
+                source_time = next((row.get(key) for key in (
+                    "observedAt", "observationTime", "observation_time", "lastUpdatedAt", "timestamp", "dateTime"
+                ) if row.get(key)), None)
+                observed_at = None
+                if source_time:
+                    try:
+                        observed_at = datetime.datetime.fromisoformat(str(source_time).replace("Z", "+00:00"))
+                        if observed_at.tzinfo is not None:
+                            observed_at = observed_at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                    except (TypeError, ValueError):
+                        observed_at = None
                 live_stations.append({
                     "station_code": code,
                     "status": str(row.get("status", "UNKNOWN")).upper(),
                     "trend": str(row.get("trend", "UNKNOWN")).upper(),
                     "current_level_m": float(value) if value is not None else None,
+                    "observed_at": observed_at.isoformat() if observed_at else None,
+                    "retrieved_at": now.isoformat(),
+                    "reading_status": "DATED_READING" if observed_at else "UNVERIFIED_TIME",
                     "data_mode": "LIVE"
                 })
 
@@ -162,36 +170,25 @@ class LiveDataService:
             for st in live_stations:
                 loc_id = loc_by_code.get(st["station_code"].upper())
                 level = st["current_level_m"]
-                if not loc_id or level is None or level <= 0:
+                if not loc_id or level is None or level <= 0 or not st.get("observed_at"):
                     continue
                 obs = IngestionService.normalize_and_ingest(
                     db=db,
                     source_id="src_cwc_brahmaputra",
                     location_id=loc_id,
-                    observed_at=now,
+                    observed_at=datetime.datetime.fromisoformat(st["observed_at"]),
                     variable="river_level_m",
                     raw_value=level,
                     raw_unit="m",
                     provenance=f"CWC FFS Live telemetry ({st['station_code']})",
                     simulation_flag=False
                 )
-                rate = TREND_TO_RATE_M_HR.get(st["trend"], 0.02)
-                rate_obs = IngestionService.normalize_and_ingest(
-                    db=db,
-                    source_id="src_cwc_brahmaputra",
-                    location_id=loc_id,
-                    observed_at=now,
-                    variable="river_rate_m_hr",
-                    raw_value=rate,
-                    raw_unit="m/hr",
-                    provenance=f"CWC FFS Live trend ({st['station_code']}: {st['trend']})",
-                    simulation_flag=False
-                )
                 ingested.append({
                     "location_id": loc_id,
                     "river_level_m": level,
                     "trend": st["trend"],
-                    "river_rate_m_hr": rate
+                    "observed_at": st["observed_at"],
+                    "retrieved_at": st["retrieved_at"],
                 })
 
             monitored = []
@@ -210,10 +207,13 @@ class LiveDataService:
                     "warning_level_m": ref.get("warning_level_m"),
                     "danger_level_m": ref.get("danger_level_m"),
                     "hfl_m": ref.get("hfl_m"),
-                    "current_level_m": match["current_level_m"] if match else None,
+                    "current_level_m": match["current_level_m"] if match and match.get("observed_at") else None,
+                    "observed_at": match["observed_at"] if match else None,
+                    "retrieved_at": now.isoformat(),
+                    "reading_status": match["reading_status"] if match else "NO_CURRENT_LEVEL",
                     "trend": match["trend"] if match else "NOT_ISSUED",
-                    "status": "ABOVE_WARNING" if match else "NORMAL_BELOW_WARNING_LEVEL",
-                    "data_mode": "LIVE" if match else "NO_LIVE_ALERT_ISSUED"
+                    "status": "ABOVE_WARNING_RECORD" if match else "NO_ABOVE_WARNING_RECORD",
+                    "data_mode": "LIVE" if match else "NO_CURRENT_LEVEL"
                 })
 
             payload = {
@@ -223,9 +223,9 @@ class LiveDataService:
                 "attribution": "Government of India - Ministry of Jal Shakti / CWC",
                 "retrieved_at": now.isoformat(),
                 "data_mode": "LIVE",
-                "note": "Live telemetry lists only stations above Warning Level. "
-                        "Stations not listed are currently below warning level (normal) "
-                        "per official CWC FFS.",
+                "note": "The endpoint lists stations returned by its above-warning query. "
+                        "A station omitted from the response has no level in this feed; "
+                        "absence is not treated as a current reading or an all-clear.",
                 "stations_above_warning": live_stations,
                 "monitored_brahmaputra_region_stations": monitored,
                 "ingested_observations": ingested,
@@ -355,33 +355,17 @@ class LiveDataService:
         self._save_cache(db, "ne_news", payload, ",".join(settings.NEWS_SOURCES), "LIVE")
         return payload
 
-    # ----------------- GSI LIVE ADVISORY -----------------
+    # ----------------- GSI OFFICIAL PAGE -----------------
     def fetch_gsi_susceptibility(self, db: Session) -> Dict[str, Any]:
-        """Live GSI Bhusanket landslide advisory extraction via TinyFish."""
-        now = datetime.datetime.utcnow()
+        """Fetch the official GSI page without treating static text as a live advisory."""
         url = "https://bhusanket.gsi.gov.in/"
-        text = self._tinyfish_extract(
+        self._tinyfish_extract(
             db, url,
-            "Extract current landslide forecast bulletin, susceptibility map categories and advisories"
+            "Identify whether this page contains a dated current operational landslide bulletin. Return its publication time, affected districts and original bulletin text only if present. Do not classify static portal information as a live advisory."
         )
-        if text and len(text.strip()) > 120 and "unable to fetch data" not in text.lower():
-            snippet_lines = [l.strip() for l in text.splitlines() if len(l.strip()) > 10][:25]
-            payload = {
-                "source": "Geological Survey of India (GSI)",
-                "programme": "National Landslide Susceptibility Mapping (NLSM)",
-                "portal_url": url,
-                "attribution": "Government of India - Ministry of Mines / GSI",
-                "retrieved_at": now.isoformat(),
-                "data_mode": "LIVE",
-                "bulletin_snippet": "\n".join(snippet_lines)[:2000],
-                "note": "Live macro-zonation segments parsed from the Bhusanket portal. "
-                        "Region-level susceptibility categories follow published GSI NLSM classifications."
-            }
-            self._save_cache(db, "gsi_susceptibility", payload, url, "LIVE")
-            self._mark_source_health(db, "src_gsi_landslide", True)
-            return payload
-
-        return self._cached_fallback(db, "gsi_susceptibility", "Bhusanket live bulletin not parseable")
+        reason = "No dated current GSI landslide bulletin was verified; portal content is not treated as current risk data"
+        self._mark_source_health(db, "src_gsi_landslide", False)
+        return {"data_mode": "UNAVAILABLE", "live_error": reason, "source": "Geological Survey of India (GSI)", "portal_url": url, "susceptibility_zones": [], "note": reason}
 
     # ----------------- FULL SYNC -----------------
     def sync_all(self, db: Session) -> Dict[str, Any]:

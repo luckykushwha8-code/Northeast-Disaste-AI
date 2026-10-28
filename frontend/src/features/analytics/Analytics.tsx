@@ -152,14 +152,14 @@ export default function Analytics() {
 
         <AnalyticsCard
           title="Next 24h Rainfall Forecast by Location"
-          subtitle="Open-Meteo model output · forecast trigger at 64.5 mm/24h"
+          subtitle="Open-Meteo forecast model · advisory trigger at 64.5 mm/24h"
           icon={CARD_ICONS.rainfall}
           onCSV={() => downloadCSV(data.forecast_rainfall_24h, 'rainfall-forecast-24h')}
         >
           {data.forecast_rainfall_24h.length === 0 ? (
             <div className="text-xs text-slate-400 text-center py-8">No cached forecast available. Check System Health for feed status.</div>
           ) : <>
-            <div className="text-[11px] text-slate-500 mb-2">{data.forecast_rainfall_24h.filter(point => point.forecast_mm >= 64.5).length} monitored locations meet the IMD heavy-rain amount band. This model estimate is advisory, not an IMD warning.</div>
+            <div className="text-[11px] text-slate-500 mb-2">{data.forecast_rainfall_24h.filter(point => point.forecast_mm >= 64.5).length} monitored locations exceed this dashboard’s advisory rainfall trigger. Model output is not an IMD warning.</div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={data.forecast_rainfall_24h} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />

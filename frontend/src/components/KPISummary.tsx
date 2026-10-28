@@ -21,10 +21,10 @@ export const KPISummary: React.FC<KPISummaryProps> = ({
   const t = translations[lang] || translations.en;
 
   // Compute counts
-  const officialWarnings = alerts.filter(a => a.source_type.includes('OFFICIAL') || a.lifecycle_status === 'ISSUED');
-  const elevatedFlood = predictions.filter(p => p.hazard_type === 'FLOOD' && (p.risk_category === 'HIGH' || p.risk_category === 'CRITICAL'));
-  const elevatedLandslide = predictions.filter(p => p.hazard_type === 'LANDSLIDE' && (p.risk_category === 'HIGH' || p.risk_category === 'CRITICAL'));
-  const staleSources = dataSources.filter(d => d.status === 'STALE' || d.status === 'FAILED');
+  const officialWarnings = alerts.filter(a => !a.simulation_flag && a.source_type.includes('OFFICIAL') && a.lifecycle_status === 'ISSUED');
+  const elevatedFlood = predictions.filter(p => !p.simulation_flag && p.hazard_type === 'FLOOD' && (p.risk_category === 'HIGH' || p.risk_category === 'CRITICAL'));
+  const elevatedLandslide = predictions.filter(p => !p.simulation_flag && p.hazard_type === 'LANDSLIDE' && (p.risk_category === 'HIGH' || p.risk_category === 'CRITICAL'));
+  const staleSources = dataSources.filter(d => d.status !== 'OPERATIONAL');
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -95,7 +95,7 @@ export const KPISummary: React.FC<KPISummaryProps> = ({
           <span className="text-[11px] text-slate-500 font-medium">of {dataSources.length} Feeds</span>
         </div>
         <p className={`mt-1 text-[11px] font-medium truncate ${staleSources.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-          {staleSources.length > 0 ? 'Freshness fallback active' : 'All feeds operational'}
+          {staleSources.length > 0 ? 'Feed data unavailable or unverified' : 'Feeds responding'}
         </p>
       </div>
     </div>
